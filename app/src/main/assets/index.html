@@ -1,0 +1,427 @@
+<title>Family TV Home</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* Layout: a fixed 1920x1080 TV stage, scaled to fit; animated canvas scene behind glass panels (clock top-left, adhan top-right, hubs bottom). Single dark look on purpose: it is a TV screen. */
+:root{
+  --ink:#0b0d14; --glass:rgba(10,12,22,.52); --glass-hi:rgba(255,255,255,.14);
+  --text:#f6f3ff; --muted:rgba(246,243,255,.72); --accent:#ffb22e;
+  --display:"Baloo Bhaijaan 2","Baloo 2",system-ui,sans-serif;
+  --mono:"Chivo Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ink);color:var(--text);font-family:var(--display);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px;box-sizing:border-box}
+#wrap{width:100%;max-width:1600px;margin:0 auto}
+#frame{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;overflow:hidden;border-radius:14px;background:#000;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0}
+canvas{position:absolute;inset:0;width:1920px;height:1080px}
+.glass{background:var(--glass);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);border:1px solid var(--glass-hi);border-radius:28px}
+#clock{position:absolute;left:72px;top:48px;padding:22px 40px 26px}
+#time{font-size:132px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+#time small{font-size:44px;font-weight:700;margin-left:10px;color:var(--muted)}
+#date{font-size:34px;color:var(--muted);margin-top:6px}
+#hijri{font-size:34px;color:var(--accent);direction:rtl;text-align:left}
+#adhan{position:absolute;right:72px;top:48px;width:560px;padding:20px 32px 18px}
+.next-label{font-size:24px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)}
+.next-name{display:flex;justify-content:space-between;align-items:baseline;font-size:52px;font-weight:800;line-height:1.1}
+.next-name .ar{font-size:54px;color:var(--accent)}
+#countdown{font-family:var(--mono);font-weight:700;font-size:66px;letter-spacing:2px;font-variant-numeric:tabular-nums;margin:0 0 8px;line-height:1.1}
+.plist{display:grid;gap:2px}
+.prow{display:grid;grid-template-columns:1fr auto 110px;align-items:center;gap:16px;font-size:28px;line-height:1.35;padding:2px 14px;border-radius:12px}
+.prow .ar{direction:rtl;color:var(--muted)}
+.prow .t{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.prow.passed{opacity:.5}
+.prow.next{background:var(--accent);color:var(--ink)}
+.prow.next .ar{color:var(--ink)}
+#hubs{position:absolute;left:72px;right:72px;bottom:130px;display:flex;gap:30px}
+.tile{flex:1;height:210px;border-radius:30px;display:flex;flex-direction:column;justify-content:flex-end;padding:26px 28px;font-size:38px;font-weight:800;color:#fff;position:relative;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease;outline:none;border:4px solid transparent}
+.tile svg{position:absolute;top:26px;left:28px;width:76px;height:76px}
+.tile .sub{font-size:24px;font-weight:500;opacity:.85}
+.tile .lock{position:absolute;top:24px;right:24px;font-size:22px;background:rgba(0,0,0,.35);padding:4px 14px;border-radius:99px}
+.tile.focus{transform:scale(1.09) translateY(-10px);border-color:#fff;box-shadow:0 0 0 6px var(--accent),0 24px 50px rgba(0,0,0,.55)}
+#themes{position:absolute;left:72px;bottom:44px;display:flex;gap:18px;align-items:center}
+#themes .lbl{font-size:26px;color:var(--muted);margin-right:6px}
+.chip{font-size:26px;font-weight:700;padding:10px 26px;border-radius:99px;cursor:pointer;border:3px solid transparent;background:var(--glass);color:var(--text);transition:transform .15s}
+.chip.on{background:var(--accent);color:var(--ink)}
+.chip.focus{border-color:#fff;transform:scale(1.08)}
+#hint{position:absolute;right:72px;bottom:52px;font-size:24px;color:var(--muted)}
+#toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:28px 46px;font-size:36px;max-width:1100px;text-align:center}
+#pin{position:absolute;inset:0;background:rgba(5,6,12,.72);display:flex;align-items:center;justify-content:center}
+#pin .box{padding:44px 60px;text-align:center;width:640px}
+#pin h2{margin:0;font-size:52px}
+#pin p{margin:4px 0 20px;font-size:28px;color:var(--muted)}
+.dots{display:flex;justify-content:center;gap:24px;margin-bottom:26px}
+.dots i{width:34px;height:34px;border-radius:50%;border:4px solid var(--text)}
+.dots i.f{background:var(--accent);border-color:var(--accent)}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.key{font-family:var(--mono);font-size:44px;padding:12px 0;border-radius:18px;background:rgba(255,255,255,.08);cursor:pointer;border:3px solid transparent}
+.key.focus{border-color:var(--accent);background:rgba(255,255,255,.2)}
+.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-14px)}75%{transform:translateX(14px)}}
+.notes{max-width:72ch;margin:18px auto 0;font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:var(--muted)}
+.notes b{color:var(--text)}
+@media (max-width:700px){.notes{font-size:14px}}
+/* On the TV: the stage fills the screen */
+body{padding:0;overflow:hidden}
+#wrap{max-width:none;height:100%}
+#frame{border-radius:0;box-shadow:none;width:100vw;height:100vh;aspect-ratio:auto}
+.notes{display:none}
+#apps{position:absolute;inset:0;background:rgba(5,6,12,.82);padding:70px 90px;box-sizing:border-box}
+#apps h2{margin:0 0 26px;font-size:52px}
+#appgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:22px;max-height:860px;overflow:hidden}
+.app{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 10px;border-radius:22px;border:4px solid transparent;font-size:24px;text-align:center;line-height:1.2}
+.app img{width:110px;height:110px;object-fit:contain}
+.app.focus{border-color:var(--accent);background:rgba(255,255,255,.12);transform:scale(1.06)}
+@media (prefers-reduced-motion:reduce){.tile,.chip{transition:none}}
+</style>
+
+<div id="wrap">
+  <div id="frame">
+    <div id="stage">
+      <canvas id="bg" width="1920" height="1080"></canvas>
+
+      <div id="clock" class="glass">
+        <div id="time">--:--</div>
+        <div id="date">&nbsp;</div>
+        <div id="hijri">&nbsp;</div>
+      </div>
+
+      <div id="adhan" class="glass">
+        <div class="next-label">Next adhan · Kuwait City</div>
+        <div class="next-name"><span id="nextEn">—</span><span class="ar" id="nextAr"></span></div>
+        <div id="countdown">--:--:--</div>
+        <div class="plist" id="plist"></div>
+      </div>
+
+      <div id="hubs"></div>
+      <div id="themes"><span class="lbl">World</span></div>
+      <div id="hint">◀ ▶ ▲ ▼ to move · OK to open</div>
+
+      <div id="toast" class="glass" hidden></div>
+      <div id="apps" hidden><h2 id="appsTitle">All apps</h2><div id="appgrid"></div></div>
+      <div id="pin" hidden>
+        <div class="box glass" id="pinbox">
+          <h2>YouTube is locked</h2>
+          <p>Enter the parent PIN</p>
+          <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+          <div class="keys" id="keys"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="notes"><b>Interactive preview.</b> Click the screen, then use the arrow keys and Enter like a TV remote (or just click). Prayer times are calculated on the device for Kuwait City (Fajr 18°, Isha 17.5°), so they work offline. The scenes are original drawings in the style of each world; your own 4K art or video loops can replace them on the box. Watch the eyes: they follow whichever tile is selected.</p>
+</div>
+
+<script>
+/* ---------- Prayer times (PrayTimes.org method, Kuwait parameters) ---------- */
+const LAT=29.3759,LNG=47.9774,TZ=3;
+const OFFSETS={fajr:0,sunrise:0,dhuhr:0,asr:0,maghrib:0,isha:0}; // minutes, to match the Awqaf calendar exactly
+const D2R=Math.PI/180,R2D=180/Math.PI;
+const dsin=d=>Math.sin(d*D2R),dcos=d=>Math.cos(d*D2R),dtan=d=>Math.tan(d*D2R);
+const fix=(a,b)=>{a=a-b*Math.floor(a/b);return a<0?a+b:a};
+function prayerTimes(y,m,d){
+  let Y=y,M=m;if(M<=2){Y-=1;M+=12}
+  const A=Math.floor(Y/100),B=2-A+Math.floor(A/4);
+  const jd0=Math.floor(365.25*(Y+4716))+Math.floor(30.6001*(M+1))+d+B-1524.5-LNG/(15*24);
+  const sun=jd=>{const D=jd-2451545,g=fix(357.529+.98560028*D,360),q=fix(280.459+.98564736*D,360),
+    L=fix(q+1.915*dsin(g)+.02*dsin(2*g),360),e=23.439-.00000036*D,RA=Math.atan2(dcos(e)*dsin(L),dcos(L))*R2D/15;
+    return{decl:Math.asin(dsin(e)*dsin(L))*R2D,eqt:q/15-fix(RA,24)}};
+  const mid=t=>fix(12-sun(jd0+t).eqt,24);
+  const ang=(a,t,ccw)=>{const dc=sun(jd0+t).decl,n=mid(t),T=Math.acos((-dsin(a)-dsin(dc)*dsin(LAT))/(dcos(dc)*dcos(LAT)))*R2D/15;return n+(ccw?-T:T)};
+  const asr=t=>{const dc=sun(jd0+t).decl;return ang(-Math.atan(1/(1+dtan(Math.abs(LAT-dc))))*R2D,t)};
+  let t={fajr:5,sunrise:6,dhuhr:12,asr:13,maghrib:18,isha:18};
+  for(let i=0;i<2;i++){const p={};for(const k in t)p[k]=t[k]/24;
+    t={fajr:ang(18,p.fajr,true),sunrise:ang(.833,p.sunrise,true),dhuhr:mid(p.dhuhr),asr:asr(p.asr),maghrib:ang(.833,p.maghrib),isha:ang(17.5,p.isha)}}
+  const out={};for(const k in t)out[k]=Math.round((t[k]+TZ-LNG/15)*60)+OFFSETS[k]; // minutes after midnight
+  return out;
+}
+const PRAYERS=[["fajr","Fajr","الفجر"],["sunrise","Sunrise","الشروق"],["dhuhr","Dhuhr","الظهر"],["asr","Asr","العصر"],["maghrib","Maghrib","المغرب"],["isha","Isha","العشاء"]];
+const kwNow=()=>new Date(Date.now()+TZ*3600e3); // read with UTC getters = Kuwait wall clock
+const hm=min=>{const h=Math.floor(min/60)%24,m=min%60;const h12=((h+11)%12)+1;return h12+":"+String(m).padStart(2,"0")};
+const pad=n=>String(n).padStart(2,"0");
+
+const plist=document.getElementById("plist");
+plist.innerHTML=PRAYERS.map(([k,en,ar])=>`<div class="prow" id="p-${k}"><span>${en}</span><span class="ar">${ar}</span><span class="t" id="t-${k}"></span></div>`).join("");
+
+let cacheDay="",today,tomorrow;
+function tickClock(){
+  const n=kwNow(),y=n.getUTCFullYear(),mo=n.getUTCMonth()+1,d=n.getUTCDate();
+  const key=y+"-"+mo+"-"+d;
+  if(key!==cacheDay){cacheDay=key;today=prayerTimes(y,mo,d);
+    const tm=new Date(Date.UTC(y,mo-1,d+1));tomorrow=prayerTimes(tm.getUTCFullYear(),tm.getUTCMonth()+1,tm.getUTCDate());
+    for(const[k]of PRAYERS)document.getElementById("t-"+k).textContent=hm(today[k]);
+    const asUTC=new Date(Date.UTC(y,mo-1,d,12));
+    document.getElementById("date").textContent=asUTC.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",timeZone:"UTC"});
+    try{document.getElementById("hijri").textContent=asUTC.toLocaleDateString("ar-SA-u-ca-islamic-umalqura",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"})}catch(e){}
+  }
+  const h=n.getUTCHours(),m=n.getUTCMinutes(),s=n.getUTCSeconds();
+  document.getElementById("time").innerHTML=`${((h+11)%12)+1}:${pad(m)}<small>${h<12?"AM":"PM"}</small>`;
+  const nowSec=h*3600+m*60+s;
+  let next=PRAYERS.find(([k])=>k!=="sunrise"&&today[k]*60>nowSec),target;
+  if(next)target=today[next[0]]*60;else{next=PRAYERS[0];target=tomorrow.fajr*60+86400}
+  const left=target-nowSec;
+  document.getElementById("countdown").textContent=`${pad(Math.floor(left/3600))}:${pad(Math.floor(left%3600/60))}:${pad(left%60)}`;
+  document.getElementById("nextEn").textContent=next[1];
+  document.getElementById("nextAr").textContent=next[2];
+  for(const[k]of PRAYERS){const el=document.getElementById("p-"+k);
+    el.classList.toggle("next",k===next[0]);el.classList.toggle("passed",today[k]*60<=nowSec&&k!==next[0])}
+}
+tickClock();setInterval(tickClock,1000);
+
+/* ---------- Hubs, themes, remote-style focus ---------- */
+const ICON={
+  yt:'<svg viewBox="0 0 24 24" fill="#fff"><rect x="2" y="5" width="20" height="14" rx="4" fill="#ff2a2a"/><path d="M10 9l5 3-5 3z"/></svg>',
+  film:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>',
+  tv:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M9 2l3 4 3-4"/></svg>',
+  pad:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 8h12a4 4 0 0 1 4 4v1a4 4 0 0 1-7 2.6L14 14h-4l-1 1.6A4 4 0 0 1 2 13v-1a4 4 0 0 1 4-4z"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r="1" fill="#fff"/><circle cx="18" cy="13.5" r="1" fill="#fff"/></svg>',
+  star:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21l1.4-7L2 9.3l7-.8z"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>'
+};
+const HUBS=[
+  {id:"yt",name:"YouTube",sub:"Parent PIN",icon:"yt",bg:"linear-gradient(140deg,#e62117,#8a0c0c)",lock:true},
+  {id:"movies",name:"Movies",sub:"Hard drive · VLC",icon:"film",bg:"linear-gradient(140deg,#3c5bff,#1b237a)"},
+  {id:"shows",name:"TV Shows",sub:"Hard drive · VLC",icon:"tv",bg:"linear-gradient(140deg,#0fb59a,#065a54)"},
+  {id:"kids",name:"Kids",sub:"Picked apps",icon:"star",bg:"linear-gradient(140deg,#ff7ac3,#a62f8a)"},
+  {id:"apps",name:"All apps",sub:"Everything installed",icon:"pad",bg:"linear-gradient(140deg,#ff9d1f,#b04a00)"},
+  {id:"settings",name:"Settings",sub:"TV & network",icon:"gear",bg:"linear-gradient(140deg,#6b6f86,#2c2f40)"}
+];
+const THEMES=[
+  {id:"power",name:"Power Up",accent:"#ffb22e"},
+  {id:"hills",name:"Mushroom Hills",accent:"#ffd23a"},
+  {id:"loop",name:"Speed Loop",accent:"#ffd700"},
+  {id:"dream",name:"Dream Sky",accent:"#ff8fc8"},
+  {id:"blocks",name:"Block World",accent:"#7ddc4a"}
+];
+const hubsEl=document.getElementById("hubs"),themesEl=document.getElementById("themes");
+HUBS.forEach(h=>{const d=document.createElement("div");d.className="tile";d.style.background=h.bg;d.dataset.hub=h.id;
+  d.innerHTML=ICON[h.icon]+(h.lock?'<span class="lock">🔒 PIN</span>':"")+`<div>${h.name}</div><div class="sub">${h.sub}</div>`;hubsEl.appendChild(d)});
+THEMES.forEach(t=>{const c=document.createElement("div");c.className="chip";c.dataset.theme=t.id;c.textContent=t.name;themesEl.appendChild(c)});
+const rows=[[...hubsEl.children],[...themesEl.querySelectorAll(".chip")]];
+let fr=0,fc=0,theme;
+function setFocus(r,c){rows.flat().forEach(e=>e.classList.remove("focus"));fr=r;fc=Math.max(0,Math.min(c,rows[r].length-1));rows[r][fc].classList.add("focus")}
+function setTheme(id){theme=THEMES.find(t=>t.id===id);document.documentElement.style.setProperty("--accent",theme.accent);
+  rows[1].forEach(c=>c.classList.toggle("on",c.dataset.theme===id));try{localStorage.setItem("tvtheme",id)}catch(e){}}
+let saved="power";try{saved=localStorage.getItem("tvtheme")||"power"}catch(e){}
+setTheme(THEMES.some(t=>t.id===saved)?saved:"power");setFocus(0,0);
+
+const toastEl=document.getElementById("toast");let toastT;
+function toast(msg){toastEl.textContent=msg;toastEl.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>toastEl.hidden=true,2600)}
+/* Hub actions, through the Android bridge */
+const A=window.Android;
+const PKG={yt:["com.google.android.youtube.tv","com.google.android.youtube"],movies:["org.xbmc.kodi"],shows:["org.xbmc.kodi"]};
+const NEED={movies:"Install Kodi from the Play Store to open your movie library.",shows:"Install Kodi from the Play Store to open your TV shows.",yt:"YouTube is not installed."};
+function open(id){
+  if(!A){toast("This only works on the TV box.");return}
+  if(id==="settings"){A.openSettings();return}
+  if(id==="apps"||id==="kids"){openApps(id);return}
+  for(const p of PKG[id]||[])if(A.launch(p))return;
+  toast(NEED[id]||"Not available yet.");
+}
+function activate(){const el=rows[fr][fc];
+  if(el.dataset.theme)setTheme(el.dataset.theme);
+  else if(el.dataset.hub==="yt")openPin();else open(el.dataset.hub)}
+
+/* All apps / Kids picks. Hold OK (long press) on an app in All apps to add or remove it from Kids. */
+const appsEl=document.getElementById("apps"),gridEl=document.getElementById("appgrid");let appList=[],af=0,appMode="apps";
+let kidPicks=[];try{kidPicks=JSON.parse(localStorage.getItem("kidpicks")||"[]")}catch(e){}
+function openApps(mode){appMode=mode;try{appList=JSON.parse(A.listApps())}catch(e){appList=[]}
+  appList.sort((x,y)=>x.label.localeCompare(y.label));
+  const hidden=["com.google.android.youtube.tv","com.google.android.youtube"]; // YouTube only through the PIN tile
+  appList=appList.filter(x=>!hidden.includes(x.pkg));
+  if(mode==="kids")appList=appList.filter(x=>kidPicks.includes(x.pkg));
+  document.getElementById("appsTitle").textContent=mode==="kids"?"Kids":"All apps  ·  hold OK to add an app to Kids";
+  if(mode==="kids"&&!appList.length){toast("No Kids apps yet. Open All apps and hold OK on an app to add it.");return}
+  gridEl.innerHTML=appList.map(x=>`<div class="app"><img src="${x.icon}" alt=""><span>${x.label.replace(/</g,"&lt;")}${kidPicks.includes(x.pkg)&&mode==="apps"?" ⭐":""}</span></div>`).join("");
+  af=Math.min(af,appList.length-1);if(af<0)af=0;armed=false;appsEl.hidden=false;drawApps()}
+function drawApps(){[...gridEl.children].forEach((c,i)=>c.classList.toggle("focus",i===af));
+  const row=Math.floor(af/7);gridEl.scrollTop=Math.max(0,row-2)*200}
+function toggleKid(){const p=appList[af]&&appList[af].pkg;if(!p)return;
+  kidPicks=kidPicks.includes(p)?kidPicks.filter(x=>x!==p):[...kidPicks,p];try{localStorage.setItem("kidpicks",JSON.stringify(kidPicks))}catch(e){}
+  toast(kidPicks.includes(p)?"Added to Kids":"Removed from Kids");openApps(appMode)}
+window.onBack=()=>{if(!pinEl.hidden)pinEl.hidden=true;else if(!appsEl.hidden)appsEl.hidden=true};
+window.onHomeResume=()=>{pinEl.hidden=true;appsEl.hidden=true};
+
+/* PIN pad. Default PIN 1234; change it by holding OK on the YouTube tile and entering the old PIN, then the new one. */
+function parentPin(){try{return localStorage.getItem("tvpin")||"1234"}catch(e){return "1234"}}
+const pinEl=document.getElementById("pin"),keysEl=document.getElementById("keys");let pin="",kf=0,held=false,armed=false;
+const KEYS=["1","2","3","4","5","6","7","8","9","✕","0","⌫"];
+keysEl.innerHTML=KEYS.map(k=>`<div class="key" data-k="${k}">${k}</div>`).join("");
+const keyEls=[...keysEl.children];
+function drawPin(){[...document.getElementById("dots").children].forEach((d,i)=>d.classList.toggle("f",i<pin.length));keyEls.forEach((k,i)=>k.classList.toggle("focus",i===kf))}
+function openPin(){pin="";kf=0;pinEl.hidden=false;drawPin()}
+function pressKey(k){if(k==="✕"){pinEl.hidden=true;return}if(k==="⌫"){pin=pin.slice(0,-1)}else if(pin.length<4)pin+=k;drawPin();
+  if(pin.length===4){if(pin===parentPin()){pinEl.hidden=true;for(const p of PKG.yt)if(A&&A.launch(p))return;toast(NEED.yt)}
+    else{const b=document.getElementById("pinbox");b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake");pin="";setTimeout(drawPin,200)}}}
+keyEls.forEach((k,i)=>k.addEventListener("click",e=>{e.stopPropagation();kf=i;pressKey(k.dataset.k)}));
+
+document.addEventListener("keydown",e=>{
+  const k=e.key;if(!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Enter"," ","Escape","Backspace"].includes(k)&&!/^\d$/.test(k))return;
+  e.preventDefault();
+  if(!appsEl.hidden){
+    if(k==="Escape"||k==="Backspace")return appsEl.hidden=true;
+    const n=appList.length;
+    if(k==="ArrowLeft"&&af%7)af--;if(k==="ArrowRight"&&af<n-1)af++;if(k==="ArrowUp"&&af>6)af-=7;if(k==="ArrowDown"&&af+7<n)af+=7;
+    if(k==="Enter"||k===" "){if(e.repeat){if(!held&&appMode==="apps"){held=true;toggleKid()}return}held=false;armed=true;return}
+    return drawApps();
+  }
+  if(!pinEl.hidden){
+    if(/^\d$/.test(k))return pressKey(k);
+    if(k==="Escape")return pinEl.hidden=true;
+    if(k==="Backspace")return pressKey("⌫");
+    if(k==="ArrowLeft"&&kf%3)kf--;if(k==="ArrowRight"&&kf%3<2)kf++;if(k==="ArrowUp"&&kf>2)kf-=3;if(k==="ArrowDown"&&kf<9)kf+=3;
+    if(k==="Enter"||k===" ")return pressKey(KEYS[kf]);return drawPin();
+  }
+  if(k==="ArrowLeft")setFocus(fr,fc-1);if(k==="ArrowRight")setFocus(fr,fc+1);
+  if(k==="ArrowUp"&&fr===1)setFocus(0,Math.round(fc*1.2));if(k==="ArrowDown"&&fr===0)setFocus(1,Math.round(fc/1.25));
+  if(k==="Enter"||k===" ")activate();
+});
+document.addEventListener("keyup",e=>{if(!appsEl.hidden&&(e.key==="Enter"||e.key===" ")){if(armed&&!held&&appList[af])A.launch(appList[af].pkg);held=false;armed=false}});
+rows.forEach((row,r)=>row.forEach((el,c)=>{el.addEventListener("mouseenter",()=>setFocus(r,c));el.addEventListener("click",()=>{setFocus(r,c);activate()})}));
+
+/* Scale stage to frame */
+const frame=document.getElementById("frame"),stage=document.getElementById("stage");let SCALE=1;
+function fit(){SCALE=Math.min(frame.clientWidth/1920,frame.clientHeight/1080);stage.style.transform=`translate(${(frame.clientWidth-1920*SCALE)/2}px,${(frame.clientHeight-1080*SCALE)/2}px) scale(${SCALE})`}
+new ResizeObserver(fit).observe(frame);fit();
+
+/* ---------- Animated worlds ---------- */
+const cv=document.getElementById("bg"),ctx=cv.getContext("2d"),W=1920,H=1080;
+const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let look={x:960,y:800},lookS={x:960,y:800},par=0;
+function focusPoint(){const el=rows[fr][fc];if(!pinEl.hidden)return{x:960,y:540};
+  const a=el.getBoundingClientRect(),s=stage.getBoundingClientRect();
+  return{x:(a.left-s.left+a.width/2)/SCALE,y:(a.top-s.top+a.height/2)/SCALE}}
+function rnd(seed){return()=>(seed=(seed*16807)%2147483647)/2147483647}
+
+function eyes(list,blink,style){ // list of [cx,cy,rx,ry,pupil]
+  for(const[cx,cy,rx,ry,pr]of list){
+    const dx=lookS.x-cx,dy=lookS.y-cy,dist=Math.hypot(dx,dy)||1,mx=(rx-pr)*.8,my=(ry-pr)*.8;
+    const px=cx+dx/dist*mx*Math.min(1,dist/300),py=cy+dy/dist*my*Math.min(1,dist/300);
+    ctx.save();ctx.translate(cx,cy);ctx.scale(1,blink);ctx.translate(-cx,-cy);
+    if(style==="square"){
+      ctx.fillStyle="#fff";ctx.fillRect(cx-rx,cy-ry,rx*2,ry*2);
+      ctx.fillStyle="#1a1a1a";const g=pr;ctx.fillRect(Math.round((px-g)/12)*12,Math.round((py-g)/12)*12,g*2,g*2);
+    }else if(style==="tall"){
+      ctx.fillStyle="#111";ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.ellipse(px-(px-cx)*.2,py-ry*.35+(py-cy)*.3,rx*.45,ry*.32,0,0,7);ctx.fill();
+    }else{
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,7);ctx.fill();
+      ctx.fillStyle="#111";ctx.beginPath();ctx.ellipse(px,py,pr,pr*1.15,0,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(px-pr*.35,py-pr*.4,pr*.3,0,7);ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+function blinkAt(t,period,off){const p=(t+off)%period;return p<.16?Math.abs(Math.cos(p/.16*Math.PI)):1}
+function cloud(x,y,s,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,40*s,0,7);ctx.arc(x+45*s,y-20*s,52*s,0,7);ctx.arc(x+95*s,y,42*s,0,7);ctx.rect(x,y,95*s,40*s);ctx.fill()}
+function star5(x,y,r,rot){ctx.beginPath();for(let i=0;i<10;i++){const a=rot+i*Math.PI/5-Math.PI/2,rr=i%2?r*.45:r;ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr)}ctx.closePath()}
+const sparks=Array.from({length:90},(_, i)=>{const r=rnd(i+7);return{x:r()*W,y:r()*H,s:1+r()*3,v:40+r()*120}});
+
+const SCENES={
+  power(t){
+    const g=ctx.createRadialGradient(560,600,50,560,600,1400);g.addColorStop(0,"#ffe27a");g.addColorStop(.18,"#ff8a1c");g.addColorStop(.5,"#9a2a1a");g.addColorStop(1,"#1d0b2e");
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    ctx.save();ctx.translate(560+par*-30,600);ctx.rotate(t*.05);
+    for(let i=0;i<36;i++){ctx.rotate(Math.PI*2/36);ctx.fillStyle=i%2?"rgba(255,240,180,.10)":"rgba(255,160,40,.06)";ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(1800,-70);ctx.lineTo(1800,70);ctx.fill()}
+    ctx.restore();
+    // aura flames
+    for(let i=0;i<14;i++){const a=i/14*Math.PI*2,fl=200+40*Math.sin(t*6+i*1.7);ctx.fillStyle="rgba(255,220,90,.10)";
+      ctx.beginPath();ctx.ellipse(560+par*-30+Math.cos(a)*60,600+Math.sin(a)*40-fl*.4,50,fl,a*.1,0,7);ctx.fill()}
+    for(const p of sparks){p.y-=p.v/60;if(p.y<-10){p.y=H+10}ctx.fillStyle="rgba(255,230,150,.8)";ctx.fillRect(p.x+par*-20*p.s,p.y,p.s,p.s*6)}
+    // floating star orbs (parallax by size)
+    const orbs=[[1180,330,58,1],[1440,520,44,2],[1000,700,36,3],[1640,300,30,4],[1300,780,52,5],[860,420,28,6],[1580,760,34,7]];
+    for(const[x0,y0,r,n]of orbs){const x=x0+par*-r*.9,y=y0+Math.sin(t*1.2+n)*14;
+      const og=ctx.createRadialGradient(x-r*.35,y-r*.35,r*.1,x,y,r);og.addColorStop(0,"#fff6c8");og.addColorStop(.35,"#ffb21c");og.addColorStop(1,"#c95a00");
+      ctx.fillStyle="rgba(255,170,40,.25)";ctx.beginPath();ctx.arc(x,y,r*1.5,0,7);ctx.fill();
+      ctx.fillStyle=og;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+      ctx.fillStyle="#d8261a";const k=Math.min(n,4);for(let j=0;j<k;j++){star5(x+(j-(k-1)/2)*r*.32,y+((j%2)?r*.15:-r*.1),r*.16,0);ctx.fill()}}
+    // big orb watcher
+    const bx=780+par*-50,by=380+Math.sin(t)*10,br=120;
+    const bg=ctx.createRadialGradient(bx-40,by-50,10,bx,by,br);bg.addColorStop(0,"#fff6c8");bg.addColorStop(.4,"#ffb21c");bg.addColorStop(1,"#b84a00");
+    ctx.fillStyle="rgba(255,190,60,.25)";ctx.beginPath();ctx.arc(bx,by,br*1.5,0,7);ctx.fill();
+    ctx.fillStyle=bg;ctx.beginPath();ctx.arc(bx,by,br,0,7);ctx.fill();
+    eyes([[bx-38,by+5,26,30,13],[bx+38,by+5,26,30,13]],blinkAt(t,4.3,0));
+  },
+  hills(t){
+    const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#4aa8ff");g.addColorStop(1,"#bfe6ff");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    for(let i=0;i<6;i++){const x=((i*420+t*25)%(W+500))-300+par*-20;cloud(x,120+(i%3)*90,1+(i%2)*.4,"#fff")}
+    const hill=(x,y,w,h,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x-w/2,H);ctx.lineTo(x-w/2,y+w/2);ctx.arc(x,y+w/2,w/2,Math.PI,0);ctx.lineTo(x+w/2,H);ctx.fill()};
+    hill(1500+par*-25,560,520,0,"#2e9e3e");hill(300+par*-25,600,380,0,"#2e9e3e");
+    const fx=780+par*-60;hill(fx,390,440,0,"#5cd14e");hill(1150+par*-60,640,300,0,"#5cd14e");
+    eyes([[fx-60,500,20,46,0],[fx+60,500,20,46,0]],blinkAt(t,5,1),"tall");
+    // pipe
+    const px=1700+par*-70;ctx.fillStyle="#18a83a";ctx.fillRect(px-70,820,140,200);ctx.fillRect(px-90,780,180,60);ctx.fillStyle="rgba(255,255,255,.25)";ctx.fillRect(px-60,840,22,180);ctx.fillRect(px-80,790,24,40);
+    // floating blocks
+    for(let i=0;i<4;i++){const bx=900+i*86+par*-45,by=300+(i===1?Math.sin(t*3)*-8:0);ctx.fillStyle=i===1?"#ffc21a":"#c8642a";ctx.fillRect(bx,by,80,80);
+      ctx.strokeStyle="#5a2a10";ctx.lineWidth=4;ctx.strokeRect(bx+2,by+2,76,76);
+      if(i===1){ctx.fillStyle="#7a3a00";ctx.font="800 60px Baloo Bhaijaan 2, sans-serif";ctx.textAlign="center";ctx.fillText("?",bx+40,by+62)}
+      else{ctx.beginPath();ctx.moveTo(bx,by+40);ctx.lineTo(bx+80,by+40);ctx.moveTo(bx+40,by);ctx.lineTo(bx+40,by+40);ctx.stroke()}}
+    // brick ground
+    const off=(par*-80)%80;for(let x=-80;x<W+80;x+=80){ctx.fillStyle="#c8642a";ctx.fillRect(x+off,1000,80,80);ctx.strokeStyle="#6a2e10";ctx.lineWidth=4;ctx.strokeRect(x+off+2,1002,76,76)}
+  },
+  loop(t){
+    const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#1e64ff");g.addColorStop(.55,"#7cc6ff");g.addColorStop(.56,"#2aa6e8");g.addColorStop(1,"#1b7bd0");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    for(let i=0;i<5;i++){const x=((i*480-t*40)%(W+500)+W+500)%(W+500)-300+par*-15;cloud(x,140+(i%2)*80,1.1,"rgba(255,255,255,.95)")}
+    ctx.fillStyle="rgba(255,255,255,.3)";for(let i=0;i<30;i++)ctx.fillRect(((i*137+t*30)%W),620+(i%5)*12,40,3);
+    // checker hills
+    const ch=(x0,y0,w,h,sz)=>{ctx.save();ctx.beginPath();ctx.moveTo(x0,H);ctx.lineTo(x0,y0+h*.4);ctx.quadraticCurveTo(x0+w*.5,y0-h*.3,x0+w,y0+h*.4);ctx.lineTo(x0+w,H);ctx.clip();
+      for(let y=y0-h;y<H;y+=sz)for(let x=x0;x<x0+w;x+=sz){ctx.fillStyle=((x-x0)/sz+(y-y0)/sz)%2?"#b0581c":"#e88a2e";ctx.fillRect(x,y,sz,sz)}
+      ctx.fillStyle="#3ed14e";ctx.beginPath();ctx.moveTo(x0,y0+h*.4);ctx.quadraticCurveTo(x0+w*.5,y0-h*.3,x0+w,y0+h*.4);ctx.lineTo(x0+w,y0+h*.4+30);ctx.quadraticCurveTo(x0+w*.5,y0-h*.3+30,x0,y0+h*.4+30);ctx.fill();ctx.restore()};
+    ch(-100+par*-40,760,1000,300,60);ch(800+par*-40,700,1300,380,60);
+    // loop
+    const lx=1250+par*-40,ly=520;ctx.lineWidth=60;ctx.strokeStyle="#e88a2e";ctx.beginPath();ctx.arc(lx,ly,170,0,7);ctx.stroke();ctx.lineWidth=14;ctx.strokeStyle="#3ed14e";ctx.beginPath();ctx.arc(lx,ly,200,0,7);ctx.stroke();
+    // palm
+    const pt=(x,y)=>{ctx.strokeStyle="#7a4a1a";ctx.lineWidth=22;ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+30,y-130,x+10,y-260);ctx.stroke();
+      ctx.fillStyle="#1f9e3a";for(let i=0;i<6;i++){const a=i/6*Math.PI*2+Math.sin(t)*.05;ctx.beginPath();ctx.ellipse(x+10+Math.cos(a)*70,y-260+Math.sin(a)*30,90,22,a,0,7);ctx.fill()}};
+    pt(260+par*-55,900);pt(1760+par*-55,860);
+    // totem watcher
+    const tx=780+par*-55;["#b0581c","#7d3cff","#b0581c","#7d3cff"].forEach((c,i)=>{ctx.fillStyle=c;ctx.fillRect(tx-70,420+i*110,140,110)});
+    ctx.fillStyle="#1fb04a";ctx.beginPath();ctx.moveTo(tx-130,420);ctx.lineTo(tx-70,380);ctx.lineTo(tx-70,460);ctx.fill();ctx.beginPath();ctx.moveTo(tx+130,420);ctx.lineTo(tx+70,380);ctx.lineTo(tx+70,460);ctx.fill();
+    eyes([[tx-32,470,24,24,11],[tx+32,470,24,24,11]],blinkAt(t,3.7,2));
+    // rings
+    for(let i=0;i<7;i++){const x=1000+i*110+par*-70,y=300+Math.sin(i*.8)*40,w=Math.abs(Math.cos(t*3+i*.4))*36+4;
+      ctx.lineWidth=12;ctx.strokeStyle="#ffd700";ctx.beginPath();ctx.ellipse(x,y,w,40,0,0,7);ctx.stroke();ctx.lineWidth=4;ctx.strokeStyle="#fff6a0";ctx.beginPath();ctx.ellipse(x-3,y-3,Math.max(1,w-8),32,0,0,7);ctx.stroke()}
+  },
+  dream(t){
+    const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#ffd6ee");g.addColorStop(.6,"#c9b6ff");g.addColorStop(1,"#8fd3ff");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    for(let i=0;i<8;i++){const x=((i*300+t*(12+i*3))%(W+400))-250+par*-(10+i*4);cloud(x,180+(i*130)%700,1.3+(i%3)*.3,"rgba(255,255,255,.85)")}
+    for(let i=0;i<9;i++){const a=t*.3+i*.7,x=(i*233+t*60)%(W+200)-100+par*-30,y=200+((i*97)%600)+Math.sin(a*2)*30;
+      ctx.fillStyle="rgba(255,240,120,.35)";for(let k=1;k<5;k++){star5(x-k*26,y+k*6,16-k*2.5,a);ctx.fill()}
+      ctx.fillStyle="#ffe14a";star5(x,y,30,a);ctx.fill();ctx.strokeStyle="#e8a800";ctx.lineWidth=3;ctx.stroke()}
+    // puffball
+    const px=780+par*-70,py=400+Math.sin(t*1.6)*22,r=140;
+    ctx.fillStyle="#e43a7a";ctx.beginPath();ctx.ellipse(px-90,py+150,70,36,-.3,0,7);ctx.ellipse(px+90,py+150,70,36,.3,0,7);ctx.fill();
+    ctx.fillStyle="#ffa6cf";ctx.beginPath();ctx.ellipse(px-150,py+10+Math.sin(t*3)*12,48,36,-.6,0,7);ctx.ellipse(px+150,py-20-Math.sin(t*3)*12,48,36,.6,0,7);ctx.fill();
+    const pg=ctx.createRadialGradient(px-50,py-60,20,px,py,r);pg.addColorStop(0,"#ffd0e6");pg.addColorStop(1,"#ff8fc3");ctx.fillStyle=pg;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();
+    ctx.fillStyle="rgba(255,80,140,.45)";ctx.beginPath();ctx.ellipse(px-80,py+40,26,14,0,0,7);ctx.ellipse(px+80,py+40,26,14,0,0,7);ctx.fill();
+    eyes([[px-34,py-20,16,40,0],[px+34,py-20,16,40,0]],blinkAt(t,4.6,.5),"tall");
+    ctx.strokeStyle="#9a1f4a";ctx.lineWidth=5;ctx.beginPath();ctx.arc(px,py+40,16,.2,Math.PI-.2);ctx.stroke();
+  },
+  blocks(t){
+    const day=(Math.sin(t*.05)+1)/2;const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,`rgb(${60+60*day},${130+60*day},${200+40*day})`);g.addColorStop(1,"#cfe9ff");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#fff7b0";ctx.fillRect(1500+par*-10,120,120,120);ctx.fillStyle="#ffe970";ctx.fillRect(1520+par*-10,140,80,80);
+    for(let i=0;i<6;i++){const x=((i*380+t*20)%(W+400))-300+par*-15,y=110+(i%3)*60;ctx.fillStyle="rgba(255,255,255,.92)";ctx.fillRect(x,y,240,48);ctx.fillRect(x+48,y-24,120,24)}
+    if(!SCENES._terrain){SCENES._terrain=[0,1].map(layer=>{const c=document.createElement("canvas");c.width=W+400;c.height=H+200;const x=c.getContext("2d");
+      const r=rnd(layer?99:7),S=layer?60:40,ROWS=Math.ceil(c.height/S),P=S/8;let h=Math.round(ROWS*(layer?.62:.5));
+      for(let col=0;col<c.width/S;col++){h+=Math.round((r()-.5)*2.2);h=Math.max(Math.round(ROWS*(layer?.55:.4)),Math.min(Math.round(ROWS*(layer?.75:.62)),h));
+        for(let row=h;row<ROWS;row++)for(let py=0;py<S;py+=P)for(let px=0;px<S;px+=P){const v=r();let k;
+          if(row===h&&py<S/4)k=v<.5?"#4fae35":"#67c94a";else if(row>h+3&&v<.6)k=v<.3?"#777":"#8c8c8c";else k=v<.5?"#8b5a2b":"#a06a36";
+          x.fillStyle=k;x.fillRect(col*S+px,row*S+py,P+.5,P+.5)}}
+      if(!layer){x.fillStyle="rgba(140,185,230,.45)";x.fillRect(0,0,c.width,c.height)}
+      return c})}
+    ctx.drawImage(SCENES._terrain[0],-200+par*-30,-60);ctx.drawImage(SCENES._terrain[1],-200+par*-80,-60);
+    // block watcher
+    const bx=780+par*-80,by=460;ctx.fillStyle="#6aa84f";ctx.fillRect(bx-108,by-108,216,216);
+    const r=rnd(5);for(let i=0;i<36;i++){ctx.fillStyle=r()<.5?"#5b9a42":"#7cbc5c";ctx.fillRect(bx-108+(i%6)*36,by-108+Math.floor(i/6)*36,36,36)}
+    eyes([[bx-48,by-12,30,24,12],[bx+48,by-12,30,24,12]],blinkAt(t,3.9,1.5),"square");
+    ctx.fillStyle="#3a2a1a";ctx.fillRect(bx-36,by+48,72,24);
+  }
+};
+let last=performance.now(),T=0;
+function frameLoop(now){const dt=Math.min(.05,(now-last)/1000);last=now;T+=reduced?0:dt;
+  look=focusPoint();lookS.x+=(look.x-lookS.x)*.12;lookS.y+=(look.y-lookS.y)*.12;par+=(((look.x-960)/960)-par)*.06;
+  SCENES[theme.id](T);requestAnimationFrame(frameLoop)}
+requestAnimationFrame(frameLoop);
+frame.addEventListener("click",()=>frame.focus&&frame.focus());
+</script>
