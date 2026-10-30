@@ -714,8 +714,14 @@ public class MainActivity extends Activity {
         if (!ambient && resumed && !anyPanelOpen() && System.currentTimeMillis() - lastInput > AMBIENT_AFTER) enterAmbient();
         adhanName.setText(PrayerTimes.EN[next]);
         adhanAr.setText(PrayerTimes.AR[next]);
-        if (pillTextOverride != null) { pillText.setText(pillTextOverride); pillText.animate().alpha(1).setDuration(200).start(); }
-        else if (pillText.getAlpha() > 0) pillText.animate().alpha(0).setDuration(300).start();
+        if (pillTextOverride != null) {
+            pillText.setText(pillTextOverride);
+            pillText.animate().alpha(1).setDuration(200).start();
+            if (nowWidget != null && nowWidget.getVisibility() == View.VISIBLE) nowWidget.animate().alpha(0).setDuration(150).start();
+        } else if (pillText.getAlpha() > 0) {
+            pillText.animate().alpha(0).setDuration(300).start();
+            if (nowWidget != null && nowWidget.getVisibility() == View.VISIBLE) nowWidget.animate().alpha(1).setDuration(300).start();
+        }
         int passedMask = 0;
         for (int i = 0; i < 5; i++) if (BAR_PRAYERS[i] != next && today[BAR_PRAYERS[i]] * 60 <= nowSec) passedMask |= 1 << i;
         if (next == shownNext && passedMask == shownPassedMask) return; // only redraw the bar when it changes
@@ -1231,7 +1237,10 @@ public class MainActivity extends Activity {
     private ExoPlayer quran;
     private int quranSurah, quranErrors;
     private Quran.Reciter quranReciter;
-    private TextView quranNow, quranNowHome, quranPlayBtn;
+    private TextView quranNow, quranPlayBtn, nowSurah, nowReciter;
+    private View nowWidget;
+    private final View[] nowBars = new View[3];
+    private final ValueAnimator[] barAnims = new ValueAnimator[3];
     private LinearLayout quranControls;
     private GridLayout surahGrid;
 
@@ -1292,10 +1301,7 @@ public class MainActivity extends Activity {
         quranPanel.addView(sv, at(1920 - 200, 1080 - 190, Gravity.TOP | Gravity.START, 100, 180));
 
         // On the home screen: what is playing, at the bottom of the weather card.
-        quranNowHome = text("", 22, fAr, 0xFFE8C97A);
-        quranNowHome.setPadding(0, 16, 0, 0);
-        quranNowHome.setVisibility(View.GONE);
-        leftCard.addView(quranNowHome);
+        buildNowReciting();
         drawQuranState();
     }
 
@@ -1395,16 +1401,83 @@ public class MainActivity extends Activity {
         for (int i = 1; i < quranControls.getChildCount(); i++) quranControls.getChildAt(i).setVisibility(active ? View.VISIBLE : View.GONE);
         if (!active) {
             quranNow.setText("");
-            quranNowHome.setVisibility(View.GONE);
-            dayText.setVisibility(View.VISIBLE);
+            showNowReciting(false);
             return;
         }
         String reciter = quranReciter.ar.isEmpty() ? quranReciter.en : quranReciter.ar + "  ·  " + quranReciter.en;
         quranNow.setText("سورة " + Quran.AR[quranSurah - 1] + "  ·  " + Quran.EN[quranSurah - 1] + "\n" + reciter);
         quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
-        quranNowHome.setText((quran.getPlayWhenReady() ? "▶  " : "❚❚  ") + "سورة " + Quran.AR[quranSurah - 1] + "  ·  " + quranReciter.en);
-        quranNowHome.setVisibility(View.VISIBLE);
-        dayText.setVisibility(View.GONE); // the card has room for one bottom line
+        nowSurah.setText("سورة " + Quran.AR[quranSurah - 1] + "   ·   " + Quran.EN[quranSurah - 1]);
+        nowReciter.setText(reciter);
+        showNowReciting(true);
+        animateBars(quran.getPlayWhenReady());
+    }
+
+    /** Top centre, between the two cards: which surah is playing and who is reciting, with three softly moving bars. */
+    private void buildNowReciting() {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(30, 18, 34, 18);
+        LinearLayout bars = new LinearLayout(this);
+        bars.setGravity(Gravity.BOTTOM);
+        for (int i = 0; i < 3; i++) {
+            View b = new View(this);
+            b.setBackground(glass(3, 0xFFF1D58A, 0));
+            b.setPivotY(30);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(6, 30);
+            p.rightMargin = 5;
+            bars.addView(b, p);
+            nowBars[i] = b;
+        }
+        row.addView(bars, new LinearLayout.LayoutParams(-2, 30));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setPadding(20, 0, 0, 0);
+        TextView k = kicker(text("NOW RECITING  ·  يُتلى الآن", 15, fSemi, DIM));
+        nowSurah = text("", 26, fQuran, WHITE);
+        nowSurah.setIncludeFontPadding(true);
+        nowSurah.setMaxLines(1);
+        nowReciter = text("", 19, fAr, SOFT);
+        nowReciter.setIncludeFontPadding(true);
+        nowReciter.setMaxLines(1);
+        nowReciter.setEllipsize(TextUtils.TruncateAt.END);
+        nowReciter.setMaxWidth(470);
+        texts.addView(k);
+        texts.addView(nowSurah);
+        texts.addView(nowReciter);
+        row.addView(texts);
+        nowWidget = glassCard(stage, row, -1, -1, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 56, 30, 22, 0x33FFFFFF, 0x14000000, false);
+        nowWidget.setAlpha(0);
+        nowWidget.setVisibility(View.GONE);
+    }
+
+    private void showNowReciting(boolean on) {
+        if (nowWidget == null) return;
+        if (on && nowWidget.getVisibility() != View.VISIBLE) {
+            nowWidget.setVisibility(View.VISIBLE);
+            nowWidget.setTranslationY(-16);
+            nowWidget.animate().alpha(1).translationY(0).setDuration(500).setInterpolator(EASE).start();
+        } else if (!on && nowWidget.getVisibility() == View.VISIBLE) {
+            nowWidget.animate().alpha(0).setDuration(300).withEndAction(() -> nowWidget.setVisibility(View.GONE)).start();
+            animateBars(false);
+        }
+    }
+
+    /** Three gold bars that rise and fall gently while a recitation plays; flat when paused. */
+    private void animateBars(boolean playing) {
+        for (int i = 0; i < 3; i++) {
+            View b = nowBars[i];
+            if (barAnims[i] != null) { barAnims[i].cancel(); barAnims[i] = null; }
+            if (!playing) { b.animate().scaleY(0.3f).setDuration(200).start(); continue; }
+            ValueAnimator a = ValueAnimator.ofFloat(0.3f, 1f);
+            a.setDuration(520 + i * 170L);
+            a.setStartDelay(i * 90L);
+            a.setRepeatMode(ValueAnimator.REVERSE);
+            a.setRepeatCount(ValueAnimator.INFINITE);
+            a.addUpdateListener(v -> b.setScaleY((float) v.getAnimatedValue()));
+            a.start();
+            barAnims[i] = a;
+        }
     }
 
     // ================================================================== frosted glass backdrop
