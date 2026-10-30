@@ -76,7 +76,6 @@ public class KidsActivity extends Activity {
     private boolean surfaceReady;
     private Worlds.World world;
 
-    private Mascot mascot;
     private TextView hello, names, worldChip, weatherText, clockText, ampmText, ringBig, ringSmall, ringNote, charName, charFrom, charFact, tileLabel;
     private View labelPill;
     private TextView starsText, restSurah;
@@ -92,7 +91,7 @@ public class KidsActivity extends Activity {
     private int lastTile;
 
     private FrameLayout restPanel, pinPanel, parentPanel, appsPanel, cartoonsPanel;
-    private Mascot restMascot;
+    private TextView restIcon;
     private TextView restTitle, restSub;
     private View restButton;
 
@@ -261,8 +260,6 @@ public class KidsActivity extends Activity {
         boolean changed = w != world;
         world = w;
         cover.setBackgroundColor(0xFF0B0B12); // shown only until the wallpaper video starts
-        mascot.setWorld(w);
-        restMascot.setWorld(w);
         worldChip.setText("★  " + w.name.toUpperCase(Locale.ROOT));
         worldChip.setTextColor(w.accent);
         names.setText(Rules.prefs(this).getString("names", "Ghanim & Noha"));
@@ -437,9 +434,6 @@ public class KidsActivity extends Activity {
     }
 
     private void buildMiddle() {
-        mascot = new Mascot(this, fHeavy);
-        place(mascot, 210, 380, 360, 360);
-        bob(mascot);
 
         LinearLayout card = new LinearLayout(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
@@ -474,7 +468,7 @@ public class KidsActivity extends Activity {
         LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(220, 220);
         pl.leftMargin = 36;
         card.addView(charPhoto, pl);
-        place(card, 610, 404, 1180, -2);
+        place(card, 80, 430, 1760, -2);
     }
 
     private void buildTiles() {
@@ -576,7 +570,7 @@ public class KidsActivity extends Activity {
             if (allowed.contains(p) && !Rules.NEVER.contains(p)) items.add(new String[]{p, r.loadLabel(pm).toString()});
         }
         int n = items.size();
-        int h = 136, w = Math.min(242, (1560 - 28 * n) / n);
+        int h = 136, w = Math.min(230, (1540 - 44 * n) / n);
         for (int i = 0; i < n; i++) {
             String pkg = items.get(i)[0], label = items.get(i)[1];
             FrameLayout tile = new FrameLayout(this);
@@ -614,7 +608,7 @@ public class KidsActivity extends Activity {
 
             final int index = i;
             tile.setOnFocusChangeListener((v, has) -> {
-                v.animate().scaleX(has ? 1.16f : 1f).scaleY(has ? 1.16f : 1f).translationY(has ? -14 : 0)
+                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).translationY(has ? -10 : 0)
                         .setDuration(has ? 420 : 220).setInterpolator(has ? new OvershootInterpolator(2.2f) : new DecelerateInterpolator(1.6f)).start();
                 v.setTranslationZ(has ? 10 : 0); // on top of its neighbours, with no shadow drawn outside the tile
                 ringView.animate().alpha(has ? 1 : 0).setDuration(200).start();
@@ -623,16 +617,14 @@ public class KidsActivity extends Activity {
                     v.post(() -> {
                         moveLabel(v, label);
                         float cx = 80 + v.getLeft() + v.getWidth() / 2f;
-                        mascot.lookAt((cx - 390) / 900f, 0.9f);
                     });
-                    hop(mascot);
                 }
             });
             tile.setOnClickListener(v -> {
                 if (pkg.isEmpty()) openCartoons(); else launch(pkg);
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
-            lp.leftMargin = lp.rightMargin = 14;
+            lp.leftMargin = lp.rightMargin = 22; // room for the 8% focus zoom, so tiles never overlap
             tileRow.addView(tile, lp);
             tiles.add(tile);
         }
@@ -654,8 +646,8 @@ public class KidsActivity extends Activity {
         lock.addView(setupDot, dl);
         setupDot.setVisibility(setupComplete() ? View.GONE : View.VISIBLE);
         lock.setOnFocusChangeListener((v, has) -> {
-            v.animate().scaleX(has ? 1.15f : 1f).scaleY(has ? 1.15f : 1f).setDuration(200).start();
-            if (has) { moveLabel(v, "Grown-ups"); mascot.lookAt(1, 0.9f); }
+            v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(200).start();
+            if (has) moveLabel(v, "Grown-ups");
         });
         lock.setOnClickListener(v -> askPin("check", this::openParent));
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(88, 88);
@@ -762,9 +754,9 @@ public class KidsActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER_HORIZONTAL);
-        restMascot = new Mascot(this, fHeavy);
-        restMascot.setAsleep(true);
-        col.addView(restMascot, new LinearLayout.LayoutParams(380, 380));
+        restIcon = text("🌙", 200, fHeavy, WHITE);
+        restIcon.setGravity(Gravity.CENTER);
+        col.addView(restIcon, new LinearLayout.LayoutParams(-2, -2));
         restTitle = text("", 88, fHeavy, WHITE);
         restTitle.setGravity(Gravity.CENTER);
         col.addView(restTitle, new LinearLayout.LayoutParams(-1, -2));
@@ -885,7 +877,7 @@ public class KidsActivity extends Activity {
         syncFocus();
         restPanel.setAlpha(0);
         restPanel.animate().alpha(1).setDuration(600).start();
-        bob(restMascot);
+        restIcon.setText(bed ? "🌙" : "⭐");
         if (pinPanel.getVisibility() != View.VISIBLE && parentPanel.getVisibility() != View.VISIBLE)
             (restStars.getChildCount() > 0 ? restStars.getChildAt(0) : restButton).requestFocus();
         if (player != null) player.pause();
@@ -1483,19 +1475,6 @@ public class KidsActivity extends Activity {
         return new ViewOutlineProvider() {
             @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), radius); }
         };
-    }
-
-    /** A gentle float up and down, forever. */
-    private static void bob(View v) {
-        v.animate().cancel();
-        v.animate().translationY(-14).setDuration(1600).setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
-                .withEndAction(() -> v.animate().translationY(0).setDuration(1600).withEndAction(() -> bob(v)).start()).start();
-    }
-
-    /** A happy little hop when focus moves. */
-    private static void hop(View v) {
-        v.setScaleX(1.06f); v.setScaleY(0.94f);
-        v.animate().scaleX(1).scaleY(1).setDuration(380).setInterpolator(new OvershootInterpolator(3f)).start();
     }
 
     /** The time-left ring. */
