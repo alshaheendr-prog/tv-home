@@ -89,7 +89,7 @@ public class MainActivity extends Activity {
             new Dock("prime", "Prime Video", 0xFF1AA3E8, "com.amazon.amazonvideo.livingroom"),
             new Dock("shahid", "Shahid", 0xFF1FD3A5, "net.mbc.shahidTV", "net.mbc.shahid"),
             new Dock("kodi", "Movies & Shows", 0xFF17B2E7, "org.xbmc.kodi", "org.videolan.vlc"),
-            new Dock("browser", "Browser", 0xFF4A8CFF, "com.phlox.tvwebbrowser", "org.mozilla.firefox", "com.android.chrome"),
+            new Dock("browser", "Browser", 0xFF4A8CFF, "com.tcl.browser", "com.phlox.tvwebbrowser", "org.mozilla.firefox", "com.android.chrome"),
             new Dock("quran", "Quran · القرآن", 0xFFE8C97A),
             new Dock("apps", "All apps", 0xFF8A8FA8),
             new Dock("yt", "YouTube", 0xFFE62117, "com.google.android.youtube.tv", "com.google.android.youtube"),
