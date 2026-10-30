@@ -84,6 +84,8 @@ public class KidsActivity extends Activity {
     private volatile String weather = "";
     private long lastWeather;
     private ImageView charPhoto;
+    private TextView wordKick, wordPic, wordArabic, wordName, wordMeaning, wordLine;
+    private View charCard, wordCard, welcomeCard;
     private Ring ring;
     private LinearLayout tileRow;
     private View lockTile, setupDot;
@@ -271,6 +273,7 @@ public class KidsActivity extends Activity {
         charFrom.setText(ch.from);
         charFrom.setTextColor(w.accent);
         charFact.setText(ch.fact);
+        drawGoodWord();
         bg.execute(() -> {
             Bitmap b = characterPhoto(ch.name);
             ui.post(() -> {
@@ -380,17 +383,17 @@ public class KidsActivity extends Activity {
         left.addView(kick);
         names = text("", 92, fHeavy, WHITE);
         names.setIncludeFontPadding(false);
-        names.setPadding(0, 14, 0, 4);
+        names.setPadding(0, 6, 0, -10);
         left.addView(names);
         hello = text("", 34, fBold, SOFT);
         left.addView(hello);
-        weatherText = text("", 34, fBold, WHITE);
-        weatherText.setPadding(0, 2, 0, 0);
-        left.addView(weatherText);
         starsText = text("", 34, fBold, 0xFFFFD45A);
-        starsText.setPadding(0, 6, 0, 0);
-        left.addView(starsText);
+        // match_parent like its neighbours: a wrap_content child makes LinearLayout ignore their widths
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
+        sl.topMargin = 6;
+        left.addView(starsText, sl);
         place(left, 80, 56, -2, -2);
+        welcomeCard = left;
 
         // clock and time left, top right
         LinearLayout card = new LinearLayout(this);
@@ -427,6 +430,10 @@ public class KidsActivity extends Activity {
         right.addView(clockRow);
         ringNote = text("", 30, fBold, SOFT);
         right.addView(ringNote);
+        weatherText = text("", 30, fBold, WHITE);
+        LinearLayout.LayoutParams wl = new LinearLayout.LayoutParams(-1, -2);
+        wl.topMargin = 8;
+        right.addView(weatherText, wl);
         card.addView(right);
         FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
         fl.topMargin = 56; fl.rightMargin = 80;
@@ -456,7 +463,6 @@ public class KidsActivity extends Activity {
         nl.topMargin = 10;
         t.addView(nameRow, nl);
         charFact = text("", 34, fMed, SOFT);
-        charFact.setLineSpacing(0, 1.05f);
         charFact.setPadding(0, 10, 0, 0);
         t.addView(charFact);
         card.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
@@ -465,10 +471,85 @@ public class KidsActivity extends Activity {
         charPhoto.setOutlineProvider(rounded(32));
         charPhoto.setClipToOutline(true);
         charPhoto.setVisibility(View.GONE);
-        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(220, 220);
-        pl.leftMargin = 36;
+        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(160, 160);
+        pl.leftMargin = 30;
         card.addView(charPhoto, pl);
-        place(card, 80, 430, 1760, -2);
+        place(card, 80, 430, MID_SPLIT - 80 - 30, -2);
+        charCard = card;
+        buildGoodWord();
+        // Both cards grow to fit their text; if they ever reach the dock label, lift them a little.
+        stage.getViewTreeObserver().addOnGlobalLayoutListener(this::fitMiddle);
+    }
+
+    /** Where the character card ends and the good-word card begins, on the 1920 stage. */
+    private static final int MID_SPLIT = 890, MID_GAP = 28, MID_BOTTOM = 762;
+
+    /** The middle cards sit just under the welcome card, and never run into the dock label. */
+    private void fitMiddle() {
+        if (charCard == null || wordCard == null || welcomeCard == null) return;
+        int h = Math.max(charCard.getHeight(), wordCard.getHeight());
+        int top = Math.min(welcomeCard.getBottom() + MID_GAP, MID_BOTTOM - h);
+        for (View v : new View[]{charCard, wordCard}) {
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) v.getLayoutParams();
+            if (lp.topMargin != top) { lp.topMargin = top; v.setLayoutParams(lp); }
+        }
+    }
+
+    /** A beautiful name of Allah or a short hadith, a new one each day, with a simple picture. */
+    private void buildGoodWord() {
+        LinearLayout card = new LinearLayout(this);
+        card.setPadding(44, 32, 44, 36);
+        card.setBackground(glass(48));
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        wordKick = text("", 30, fBold, DIM);
+        wordKick.setLetterSpacing(0.2f);
+        t.addView(wordKick);
+        wordArabic = text("", 46, fBold, 0xFFFFD45A);
+        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2);
+        al.topMargin = 8;
+        t.addView(wordArabic, al);
+        wordName = text("", 34, fBold, WHITE);
+        t.addView(wordName);
+        wordMeaning = text("", 38, fHeavy, WHITE);
+        t.addView(wordMeaning);
+        wordLine = text("", 32, fMed, SOFT);
+        wordLine.setPadding(0, 6, 0, 0);
+        t.addView(wordLine);
+        card.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
+        wordPic = text("", 72, fMed, WHITE);
+        wordPic.setGravity(Gravity.CENTER);
+        wordPic.setIncludeFontPadding(false);
+        wordPic.setBackground(solid(0x26FFFFFF, 64, 60));
+        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(128, 128);
+        pl.leftMargin = 24;
+        card.addView(wordPic, pl);
+        place(card, MID_SPLIT, 430, 1840 - MID_SPLIT, -2);
+        wordCard = card;
+    }
+
+    private void drawGoodWord() {
+        if (wordCard == null) return;
+        if (GoodWords.nameDay()) {
+            GoodWords.Name n = GoodWords.name();
+            wordKick.setText("A NAME OF ALLAH");
+            wordPic.setText(n.pic);
+            wordArabic.setText(n.arabic);
+            wordName.setText(n.name);
+            wordName.setVisibility(View.VISIBLE);
+            wordMeaning.setText(n.meaning);
+            wordMeaning.setTextColor(world == null ? WHITE : world.accent);
+            wordLine.setText(n.forKids);
+        } else {
+            GoodWords.Hadith h = GoodWords.hadith();
+            wordKick.setText("HADITH OF THE DAY");
+            wordPic.setText(h.pic);
+            wordArabic.setText(h.arabic);
+            wordName.setVisibility(View.GONE);
+            wordMeaning.setText(h.english);
+            wordMeaning.setTextColor(WHITE);
+            wordLine.setText("The Prophet ﷺ  ·  " + h.source);
+        }
     }
 
     private void buildTiles() {
@@ -488,6 +569,7 @@ public class KidsActivity extends Activity {
         tileLabel.setPadding(30, 4, 30, 6);
         tileLabel.setBackground(glass(40));
         labelPill = tileLabel;
+        tileLabel.setAlpha(0); // shown once a tile has focus
         place(tileLabel, 0, 776, -2, -2);
     }
 
@@ -984,7 +1066,6 @@ public class KidsActivity extends Activity {
             // the whole name, on as many lines as it needs
             TextView t = text(title(f), 30, fBold, WHITE);
             t.setPadding(20, 12, 20, 16);
-            t.setLineSpacing(0, 1.05f);
             card.addView(t, new LinearLayout.LayoutParams(-1, -2));
             card.setOnFocusChangeListener((v, has) -> {
                 v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
@@ -1218,7 +1299,6 @@ public class KidsActivity extends Activity {
         actionRow("Change PIN", "", () -> askPin("set", this::openParent));
         setupText = text(setupSummary(), 30, fMed, DIM);
         setupText.setPadding(0, 18, 0, 18);
-        setupText.setLineSpacing(0, 1.1f);
         parentList.addView(setupText);
         actionRow("Leave Kids Corner", "Turns kids mode off until it's opened again", this::leave);
 
@@ -1440,7 +1520,16 @@ public class KidsActivity extends Activity {
         t.setTextSize(TypedValue.COMPLEX_UNIT_PX, size);
         t.setTypeface(tf);
         t.setTextColor(color);
+        // Baloo's own line height is 1.7 em, with a lot of air above and below the letters.
+        // Wrapped lines sit closer (0.8 of it), and each text box gives back some of that air.
+        t.setLineSpacing(0, 0.8f);
+        trim(t, size);
         return t;
+    }
+
+    /** Takes back the empty space Baloo leaves above and below its letters, so cards stay compact. */
+    private static void trim(TextView t, float size) {
+        t.setPadding(0, -Math.round(size * 0.2f), 0, -Math.round(size * 0.26f));
     }
 
     private TextView button(String s, float size) {
