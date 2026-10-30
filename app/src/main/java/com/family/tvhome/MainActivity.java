@@ -7,7 +7,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.drawable.AdaptiveIconDrawable;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -25,6 +30,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
@@ -94,7 +100,7 @@ public class MainActivity extends Activity {
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
     private final Random random = new Random();
     private SharedPreferences prefs;
-    private Typeface fMed, fSemi, fBold, fAr, fArSemi;
+    private Typeface fMed, fSemi, fBold, fAr, fArSemi, fQuran, fSerif;
 
     private FrameLayout root, stage;
     private SurfaceView video;
@@ -103,7 +109,7 @@ public class MainActivity extends Activity {
     private String currentClip = "";
 
     private View centerGroup, bottomGroup;
-    private TextView dateText, hijriText, tempText, skyText, clockText, ampmText, pillText, lineKicker, lineText;
+    private TextView dateText, hijriText, tempText, skyText, clockText, ampmText, pillText, lineKicker, lineAr, lineEn;
     private LinearLayout lineBox;
     private final LinearLayout[] prayerCells = new LinearLayout[5];
     private final TextView[][] prayerTexts = new TextView[5][3];
@@ -111,7 +117,8 @@ public class MainActivity extends Activity {
     private final List<FrameLayout> dockTiles = new ArrayList<>();
     private TextView dockLabel;
     private static final DecelerateInterpolator EASE = new DecelerateInterpolator(1.6f);
-    private final GradientDrawable tileOff = glass(22, 0x1FFFFFFF, 0), tileOn = glass(22, 0x59FFFFFF, 0xB3FFFFFF);
+    /** The focused dock app gets a bright glow behind it and a light ring on top (one pair per tile). */
+    private final List<Drawable[]> tileFocus = new ArrayList<>();
     private int shownNext = -2, shownPassedMask = -1;
     private String shownClock = "";
 
@@ -146,6 +153,8 @@ public class MainActivity extends Activity {
         fBold = getResources().getFont(R.font.inter_bold);
         fAr = getResources().getFont(R.font.plex_arabic_medium);
         fArSemi = getResources().getFont(R.font.plex_arabic_semibold);
+        fQuran = getResources().getFont(R.font.amiri_bold);
+        fSerif = getResources().getFont(R.font.cormorant_semibold_italic);
 
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -269,6 +278,16 @@ public class MainActivity extends Activity {
         return d;
     }
 
+    /** The panel look shared by every card: frosted glass with a soft glow. */
+    private static Glass card() { return new Glass(34, 28, 0x38FFFFFF, 0x1A000000); }
+
+    private static GradientDrawable ring(float radius, int width, int color) {
+        GradientDrawable d = new GradientDrawable();
+        d.setCornerRadius(radius);
+        d.setStroke(width, color);
+        return d;
+    }
+
     private static FrameLayout.LayoutParams at(int w, int h, int gravity, int x, int y) {
         FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(w, h, gravity);
         if ((gravity & Gravity.END) == Gravity.END) p.rightMargin = x; else p.leftMargin = x;
@@ -293,6 +312,9 @@ public class MainActivity extends Activity {
     private void buildTop() {
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
+        left.setPadding(34, 26, 40, 26);
+        left.setMinimumWidth(440);
+        left.setBackground(card());
         LinearLayout wx = new LinearLayout(this);
         wx.setGravity(Gravity.BOTTOM);
         tempText = text("--°", 64, fSemi, WHITE);
@@ -307,13 +329,13 @@ public class MainActivity extends Activity {
         hijriText.setPadding(0, 6, 0, 0);
         left.addView(dateText);
         left.addView(hijriText);
-        stage.addView(left, at(-2, -2, Gravity.TOP | Gravity.START, 96, 64));
+        stage.addView(left, at(-2, -2, Gravity.TOP | Gravity.START, 96, 56));
 
         // Top right: the adhan card.
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(30, 24, 30, 20);
-        card.setBackground(glass(32, GLASS, GLASS_EDGE));
+        card.setBackground(card());
         TextView kicker = text("NEXT ADHAN  ·  الأذان القادم", 18, fSemi, DIM);
         kicker.setLetterSpacing(0.14f);
         card.addView(kicker);
@@ -370,53 +392,80 @@ public class MainActivity extends Activity {
         clockRow.addView(ampmText);
         c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 268));
+        centerGroup = c;
+
+        // The verse / hadith card, low on the screen just above the dock: Amiri for the Arabic, an italic serif for the English.
         lineBox = new LinearLayout(this);
         lineBox.setOrientation(LinearLayout.VERTICAL);
         lineBox.setGravity(Gravity.CENTER_HORIZONTAL);
-        lineKicker = text("", 19, fSemi, DIM);
-        lineKicker.setLetterSpacing(0.14f);
-        lineText = text("", 28, fArSemi, SOFT);
-        lineText.setGravity(Gravity.CENTER);
-        lineText.setMaxLines(3);
-        lineText.setEllipsize(TextUtils.TruncateAt.END);
-        lineText.setLineSpacing(0, 1.15f);
-        lineText.setPadding(0, 10, 0, 0);
+        lineBox.setPadding(56, 22, 56, 24);
+        lineBox.setBackground(card());
+        lineKicker = text("", 18, fSemi, DIM);
+        lineKicker.setLetterSpacing(0.16f);
+        lineAr = text("", 38, fQuran, WHITE);
+        lineAr.setIncludeFontPadding(true);
+        lineAr.setGravity(Gravity.CENTER);
+        lineAr.setMaxLines(2);
+        lineAr.setEllipsize(TextUtils.TruncateAt.END);
+        lineAr.setMaxWidth(1360);
+        lineAr.setPadding(0, 6, 0, 0);
+        lineEn = text("", 32, fSerif, SOFT);
+        lineEn.setGravity(Gravity.CENTER);
+        lineEn.setMaxLines(2);
+        lineEn.setEllipsize(TextUtils.TruncateAt.END);
+        lineEn.setMaxWidth(1360);
+        lineEn.setLineSpacing(0, 1.05f);
+        lineEn.setPadding(0, 2, 0, 0);
         lineBox.addView(lineKicker);
-        lineBox.addView(lineText, new LinearLayout.LayoutParams(1200, -2));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-        lp.topMargin = 12;
-        c.addView(lineBox, lp);
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 250));
-        centerGroup = c;
+        lineBox.addView(lineAr);
+        lineBox.addView(lineEn);
+        stage.addView(lineBox, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 318));
 
         // A small message pill, used for short notices like "PIN saved".
         pillText = text("", 28, fMed, WHITE);
         pillText.setGravity(Gravity.CENTER);
         pillText.setPadding(34, 14, 34, 16);
-        pillText.setBackground(glass(99, 0x40FFFFFF, GLASS_EDGE));
+        pillText.setBackground(new Glass(40, 22, 0x40FFFFFF, 0x33000000));
         pillText.setAlpha(0);
-        stage.addView(pillText, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 250));
+        stage.addView(pillText, at(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 60));
     }
 
     /** Bottom: the app dock, centred. Moving across it magnifies the focused app and, a little, its neighbours. */
     private void buildBottom() {
         LinearLayout dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER_VERTICAL);
-        dock.setPadding(26, 0, 26, 0);
+        dock.setPadding(30, 0, 30, 0);
         dock.setClipChildren(false);
         dock.setClipToPadding(false);
-        dock.setBackground(glass(44, GLASS, GLASS_EDGE));
+        dock.setBackground(new Glass(48, 34, 0x4DFFFFFF, 0x26000000));
+        ViewOutlineProvider rounded = new ViewOutlineProvider() {
+            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 26); }
+        };
         for (Dock d : DOCK) {
             FrameLayout tile = new FrameLayout(this);
             tile.setFocusable(true);
             tile.setClickable(true);
             tile.setTag(d);
-            tile.setBackground(tileOff);
+            tile.setClipChildren(false);
+            // The icon fills the tile edge to edge, with rounded corners, like Apple TV.
             ImageView icon = new ImageView(this);
-            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            tile.addView(icon, new FrameLayout.LayoutParams(80, 80, Gravity.CENTER));
-            TextView mark = d.id.equals("quran") ? text("القرآن", 30, fArSemi, d.color)
-                    : text(d.id.equals("apps") ? "⋯" : d.name.substring(0, 1), 48, fBold, d.color);
+            icon.setScaleType(ImageView.ScaleType.FIT_XY);
+            icon.setOutlineProvider(rounded);
+            icon.setClipToOutline(true);
+            tile.addView(icon, new FrameLayout.LayoutParams(-1, -1));
+            TextView mark;
+            if (d.id.equals("quran")) {
+                mark = text("القرآن", 36, fQuran, 0xFFF1D58A);
+                mark.setIncludeFontPadding(true);
+                mark.setBackground(tileFace(0xFF14504A, 0xFF0A2A27));
+            } else if (d.id.equals("apps")) {
+                mark = text("⋯", 48, fBold, WHITE);
+                mark.setBackground(new Glass(26, 0, 0, 0x33000000));
+            } else {
+                mark = text(d.name.substring(0, 1), 52, fBold, WHITE);
+                mark.setBackground(tileFace(d.color, darker(d.color)));
+            }
             mark.setGravity(Gravity.CENTER);
             tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
             tile.setPivotY(112);
@@ -427,18 +476,29 @@ public class MainActivity extends Activity {
                 else if (!anyDockFocused()) { magnify(-1); dockLabel.animate().alpha(0).setDuration(150).start(); }
             });
             LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(112, 112);
-            tp.leftMargin = 9; tp.rightMargin = 9;
+            tp.leftMargin = 12; tp.rightMargin = 12;
             dock.addView(tile, tp);
             dockTiles.add(tile);
+            tileFocus.add(new Drawable[]{new Glass(26, 26, 0xB3FFFFFF, 0), ring(26, 3, 0xE6FFFFFF)});
         }
         stage.addView(dock, at(-2, 156, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 56));
         bottomGroup = dock;
 
         dockLabel = text("", 24, fSemi, WHITE);
         dockLabel.setPadding(22, 8, 22, 10);
-        dockLabel.setBackground(glass(99, 0x40FFFFFF, GLASS_EDGE));
+        dockLabel.setBackground(new Glass(24, 18, 0x40FFFFFF, 0x33000000));
         dockLabel.setAlpha(0);
         stage.addView(dockLabel, at(-2, -2, Gravity.TOP | Gravity.START, 0, 0));
+    }
+
+    private static GradientDrawable tileFace(int top, int bottom) {
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{top, bottom});
+        g.setCornerRadius(26);
+        return g;
+    }
+
+    private static int darker(int c) {
+        return Color.rgb(Color.red(c) * 6 / 10, Color.green(c) * 6 / 10, Color.blue(c) * 6 / 10);
     }
 
     private boolean anyDockFocused() {
@@ -454,7 +514,8 @@ public class MainActivity extends Activity {
             float s = dist == 0 ? 1.3f : dist == 1 ? 1.1f : 1f;
             float lift = dist == 0 ? -22 : dist == 1 ? -6 : 0;
             t.animate().scaleX(s).scaleY(s).translationY(lift).setDuration(240).setInterpolator(EASE).withLayer().start();
-            t.setBackground(dist == 0 ? tileOn : tileOff);
+            t.setBackground(dist == 0 ? tileFocus.get(i)[0] : null);
+            t.setForeground(dist == 0 ? tileFocus.get(i)[1] : null);
         }
     }
 
@@ -475,11 +536,11 @@ public class MainActivity extends Activity {
     }
 
     private void introAnimation() {
-        View[] parts = {topParts[0], topParts[1], centerGroup, bottomGroup};
+        View[] parts = {topParts[0], topParts[1], centerGroup, lineBox, bottomGroup};
         for (int i = 0; i < parts.length; i++) {
             View v = parts[i];
             v.setAlpha(0);
-            v.setTranslationY(i == 3 ? 70 : 30);
+            v.setTranslationY(i >= 3 ? 70 : 30);
             v.animate().alpha(1).translationY(0).setStartDelay(120 + i * 120L).setDuration(800)
                     .setInterpolator(new DecelerateInterpolator(2.2f)).start();
         }
@@ -583,7 +644,9 @@ public class MainActivity extends Activity {
         String[] it = items.get(lineIndex); // {kicker, ar, en, ref}
         lineBox.animate().alpha(0).translationY(8).setDuration(400).withEndAction(() -> {
             lineKicker.setText(it[0] + (it[3].isEmpty() ? "" : "   ·   " + it[3]));
-            lineText.setText(it[1].isEmpty() ? it[2] : it[1] + "\n" + it[2]);
+            lineAr.setText(it[1]);
+            lineAr.setVisibility(it[1].isEmpty() ? View.GONE : View.VISIBLE);
+            lineEn.setText(it[2]);
             lineBox.setTranslationY(-8);
             lineBox.animate().alpha(1).translationY(0).setDuration(600).start();
         }).start();
@@ -664,7 +727,11 @@ public class MainActivity extends Activity {
                 for (String p : d.pkgs) {
                     try { icon = pm.getApplicationIcon(p); break; } catch (Exception ignored) { }
                 }
-                final Drawable ic = icon;
+                if (icon == null && d.pkgs.length > 0) {
+                    String pkg = findByName(dockSearchName(d));
+                    if (pkg != null) try { icon = pm.getApplicationIcon(pkg); } catch (Exception ignored) { }
+                }
+                final Drawable ic = icon == null ? null : fullBleed(icon);
                 ui.post(() -> {
                     ((ImageView) tile.getChildAt(0)).setImageDrawable(ic);
                     tile.getChildAt(1).setVisibility(ic == null ? View.VISIBLE : View.GONE);
@@ -679,7 +746,7 @@ public class MainActivity extends Activity {
             case "apps": openApps("apps"); return;
             case "quran": openQuran(); return;
             default:
-                if (launchAny(d.pkgs, d.id.equals("browser") ? "browser" : d.name)) return;
+                if (launchAny(d.pkgs, dockSearchName(d))) return;
                 toast(d.name + " isn't installed yet. Opening the Play Store…");
                 ui.postDelayed(() -> openStore(d.pkgs[0]), 1200);
         }
@@ -696,12 +763,45 @@ public class MainActivity extends Activity {
 
     private boolean launchAny(String[] pkgs, String name) {
         for (String p : pkgs) if (launch(p)) return true;
-        List<AppEntry> list = appCache;
-        if (list != null) {
-            String w = name.toLowerCase(Locale.ROOT);
-            for (AppEntry a : list) if (a.label.toLowerCase(Locale.ROOT).contains(w) && launch(a.pkg)) return true;
+        String pkg = findByName(name);
+        return pkg != null && launch(pkg);
+    }
+
+    private static String dockSearchName(Dock d) { return d.id.equals("browser") ? "browse" : d.name; }
+
+    /** An installed app whose name contains the word, e.g. "browse" finds BrowseHere. */
+    private String findByName(String name) {
+        String w = name.toLowerCase(Locale.ROOT);
+        PackageManager pm = getPackageManager();
+        for (String cat : new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER})
+            for (ResolveInfo r : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(cat), 0)) {
+                String pkg = r.activityInfo.packageName;
+                if (pkg.equals(getPackageName())) continue;
+                if (r.loadLabel(pm).toString().toLowerCase(Locale.ROOT).contains(w)) return pkg;
+            }
+        return null;
+    }
+
+    /** Draws an app icon edge to edge: adaptive icons lose their mask and show their full square art. */
+    private Drawable fullBleed(Drawable icon) {
+        int size = 168;
+        Bitmap b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(b);
+        if (icon instanceof AdaptiveIconDrawable) {
+            AdaptiveIconDrawable a = (AdaptiveIconDrawable) icon;
+            int pad = size / 4; // the visible part of an adaptive icon is the middle two thirds
+            for (Drawable layer : new Drawable[]{a.getBackground(), a.getForeground()}) {
+                if (layer == null) continue;
+                layer.setBounds(-pad, -pad, size + pad, size + pad);
+                layer.draw(c);
+            }
+        } else {
+            c.drawColor(0x33FFFFFF);
+            int pad = size / 10;
+            icon.setBounds(pad, pad, size - pad, size - pad);
+            icon.draw(c);
         }
-        return false;
+        return new BitmapDrawable(getResources(), b);
     }
 
     private void openStore(String pkg) {
@@ -725,7 +825,7 @@ public class MainActivity extends Activity {
         v.setAlpha(0);
         v.setVisibility(View.VISIBLE);
         v.animate().alpha(1).setDuration(220).start();
-        for (View p : new View[]{centerGroup, bottomGroup, topParts[0], topParts[1]}) p.animate().alpha(0.12f).setDuration(220).start();
+        for (View p : new View[]{centerGroup, bottomGroup, lineBox, topParts[0], topParts[1]}) p.animate().alpha(0.12f).setDuration(220).start();
     }
 
     private void closePanels() {
@@ -736,7 +836,7 @@ public class MainActivity extends Activity {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
-        for (View p : new View[]{centerGroup, bottomGroup, topParts[0], topParts[1]}) p.animate().alpha(1).setDuration(250).start();
+        for (View p : new View[]{centerGroup, bottomGroup, lineBox, topParts[0], topParts[1]}) p.animate().alpha(1).setDuration(250).start();
         if (wasOpen) ui.postDelayed(back::requestFocus, 200);
     }
 
@@ -748,7 +848,7 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER_HORIZONTAL);
         box.setPadding(60, 44, 60, 44);
-        box.setBackground(glass(40, 0x33FFFFFF, GLASS_EDGE));
+        box.setBackground(new Glass(40, 30, 0x4DFFFFFF, 0x40000000));
         pinTitle = text("", 48, fSemi, WHITE);
         pinTitle.setGravity(Gravity.CENTER);
         box.addView(pinTitle);
@@ -1027,12 +1127,11 @@ public class MainActivity extends Activity {
         sv.addView(surahGrid);
         quranPanel.addView(sv, at(1920 - 200, 1080 - 190, Gravity.TOP | Gravity.START, 100, 180));
 
-        // On the home screen: what is playing, just above the dock on the left.
-        quranNowHome = text("", 22, fAr, SOFT);
-        quranNowHome.setPadding(22, 10, 22, 12);
-        quranNowHome.setBackground(glass(99, 0x33FFFFFF, GLASS_EDGE));
+        // On the home screen: what is playing, at the bottom of the weather card.
+        quranNowHome = text("", 22, fAr, 0xFFE8C97A);
+        quranNowHome.setPadding(0, 16, 0, 0);
         quranNowHome.setVisibility(View.GONE);
-        stage.addView(quranNowHome, at(-2, -2, Gravity.BOTTOM | Gravity.START, 96, 250));
+        ((LinearLayout) topParts[0]).addView(quranNowHome);
         drawQuranState();
     }
 
