@@ -83,7 +83,6 @@ public class MainActivity extends Activity {
         Dock(String id, String name, int color, String... pkgs) { this.id = id; this.name = name; this.color = color; this.pkgs = pkgs; }
     }
     static final Dock[] DOCK = {
-            new Dock("yt", "YouTube", 0xFFE62117, "com.google.android.youtube.tv", "com.google.android.youtube"),
             new Dock("netflix", "Netflix", 0xFFE50914, "com.netflix.ninja"),
             new Dock("crunchy", "Crunchyroll", 0xFFF47521, "com.crunchyroll.crunchyroid"),
             new Dock("stremio", "Stremio", 0xFF7B5BF5, "com.stremio.one"),
@@ -93,7 +92,9 @@ public class MainActivity extends Activity {
             new Dock("browser", "Browser", 0xFF4A8CFF, "com.phlox.tvwebbrowser", "org.mozilla.firefox", "com.android.chrome"),
             new Dock("quran", "Quran · القرآن", 0xFFE8C97A),
             new Dock("apps", "All apps", 0xFF8A8FA8),
+            new Dock("yt", "YouTube", 0xFFE62117, "com.google.android.youtube.tv", "com.google.android.youtube"),
     };
+    static int dockIndex(String id) { for (int i = 0; i < DOCK.length; i++) if (DOCK[i].id.equals(id)) return i; return 0; }
     static final Set<String> HIDDEN_FROM_LIST = new HashSet<>(Arrays.asList("com.google.android.youtube.tv", "com.google.android.youtube"));
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -308,67 +309,82 @@ public class MainActivity extends Activity {
 
     private TextView adhanName, adhanAr, adhanCountdown;
 
-    /** Top left: weather, then the date and Hijri date. */
+    static final int CARD_W = 560, CARD_H = 272;
+
+    private static TextView kicker(TextView t) { t.setLetterSpacing(0.16f); return t; }
+
+    /** Two matching cards, mirrored: weather and dates top left, the next adhan top right. */
     private void buildTop() {
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
-        left.setPadding(34, 26, 40, 26);
-        left.setMinimumWidth(440);
+        left.setPadding(36, 28, 36, 24);
         left.setBackground(card());
+        left.addView(kicker(text("KUWAIT CITY  ·  مدينة الكويت", 18, fSemi, DIM)));
         LinearLayout wx = new LinearLayout(this);
         wx.setGravity(Gravity.BOTTOM);
-        tempText = text("--°", 64, fSemi, WHITE);
-        skyText = text("Kuwait City", 24, fMed, SOFT);
+        wx.setPadding(0, 12, 0, 0);
+        tempText = text("--°", 60, fSemi, WHITE);
+        skyText = text("", 24, fMed, SOFT);
         skyText.setPadding(18, 0, 0, 10);
+        skyText.setMaxLines(1);
+        skyText.setEllipsize(TextUtils.TruncateAt.END);
         wx.addView(tempText);
-        wx.addView(skyText);
+        wx.addView(skyText, new LinearLayout.LayoutParams(0, -2, 1));
         left.addView(wx);
         dateText = text("", 30, fSemi, WHITE);
-        dateText.setPadding(0, 16, 0, 0);
+        dateText.setPadding(0, 14, 0, 0);
         hijriText = text("", 26, fAr, SOFT);
-        hijriText.setPadding(0, 6, 0, 0);
+        hijriText.setIncludeFontPadding(true);
+        hijriText.setPadding(0, 4, 0, 0);
         left.addView(dateText);
         left.addView(hijriText);
-        stage.addView(left, at(-2, -2, Gravity.TOP | Gravity.START, 96, 56));
+        stage.addView(left, at(CARD_W, CARD_H, Gravity.TOP | Gravity.START, 80, 56));
 
-        // Top right: the adhan card.
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(30, 24, 30, 20);
+        card.setPadding(36, 28, 36, 22);
         card.setBackground(card());
-        TextView kicker = text("NEXT ADHAN  ·  الأذان القادم", 18, fSemi, DIM);
-        kicker.setLetterSpacing(0.14f);
-        card.addView(kicker);
+        card.addView(kicker(text("NEXT ADHAN  ·  الأذان القادم", 18, fSemi, DIM)));
         LinearLayout nameRow = new LinearLayout(this);
-        nameRow.setGravity(Gravity.CENTER_VERTICAL);
-        adhanName = text("", 38, fSemi, WHITE);
-        adhanAr = text("", 34, fArSemi, SOFT);
-        nameRow.addView(adhanName, new LinearLayout.LayoutParams(0, -2, 1));
-        nameRow.addView(adhanAr);
+        nameRow.setGravity(Gravity.BOTTOM);
         nameRow.setPadding(0, 10, 0, 0);
-        card.addView(nameRow);
-        adhanCountdown = text("--:--:--", 52, fSemi, WHITE);
+        LinearLayout names = new LinearLayout(this);
+        names.setOrientation(LinearLayout.VERTICAL);
+        adhanName = text("", 36, fSemi, WHITE);
+        adhanAr = text("", 26, fArSemi, SOFT);
+        adhanAr.setIncludeFontPadding(true);
+        names.addView(adhanName);
+        names.addView(adhanAr);
+        adhanCountdown = text("--:--:--", 56, fSemi, WHITE);
         adhanCountdown.setFontFeatureSettings("tnum");
-        adhanCountdown.setPadding(0, 4, 0, 14);
-        card.addView(adhanCountdown);
+        adhanCountdown.setGravity(Gravity.END);
+        nameRow.addView(names, new LinearLayout.LayoutParams(0, -2, 1));
+        nameRow.addView(adhanCountdown);
+        card.addView(nameRow);
+        LinearLayout times = new LinearLayout(this);
+        times.setPadding(0, 14, 0, 0);
         for (int i = 0; i < 5; i++) {
             int k = BAR_PRAYERS[i];
-            LinearLayout row = new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(14, 0, 14, 0);
-            TextView en = text(PrayerTimes.EN[k], 24, fMed, SOFT);
-            TextView ar = text(PrayerTimes.AR[k], 22, fAr, DIM);
-            TextView tm = text("", 26, fSemi, WHITE);
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.setGravity(Gravity.CENTER_HORIZONTAL);
+            col.setPadding(0, 8, 0, 8);
+            TextView en = text(PrayerTimes.EN[k], 18, fMed, SOFT);
+            TextView ar = text(PrayerTimes.AR[k], 16, fAr, DIM);
+            TextView tm = text("", 24, fSemi, WHITE);
             tm.setFontFeatureSettings("tnum");
-            tm.setGravity(Gravity.END);
-            row.addView(en, new LinearLayout.LayoutParams(0, -2, 1));
-            row.addView(ar);
-            row.addView(tm, new LinearLayout.LayoutParams(110, -2));
+            tm.setPadding(0, 4, 0, 0);
+            col.addView(en);
+            col.addView(ar);
+            col.addView(tm);
             prayerTexts[i][0] = en; prayerTexts[i][1] = ar; prayerTexts[i][2] = tm;
-            prayerCells[i] = row;
-            card.addView(row, new LinearLayout.LayoutParams(-1, 46));
+            prayerCells[i] = col;
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1);
+            cp.leftMargin = 3; cp.rightMargin = 3;
+            times.addView(col, cp);
         }
-        stage.addView(card, at(440, -2, Gravity.TOP | Gravity.END, 96, 56));
+        card.addView(times, new LinearLayout.LayoutParams(-1, -2));
+        stage.addView(card, at(CARD_W, CARD_H, Gravity.TOP | Gravity.END, 80, 56));
 
         topParts = new View[]{left, card};
     }
@@ -420,7 +436,7 @@ public class MainActivity extends Activity {
         lineBox.addView(lineKicker);
         lineBox.addView(lineAr);
         lineBox.addView(lineEn);
-        stage.addView(lineBox, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 318));
+        stage.addView(lineBox, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 350));
 
         // A small message pill, used for short notices like "PIN saved".
         pillText = text("", 28, fMed, WHITE);
@@ -431,6 +447,8 @@ public class MainActivity extends Activity {
         stage.addView(pillText, at(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 60));
     }
 
+    static final int TILE = 140, DOCK_H = 188, DOCK_Y = 36;
+
     /** Bottom: the app dock, centred. Moving across it magnifies the focused app and, a little, its neighbours. */
     private void buildBottom() {
         LinearLayout dock = new LinearLayout(this);
@@ -440,7 +458,7 @@ public class MainActivity extends Activity {
         dock.setClipToPadding(false);
         dock.setBackground(new Glass(48, 34, 0x4DFFFFFF, 0x26000000));
         ViewOutlineProvider rounded = new ViewOutlineProvider() {
-            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 26); }
+            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 30); }
         };
         for (Dock d : DOCK) {
             FrameLayout tile = new FrameLayout(this);
@@ -456,32 +474,32 @@ public class MainActivity extends Activity {
             tile.addView(icon, new FrameLayout.LayoutParams(-1, -1));
             TextView mark;
             if (d.id.equals("quran")) {
-                mark = text("القرآن", 36, fQuran, 0xFFF1D58A);
+                mark = text("القرآن", 44, fQuran, 0xFFF1D58A);
                 mark.setIncludeFontPadding(true);
                 mark.setBackground(tileFace(0xFF14504A, 0xFF0A2A27));
             } else if (d.id.equals("apps")) {
-                mark = text("⋯", 48, fBold, WHITE);
-                mark.setBackground(new Glass(26, 0, 0, 0x33000000));
+                mark = text("⋯", 60, fBold, WHITE);
+                mark.setBackground(new Glass(30, 0, 0, 0x33000000));
             } else {
-                mark = text(d.name.substring(0, 1), 52, fBold, WHITE);
+                mark = text(d.name.substring(0, 1), 64, fBold, WHITE);
                 mark.setBackground(tileFace(d.color, darker(d.color)));
             }
             mark.setGravity(Gravity.CENTER);
             tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
-            tile.setPivotY(112);
+            tile.setPivotY(TILE);
             if (d.id.equals("yt")) tile.setOnLongClickListener(v -> { openPin(true); return true; });
             tile.setOnClickListener(v -> openDock(d));
             tile.setOnFocusChangeListener((v, has) -> {
                 if (has) { magnify(dockTiles.indexOf(v)); showDockLabel(v, d.name); }
                 else if (!anyDockFocused()) { magnify(-1); dockLabel.animate().alpha(0).setDuration(150).start(); }
             });
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(112, 112);
-            tp.leftMargin = 12; tp.rightMargin = 12;
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(TILE, TILE);
+            tp.leftMargin = 11; tp.rightMargin = 11;
             dock.addView(tile, tp);
             dockTiles.add(tile);
-            tileFocus.add(new Drawable[]{new Glass(26, 26, 0xB3FFFFFF, 0), ring(26, 3, 0xE6FFFFFF)});
+            tileFocus.add(new Drawable[]{new Glass(30, 30, 0xB3FFFFFF, 0), ring(30, 3, 0xE6FFFFFF)});
         }
-        stage.addView(dock, at(-2, 156, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 56));
+        stage.addView(dock, at(-2, DOCK_H, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, DOCK_Y));
         bottomGroup = dock;
 
         dockLabel = text("", 24, fSemi, WHITE);
@@ -493,7 +511,7 @@ public class MainActivity extends Activity {
 
     private static GradientDrawable tileFace(int top, int bottom) {
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{top, bottom});
-        g.setCornerRadius(26);
+        g.setCornerRadius(30);
         return g;
     }
 
@@ -511,8 +529,8 @@ public class MainActivity extends Activity {
         for (int i = 0; i < dockTiles.size(); i++) {
             View t = dockTiles.get(i);
             int dist = focused < 0 ? 9 : Math.abs(i - focused);
-            float s = dist == 0 ? 1.3f : dist == 1 ? 1.1f : 1f;
-            float lift = dist == 0 ? -22 : dist == 1 ? -6 : 0;
+            float s = dist == 0 ? 1.22f : dist == 1 ? 1.07f : 1f;
+            float lift = dist == 0 ? -20 : dist == 1 ? -5 : 0;
             t.animate().scaleX(s).scaleY(s).translationY(lift).setDuration(240).setInterpolator(EASE).withLayer().start();
             t.setBackground(dist == 0 ? tileFocus.get(i)[0] : null);
             t.setForeground(dist == 0 ? tileFocus.get(i)[1] : null);
@@ -529,7 +547,7 @@ public class MainActivity extends Activity {
         float cx = (a[0] - s[0]) / sc + tile.getWidth() * tile.getScaleX() / 2f;
         dockLabel.animate().cancel();
         dockLabel.setX(cx - dockLabel.getMeasuredWidth() / 2f);
-        dockLabel.setY(1080 - 56 - 156 - 96);
+        dockLabel.setY(1080 - DOCK_Y - DOCK_H / 2f + TILE / 2f - TILE * 1.22f - 20 - 62);
         dockLabel.setAlpha(0);
         dockLabel.setTranslationY(10);
         dockLabel.animate().alpha(1).translationY(0).setDuration(220).setInterpolator(EASE).start();
@@ -831,7 +849,8 @@ public class MainActivity extends Activity {
     private void closePanels() {
         boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE
                 || quranPanel.getVisibility() == View.VISIBLE;
-        View back = quranPanel.getVisibility() == View.VISIBLE ? dockTiles.get(DOCK.length - 2) : dockTiles.get(0);
+        View back = dockTiles.get(dockIndex(quranPanel.getVisibility() == View.VISIBLE ? "quran"
+                : pinPanel.getVisibility() == View.VISIBLE ? "yt" : appsPanel.getVisibility() == View.VISIBLE ? "apps" : "netflix"));
         for (View v : new View[]{pinPanel, appsPanel, quranPanel}) {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
@@ -842,59 +861,95 @@ public class MainActivity extends Activity {
 
     // ================================================================== YouTube PIN
 
+    private ImageView pinIcon;
+    private View pinBox;
+
+    /** The YouTube lock: a centred glass card with the YouTube icon, four dots and a round keypad. */
     private void buildPin() {
         pinPanel = overlay();
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER_HORIZONTAL);
-        box.setPadding(60, 44, 60, 44);
-        box.setBackground(new Glass(40, 30, 0x4DFFFFFF, 0x40000000));
-        pinTitle = text("", 48, fSemi, WHITE);
+        box.setPadding(64, 48, 64, 44);
+        box.setBackground(new Glass(44, 40, 0x59FFFFFF, 0x4D000000));
+        box.setClipChildren(false);
+
+        pinIcon = new ImageView(this);
+        pinIcon.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 24); }
+        });
+        pinIcon.setClipToOutline(true);
+        box.addView(pinIcon, new LinearLayout.LayoutParams(96, 96));
+        TextView k = kicker(text("PARENT LOCK  ·  قفل الوالدين", 17, fSemi, DIM));
+        k.setPadding(0, 22, 0, 0);
+        box.addView(k);
+        pinTitle = text("", 44, fSemi, WHITE);
         pinTitle.setGravity(Gravity.CENTER);
-        box.addView(pinTitle);
-        pinSub = text("", 26, fMed, SOFT);
+        pinTitle.setPadding(0, 12, 0, 0);
+        box.addView(pinTitle, new LinearLayout.LayoutParams(-1, -2));
+        pinSub = text("", 24, fMed, DIM);
         pinSub.setGravity(Gravity.CENTER);
-        pinSub.setPadding(0, 10, 0, 26);
-        box.addView(pinSub, new LinearLayout.LayoutParams(520, -2));
+        pinSub.setLineSpacing(0, 1.15f);
+        pinSub.setPadding(0, 10, 0, 30);
+        box.addView(pinSub, new LinearLayout.LayoutParams(-1, -2));
+
         LinearLayout dots = new LinearLayout(this);
+        dots.setGravity(Gravity.CENTER);
         for (int i = 0; i < 4; i++) {
             View dot = new View(this);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(28, 28);
-            p.leftMargin = 14; p.rightMargin = 14;
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(22, 22);
+            p.leftMargin = 16; p.rightMargin = 16;
             dots.addView(dot, p);
             pinDots[i] = dot;
         }
-        box.addView(dots);
+        box.addView(dots, new LinearLayout.LayoutParams(-1, 30));
+
         GridLayout keys = new GridLayout(this);
         keys.setColumnCount(3);
         keys.setPadding(0, 30, 0, 0);
+        keys.setClipChildren(false);
         String[] labels = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "✕", "0", "⌫"};
-        for (String k : labels) {
-            TextView key = text(k, 40, fSemi, WHITE);
+        for (String label : labels) {
+            boolean digit = Character.isDigit(label.charAt(0));
+            TextView key = text(label, digit ? 40 : 32, fSemi, digit ? WHITE : SOFT);
             key.setGravity(Gravity.CENTER);
             key.setFocusable(true);
             key.setClickable(true);
-            key.setBackground(glass(99, 0x1AFFFFFF, 0));
+            GradientDrawable off = new GradientDrawable();
+            off.setShape(GradientDrawable.OVAL);
+            off.setColor(digit ? 0x1FFFFFFF : 0x0DFFFFFF);
+            off.setStroke(2, 0x2EFFFFFF);
+            Glass on = new Glass(48, 24, 0x99FFFFFF, 0x26FFFFFF);
+            key.setBackground(off);
             key.setOnFocusChangeListener((v, has) -> {
-                v.setBackground(glass(99, has ? 0x59FFFFFF : 0x1AFFFFFF, has ? 0xB3FFFFFF : 0));
-                v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(150).start();
+                v.setBackground(has ? on : off);
+                v.animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(200).setInterpolator(EASE).withLayer().start();
             });
-            key.setOnClickListener(v -> pinPress(k));
+            key.setOnClickListener(v -> {
+                v.animate().scaleX(0.94f).scaleY(0.94f).setDuration(70).withEndAction(() ->
+                        v.animate().scaleX(1.12f).scaleY(1.12f).setDuration(140).setInterpolator(EASE).start()).start();
+                pinPress(label);
+            });
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
-            p.width = 104; p.height = 104;
-            p.setMargins(14, 10, 14, 10);
+            p.width = 96; p.height = 96;
+            p.setMargins(18, 12, 18, 12);
             keys.addView(key, p);
-            if (k.equals("1")) firstPinKey = key;
+            if (label.equals("1")) firstPinKey = key;
         }
         box.addView(keys);
-        pinPanel.addView(box, new FrameLayout.LayoutParams(620, -2, Gravity.CENTER));
+        pinBox = box;
+        pinPanel.addView(box, new FrameLayout.LayoutParams(600, -2, Gravity.CENTER));
     }
 
     private String savedPin() { return prefs.getString("pin", ""); }
 
     private void openPin(boolean change) {
         pinLaunchAfter = !change;
+        try { pinIcon.setImageDrawable(fullBleed(getPackageManager().getApplicationIcon(DOCK[dockIndex("yt")].pkgs[0]))); }
+        catch (Exception e) { pinIcon.setImageDrawable(tileFace(0xFFE62117, 0xFF8A140E)); }
         show(pinPanel);
+        pinBox.setScaleX(0.92f); pinBox.setScaleY(0.92f); pinBox.setAlpha(0); pinBox.setTranslationY(24);
+        pinBox.animate().scaleX(1).scaleY(1).alpha(1).translationY(0).setDuration(380).setInterpolator(new DecelerateInterpolator(2.2f)).start();
         setPinMode(savedPin().isEmpty() ? "set" : change ? "old" : "check");
         firstPinKey.requestFocus();
     }
@@ -904,22 +959,36 @@ public class MainActivity extends Activity {
         pinEntry = "";
         switch (m) {
             case "old": pinTitle.setText("Change the PIN"); pinSub.setText("Enter the current PIN first"); break;
-            case "set": pinTitle.setText("Choose a parent PIN"); pinSub.setText("4 digits. You'll need it to open YouTube. Hold OK on YouTube to change it."); break;
+            case "set": pinTitle.setText("Choose a parent PIN"); pinSub.setText("4 digits to open YouTube.\nHold OK on YouTube to change it later."); break;
             case "confirm": pinTitle.setText("Choose a parent PIN"); pinSub.setText("Enter the same 4 digits again"); break;
             default: pinTitle.setText("YouTube is locked"); pinSub.setText("Enter the parent PIN");
         }
         drawDots();
     }
 
+    private int dotColor = WHITE;
+
     private void drawDots() {
         for (int i = 0; i < 4; i++) {
             GradientDrawable d = new GradientDrawable();
             d.setShape(GradientDrawable.OVAL);
             boolean f = i < pinEntry.length();
-            d.setColor(f ? WHITE : Color.TRANSPARENT);
-            d.setStroke(3, WHITE);
+            d.setColor(f ? dotColor : 0x14FFFFFF);
+            d.setStroke(2, f ? dotColor : 0x80FFFFFF);
+            boolean justFilled = f && i == pinEntry.length() - 1 && pinDots[i].getTag() == null;
             pinDots[i].setBackground(d);
+            pinDots[i].setTag(f ? Boolean.TRUE : null);
+            if (justFilled) {
+                pinDots[i].setScaleX(1.5f); pinDots[i].setScaleY(1.5f);
+                pinDots[i].animate().scaleX(1).scaleY(1).setDuration(220).setInterpolator(EASE).start();
+            }
         }
+    }
+
+    private void flashDots(int color, Runnable after) {
+        dotColor = color;
+        drawDots();
+        ui.postDelayed(() -> { dotColor = WHITE; if (after != null) after.run(); }, 380);
     }
 
     private void pinPress(String k) {
@@ -941,17 +1010,18 @@ public class MainActivity extends Activity {
     }
 
     private void pinWrong() {
-        View box = pinPanel.getChildAt(0);
-        ValueAnimator a = ValueAnimator.ofFloat(0, -16, 16, -10, 10, 0);
-        a.setDuration(360);
-        a.addUpdateListener(v -> box.setTranslationX((float) v.getAnimatedValue()));
+        ValueAnimator a = ValueAnimator.ofFloat(0, -18, 16, -12, 8, -4, 0);
+        a.setDuration(420);
+        a.addUpdateListener(v -> pinBox.setTranslationX((float) v.getAnimatedValue()));
         a.start();
-        ui.postDelayed(() -> { pinEntry = ""; drawDots(); }, 200);
+        flashDots(0xFFFF6B6B, () -> { pinEntry = ""; drawDots(); });
     }
 
     private void pinDone() {
-        closePanels();
-        if (pinLaunchAfter && !launchAny(DOCK[0].pkgs, "YouTube")) toast("YouTube isn't installed.");
+        flashDots(0xFF5BE38A, () -> {
+            closePanels();
+            if (pinLaunchAfter && !launchAny(DOCK[dockIndex("yt")].pkgs, "YouTube")) toast("YouTube isn't installed.");
+        });
     }
 
     // ================================================================== All apps / Kids
