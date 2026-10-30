@@ -20,6 +20,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Outline;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.drawable.AdaptiveIconDrawable;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.Typeface;
@@ -438,8 +440,13 @@ public class MainActivity extends Activity {
         nameRow.addView(names, new LinearLayout.LayoutParams(0, -2, 1));
         nameRow.addView(adhanCountdown);
         card.addView(nameRow);
+        // How much of the wait from the last prayer to the next one has passed.
+        adhanBar = new ThinBar(this);
+        LinearLayout.LayoutParams abp = new LinearLayout.LayoutParams(-1, 3);
+        abp.topMargin = 10;
+        card.addView(adhanBar, abp);
         LinearLayout times = new LinearLayout(this);
-        times.setPadding(0, 14, 0, 0);
+        times.setPadding(0, 4, 0, 0);
         for (int i = 0; i < 5; i++) {
             int k = BAR_PRAYERS[i];
             LinearLayout col = new LinearLayout(this);
@@ -465,6 +472,9 @@ public class MainActivity extends Activity {
     }
 
     private View[] topParts;
+    private ThinBar adhanBar, lineBar, nowBar;
+    private ValueAnimator lineTimer;
+    static final long LINE_SECONDS = 30;
     private LinearLayout leftCard;
     private View lineFrame;
 
@@ -512,6 +522,12 @@ public class MainActivity extends Activity {
         lineBox.addView(lineKicker);
         lineBox.addView(lineAr);
         lineBox.addView(lineEn);
+        // Fills over the 30 seconds each line stays up.
+        lineBar = new ThinBar(this);
+        lineBar.setColor(0x66FFFFFF);
+        LinearLayout.LayoutParams lbp = new LinearLayout.LayoutParams(220, 2);
+        lbp.topMargin = 14;
+        lineBox.addView(lineBar, lbp);
         lineFrame = card(lineBox, -1, -1, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 326);
 
         // A small message pill, used for short notices like "PIN saved".
@@ -695,7 +711,8 @@ public class MainActivity extends Activity {
         }
         updatePill();
 
-        if (!ambient && System.currentTimeMillis() - lastLineSwitch > 15000) nextLine(now);
+        if (System.currentTimeMillis() - lastLineSwitch >= LINE_SECONDS * 1000) nextLine(now);
+        if (nowBar != null && quran != null && quran.getDuration() > 0) nowBar.setProgress(quran.getCurrentPosition() / (float) quran.getDuration());
         if (System.currentTimeMillis() - lastWeather > 30 * 60 * 1000) { lastWeather = System.currentTimeMillis(); fetchWeather(); }
         ui.postDelayed(this::tick, 1000 - (System.currentTimeMillis() % 1000));
     }
@@ -713,6 +730,11 @@ public class MainActivity extends Activity {
         int target = next >= 0 ? today[next] * 60 : tomorrow[0] * 60 + 86400;
         if (next < 0) next = 0;
         int left = target - nowSec;
+        int prev = -1;
+        for (int i = 0; i < 6; i++) if (i != 1 && today[i] * 60 <= nowSec) prev = today[i] * 60;
+        if (prev < 0) prev = today[5] * 60 - 86400; // after midnight: counting from last night's Isha
+        adhanBar.setProgress((nowSec - prev) / (float) Math.max(1, target - prev));
+        adhanBar.setColor(left <= 15 * 60 ? 0xB3F1D58A : 0x8CFFFFFF);
         String cd = String.format(Locale.US, "%d:%02d:%02d", left / 3600, left % 3600 / 60, left % 60);
         adhanCountdown.setText(cd);
         adhanCountdown.setTextColor(left <= 15 * 60 ? 0xFFF1D58A : WHITE); // gold in the last 15 minutes
@@ -754,6 +776,12 @@ public class MainActivity extends Activity {
             lineEn.setText(it[2]);
             lineBox.setTranslationY(-8);
             lineBox.animate().alpha(1).translationY(0).setDuration(600).start();
+            if (lineTimer != null) lineTimer.cancel();
+            lineTimer = ValueAnimator.ofFloat(0, 1);
+            lineTimer.setDuration(LINE_SECONDS * 1000 - 1000);
+            lineTimer.setInterpolator(null);
+            lineTimer.addUpdateListener(v -> lineBar.setProgress((float) v.getAnimatedValue()));
+            lineTimer.start();
         }).start();
     }
 
@@ -915,12 +943,39 @@ public class MainActivity extends Activity {
                 layer.draw(c);
             }
         } else {
-            c.drawColor(0x33FFFFFF);
-            int pad = size / 24;
-            icon.setBounds(pad, pad, size - pad, size - pad);
-            icon.draw(c);
+            // Older icons carry empty margins: cut to the visible part and stretch it over the whole tile.
+            int big = size * 2;
+            Bitmap raw = Bitmap.createBitmap(big, big, Bitmap.Config.ARGB_8888);
+            icon.setBounds(0, 0, big, big);
+            icon.draw(new Canvas(raw));
+            int l = big, t = big, r = -1, btm = -1;
+            for (int y = 0; y < big; y += 2) for (int x = 0; x < big; x += 2) {
+                if (Color.alpha(raw.getPixel(x, y)) > 40) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); btm = Math.max(btm, y); }
+            }
+            if (r < 0) { l = 0; t = 0; r = big - 1; btm = big - 1; }
+            int side = Math.max(r - l, btm - t) + 2, cx = (l + r) / 2, cy = (t + btm) / 2;
+            // Rounded or round icons leave corners empty: fill them with the colour along the icon's edge.
+            c.drawColor(edgeColor(raw, cx, cy, side / 2));
+            int inset = Math.round(side * 0.04f); // trim the soft rim so the art meets the tile's edge
+            Rect src = new Rect(cx - side / 2 + inset, cy - side / 2 + inset, cx + side / 2 - inset, cy + side / 2 - inset);
+            c.drawBitmap(raw, src, new Rect(0, 0, size, size), new Paint(Paint.FILTER_BITMAP_FLAG));
+            raw.recycle();
         }
         return new BitmapDrawable(getResources(), b);
+    }
+
+    /** Average of the solid pixels a little inside the icon's edge, used to fill the tile behind it. */
+    private static int edgeColor(Bitmap raw, int cx, int cy, int half) {
+        long rs = 0, gs = 0, bs = 0, n = 0;
+        int in = Math.max(4, half / 6);
+        int[][] pts = {{cx, cy - half + in}, {cx, cy + half - in}, {cx - half + in, cy}, {cx + half - in, cy}};
+        for (int[] p : pts) {
+            int x = Math.max(0, Math.min(raw.getWidth() - 1, p[0])), y = Math.max(0, Math.min(raw.getHeight() - 1, p[1]));
+            int px = raw.getPixel(x, y);
+            if (Color.alpha(px) < 200) continue;
+            rs += Color.red(px); gs += Color.green(px); bs += Color.blue(px); n++;
+        }
+        return n == 0 ? 0xFF20242E : Color.rgb((int) (rs / n), (int) (gs / n), (int) (bs / n));
     }
 
     private void openStore(String pkg) {
@@ -1451,6 +1506,11 @@ public class MainActivity extends Activity {
         texts.addView(k);
         texts.addView(nowSurah);
         texts.addView(nowReciter);
+        nowBar = new ThinBar(this);
+        nowBar.setColor(0x99F1D58A);
+        LinearLayout.LayoutParams nbp = new LinearLayout.LayoutParams(-1, 3);
+        nbp.topMargin = 8;
+        texts.addView(nowBar, nbp);
         row.addView(texts);
         nowWidget = glassCard(stage, row, -1, -1, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 56, 30, 22, 0x33FFFFFF, CARD_TINT, false);
         nowWidget.setAlpha(0);
@@ -1665,7 +1725,7 @@ public class MainActivity extends Activity {
 
     // ================================================================== ambient mode
 
-    /** After two quiet minutes the dock and the verse card fade away, leaving the clock, the cards and the video. */
+    /** After two quiet minutes the dock fades away, leaving the clock, the cards, the verse and the video. */
     static final long AMBIENT_AFTER = 2 * 60 * 1000;
     private boolean ambient;
     private long lastInput = System.currentTimeMillis();
@@ -1673,7 +1733,6 @@ public class MainActivity extends Activity {
     private void enterAmbient() {
         ambient = true;
         bottomGroup.animate().alpha(0).translationY(40).setDuration(1200).setInterpolator(EASE).start();
-        lineFrame.animate().alpha(0).setDuration(1200).start();
         dockLabel.animate().alpha(0).setDuration(400).start();
         for (View t : topParts) t.animate().alpha(0.7f).setDuration(1500).start();
         centerGroup.animate().translationY(90).setDuration(1500).setInterpolator(EASE).start();
