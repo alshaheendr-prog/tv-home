@@ -39,6 +39,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.WindowManager;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
@@ -173,6 +174,8 @@ public class MainActivity extends Activity {
         fQuran = getResources().getFont(R.font.amiri_bold);
         fSerif = getResources().getFont(R.font.cormorant_semibold_italic);
 
+        // The home screen never times out or starts a screensaver while it is in front.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
         video = new SurfaceView(this);
@@ -714,6 +717,7 @@ public class MainActivity extends Activity {
         adhanCountdown.setText(cd);
         adhanCountdown.setTextColor(left <= 15 * 60 ? 0xFFF1D58A : WHITE); // gold in the last 15 minutes
         if (!ambient && resumed && !anyPanelOpen() && System.currentTimeMillis() - lastInput > AMBIENT_AFTER) enterAmbient();
+        if (ambient && !nightDim && System.currentTimeMillis() - lastInput > DIM_AFTER) enterNightDim();
         adhanName.setText(PrayerTimes.EN[next]);
         adhanAr.setText(PrayerTimes.AR[next]);
         if (pillTextOverride != null) {
@@ -1675,8 +1679,23 @@ public class MainActivity extends Activity {
         centerGroup.animate().translationY(90).setDuration(1500).setInterpolator(EASE).start();
     }
 
+    /** After fifteen quiet minutes the whole screen dims; the video and the soft Quran keep playing. */
+    static final long DIM_AFTER = 15 * 60 * 1000;
+    static final float DIM_LEVEL = 0.6f;
+    private boolean nightDim;
+
+    private void enterNightDim() {
+        nightDim = true;
+        float a = Math.max(DIM_LEVEL, 1 - prefs.getInt("brightness", 100) / 100f);
+        dimView.animate().alpha(a).setDuration(4000).start();
+    }
+
     private void leaveAmbient() {
         ambient = false;
+        if (nightDim) {
+            nightDim = false;
+            dimView.animate().alpha(1 - prefs.getInt("brightness", 100) / 100f).setDuration(450).start();
+        }
         lastInput = System.currentTimeMillis();
         bottomGroup.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
         lineFrame.animate().alpha(1).setDuration(450).start();
