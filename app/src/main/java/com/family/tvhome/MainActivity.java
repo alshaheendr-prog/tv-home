@@ -26,7 +26,6 @@ import android.view.KeyEvent;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
-import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageView;
@@ -68,7 +67,6 @@ public class MainActivity extends Activity {
     static final TimeZone KUWAIT = TimeZone.getTimeZone("Asia/Kuwait");
     static final int WHITE = 0xFFFFFFFF, SOFT = 0xD9FFFFFF, DIM = 0xA6FFFFFF;
     static final int GLASS = 0x29FFFFFF, GLASS_EDGE = 0x47FFFFFF, GLASS_HI = 0x4DFFFFFF, SHADE = 0x8C000000;
-    static final int[] WORLDS = {R.raw.world_power, R.raw.world_hills, R.raw.world_loop, R.raw.world_dream, R.raw.world_blocks};
 
     /** The apps in the dock. pkgs are tried in order, then any installed app whose name matches, then the Play Store. */
     static final class Dock {
@@ -108,6 +106,10 @@ public class MainActivity extends Activity {
     private static final int[] BAR_PRAYERS = {0, 2, 3, 4, 5}; // Fajr, Dhuhr, Asr, Maghrib, Isha
     private final List<FrameLayout> dockTiles = new ArrayList<>();
     private TextView dockLabel;
+    private static final DecelerateInterpolator EASE = new DecelerateInterpolator(1.6f);
+    private final GradientDrawable tileOff = glass(22, 0x1FFFFFFF, 0), tileOn = glass(22, 0x59FFFFFF, 0xB3FFFFFF);
+    private int shownNext = -2, shownPassedMask = -1;
+    private String shownClock = "";
 
     private int[] today, tomorrow;
     private String cachedDay = "", ayahDay = "";
@@ -146,7 +148,7 @@ public class MainActivity extends Activity {
         video = new SurfaceView(this);
         root.addView(video, new FrameLayout.LayoutParams(-1, -1));
         videoCover = new View(this);
-        videoCover.setBackgroundColor(Color.BLACK);
+        videoCover.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF1B2A4A, 0xFF0E1426, 0xFF241A3A}));
         root.addView(videoCover, new FrameLayout.LayoutParams(-1, -1));
         // Soft dark gradients at the top and bottom keep the text readable on any video.
         View topScrim = new View(this);
@@ -242,7 +244,7 @@ public class MainActivity extends Activity {
         t.setTypeface(tf);
         t.setTextColor(color);
         t.setIncludeFontPadding(false);
-        t.setShadowLayer(px > 60 ? 24 : 10, 0, 2, 0x73000000);
+        t.setShadowLayer(px > 60 ? 20 : 6, 0, 2, 0x66000000);
         return t;
     }
 
@@ -301,8 +303,9 @@ public class MainActivity extends Activity {
         c.setOrientation(LinearLayout.VERTICAL);
         c.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout clockRow = new LinearLayout(this);
-        clockRow.setGravity(Gravity.BOTTOM);
-        clockText = text("--:--", 250, fSemi, WHITE);
+        clockRow.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        clockText = text("--:--", 230, fSemi, WHITE);
+        clockText.setFontFeatureSettings("tnum");
         clockText.setLetterSpacing(-0.03f);
         ampmText = text("", 54, fSemi, SOFT);
         ampmText.setPadding(14, 0, 0, 40);
@@ -311,9 +314,12 @@ public class MainActivity extends Activity {
         c.addView(clockRow);
 
         pillText = text("", 30, fMed, WHITE);
+        pillText.setFontFeatureSettings("tnum");
+        pillText.setGravity(Gravity.CENTER);
+        pillText.setSingleLine(true);
         pillText.setPadding(34, 14, 34, 16);
         pillText.setBackground(glass(99, GLASS, GLASS_EDGE));
-        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(-2, -2);
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(940, -2); // fixed width: no re-layout every second
         pp.topMargin = 18;
         c.addView(pillText, pp);
 
@@ -322,19 +328,19 @@ public class MainActivity extends Activity {
         lineBox.setGravity(Gravity.CENTER_HORIZONTAL);
         lineKicker = text("", 20, fSemi, DIM);
         lineKicker.setLetterSpacing(0.14f);
-        lineText = text("", 30, fArSemi, SOFT);
+        lineText = text("", 28, fArSemi, SOFT);
         lineText.setGravity(Gravity.CENTER);
-        lineText.setMaxLines(2);
+        lineText.setMaxLines(3);
         lineText.setEllipsize(TextUtils.TruncateAt.END);
         lineText.setLineSpacing(0, 1.15f);
         lineText.setPadding(0, 10, 0, 0);
         lineBox.addView(lineKicker);
         lineBox.addView(lineText, new LinearLayout.LayoutParams(1300, -2));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-        lp.topMargin = 34;
+        lp.topMargin = 28;
         c.addView(lineBox, lp);
 
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 220));
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 170));
         centerGroup = c;
     }
 
@@ -362,7 +368,7 @@ public class MainActivity extends Activity {
             cell.addView(en); cell.addView(ar); cell.addView(tm);
             prayerTexts[i][0] = en; prayerTexts[i][1] = ar; prayerTexts[i][2] = tm;
             prayerCells[i] = cell;
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(168, -2);
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(150, -2);
             cp.leftMargin = 4; cp.rightMargin = 4;
             prayers.addView(cell, cp);
         }
@@ -385,25 +391,23 @@ public class MainActivity extends Activity {
             tile.setFocusable(true);
             tile.setClickable(true);
             tile.setTag(d);
-            tile.setBackground(glass(24, 0x1FFFFFFF, 0));
+            tile.setBackground(tileOff);
             ImageView icon = new ImageView(this);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            tile.addView(icon, new FrameLayout.LayoutParams(64, 64, Gravity.CENTER));
+            tile.addView(icon, new FrameLayout.LayoutParams(60, 60, Gravity.CENTER));
             TextView mark = text(d.id.equals("apps") ? "⋯" : d.name.substring(0, 1), 38, fBold, d.color);
             mark.setGravity(Gravity.CENTER);
             tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
             if (d.id.equals("yt")) tile.setOnLongClickListener(v -> { openPin(true); return true; });
             tile.setOnClickListener(v -> openDock(d));
             tile.setOnFocusChangeListener((v, has) -> {
-                v.animate().scaleX(has ? 1.32f : 1f).scaleY(has ? 1.32f : 1f).translationY(has ? -14 : 0)
-                        .setDuration(has ? 260 : 180)
-                        .setInterpolator(has ? new OvershootInterpolator(1.6f) : new DecelerateInterpolator()).start();
-                v.setBackground(glass(24, has ? 0x59FFFFFF : 0x1FFFFFFF, has ? 0xB3FFFFFF : 0));
-                v.setTranslationZ(has ? 10 : 0);
+                v.animate().scaleX(has ? 1.28f : 1f).scaleY(has ? 1.28f : 1f).translationY(has ? -12 : 0)
+                        .setDuration(200).setInterpolator(EASE).withLayer().start();
+                v.setBackground(has ? tileOn : tileOff);
                 if (has) showDockLabel(v, d.name);
             });
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(84, 84);
-            tp.leftMargin = 7; tp.rightMargin = 7;
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(80, 80);
+            tp.leftMargin = 5; tp.rightMargin = 5;
             dock.addView(tile, tp);
             dockTiles.add(tile);
         }
@@ -454,7 +458,7 @@ public class MainActivity extends Activity {
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "TVWallpapers");
         File[] files = dir.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".mp4"));
         if (files != null) for (File f : files) if (f.canRead()) clips.add(Uri.fromFile(f));
-        if (clips.isEmpty()) for (int id : WORLDS) clips.add(Uri.parse("android.resource://" + getPackageName() + "/" + id));
+        if (clips.isEmpty()) { videoCover.setAlpha(1); player.stop(); return; } // no clips yet: the calm gradient below
         Uri pick = clips.get(random.nextInt(clips.size()));
         if (clips.size() > 1) while (pick.toString().equals(currentClip)) pick = clips.get(random.nextInt(clips.size()));
         currentClip = pick.toString();
@@ -491,8 +495,12 @@ public class MainActivity extends Activity {
         if (!key.equals(ayahDay)) { ayahDay = key; fetchAyah(now.get(Calendar.DAY_OF_YEAR) + y * 400); }
 
         int h = now.get(Calendar.HOUR_OF_DAY), mi = now.get(Calendar.MINUTE);
-        clockText.setText(((h + 11) % 12 + 1) + ":" + (mi < 10 ? "0" : "") + mi);
-        ampmText.setText(h < 12 ? "AM" : "PM");
+        String clock = ((h + 11) % 12 + 1) + ":" + (mi < 10 ? "0" : "") + mi;
+        if (!clock.equals(shownClock)) {
+            shownClock = clock;
+            clockText.setText(clock);
+            ampmText.setText(h < 12 ? "AM" : "PM");
+        }
         updatePill();
 
         if (System.currentTimeMillis() - lastLineSwitch > 15000) nextLine(now);
@@ -516,11 +524,15 @@ public class MainActivity extends Activity {
         String cd = String.format(Locale.US, "%d:%02d:%02d", left / 3600, left % 3600 / 60, left % 60);
         pillText.setText(pillTextOverride != null ? pillTextOverride
                 : "Next adhan   " + PrayerTimes.EN[next] + "  " + PrayerTimes.AR[next] + "   ·   " + cd);
+        int passedMask = 0;
+        for (int i = 0; i < 5; i++) if (BAR_PRAYERS[i] != next && today[BAR_PRAYERS[i]] * 60 <= nowSec) passedMask |= 1 << i;
+        if (next == shownNext && passedMask == shownPassedMask) return; // only redraw the bar when it changes
+        shownNext = next;
+        shownPassedMask = passedMask;
         for (int i = 0; i < 5; i++) {
             boolean isNext = BAR_PRAYERS[i] == next;
             prayerCells[i].setBackground(isNext ? glass(26, GLASS_HI, 0x80FFFFFF) : null);
-            boolean passed = !isNext && today[BAR_PRAYERS[i]] * 60 <= nowSec;
-            prayerCells[i].setAlpha(passed ? 0.55f : 1f);
+            prayerCells[i].setAlpha((passedMask & (1 << i)) != 0 ? 0.55f : 1f);
         }
     }
 
