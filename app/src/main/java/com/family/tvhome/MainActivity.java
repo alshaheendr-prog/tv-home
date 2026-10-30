@@ -1369,6 +1369,7 @@ public class MainActivity extends Activity {
         if (!active) {
             quranNow.setText("");
             quranNowHome.setVisibility(View.GONE);
+            dayText.setVisibility(View.VISIBLE);
             return;
         }
         String reciter = quranReciter.ar.isEmpty() ? quranReciter.en : quranReciter.ar + "  ·  " + quranReciter.en;
@@ -1376,6 +1377,7 @@ public class MainActivity extends Activity {
         quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
         quranNowHome.setText((quran.getPlayWhenReady() ? "▶  " : "❚❚  ") + "سورة " + Quran.AR[quranSurah - 1] + "  ·  " + quranReciter.en);
         quranNowHome.setVisibility(View.VISIBLE);
+        dayText.setVisibility(View.GONE); // the card has room for one bottom line
     }
 
     // ================================================================== frosted glass backdrop
