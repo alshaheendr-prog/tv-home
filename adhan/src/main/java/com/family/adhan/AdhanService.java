@@ -87,6 +87,9 @@ public class AdhanService extends Service {
     private long cardSwitched;
     private String[] ayahToday; // {ar, en, ref}
     private String ayahDay = "";
+    private boolean wasHome;
+    private long lastSwap;
+    private String lastClip = "";
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
 
     static void start(Context c) {
@@ -129,6 +132,7 @@ public class AdhanService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && "test".equals(intent.getAction())) fireAdhan(3);
+        if (intent != null && "swap".equals(intent.getAction())) swapWallpaper();
         if (intent != null && "refresh".equals(intent.getAction())) { setPanel(false); setCard(false); }
         return START_STICKY;
     }
@@ -364,6 +368,7 @@ public class AdhanService extends Service {
 
         updateForeground();
         boolean home = homePackages.contains(foreground);
+        maybeSwapWallpaper(home);
         setPanel(home);
         setCard(home);
         if (cardShown && System.currentTimeMillis() - cardSwitched > 15000) nextCard(now);
@@ -486,6 +491,48 @@ public class AdhanService extends Service {
             c.disconnect();
         }
         return sb.toString();
+    }
+
+    // ------------------------------------------------------------------ random wallpaper for Projectivy
+
+    /** Clips the parent copied to the box. */
+    static File clipsDir() { return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "TVWallpapers"); }
+
+    /** The one file Projectivy is set to play. */
+    static File wallpaperFile() { return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "Projectivy/wallpaper.mp4"); }
+
+    private void maybeSwapWallpaper(boolean home) {
+        String mode = prefs.getString("wallpaper_mode", "return"); // return | hourly | off
+        boolean leftHome = wasHome && !home;
+        wasHome = home;
+        if (mode.equals("off")) return;
+        boolean due = mode.equals("return") ? leftHome
+                : !home && System.currentTimeMillis() - lastSwap > 3600_000L;
+        if (due) swapWallpaper();
+    }
+
+    void swapWallpaper() {
+        lastSwap = System.currentTimeMillis();
+        new Thread(() -> {
+            File[] clips = clipsDir().listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".mp4"));
+            if (clips == null || clips.length == 0) return;
+            File pick = clips[new java.util.Random().nextInt(clips.length)];
+            if (clips.length > 1) while (pick.getName().equals(lastClip)) pick = clips[new java.util.Random().nextInt(clips.length)];
+            File out = wallpaperFile();
+            File tmp = new File(out.getParentFile(), ".next.mp4");
+            try {
+                out.getParentFile().mkdirs();
+                try (java.io.InputStream in = new java.io.FileInputStream(pick);
+                     java.io.OutputStream os = new java.io.FileOutputStream(tmp)) {
+                    byte[] buf = new byte[1 << 16];
+                    int n;
+                    while ((n = in.read(buf)) > 0) os.write(buf, 0, n);
+                }
+                if (tmp.renameTo(out) || (out.delete() && tmp.renameTo(out))) lastClip = pick.getName();
+            } catch (Exception ignored) {
+                tmp.delete();
+            }
+        }).start();
     }
 
     // ------------------------------------------------------------------ widget card

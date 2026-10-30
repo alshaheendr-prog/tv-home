@@ -142,6 +142,26 @@ public class SettingsActivity extends Activity {
         final int cnext = (cci + 1) % 4;
         row("Card position", names[cci], () -> { prefs.edit().putString("card_position", pos[cnext]).apply(); refreshService(); });
 
+        header("WALLPAPER");
+        String[] wm = {"return", "hourly", "off"}, wn = {"Every time I return home", "Every hour", "Off"};
+        String wcur = prefs.getString("wallpaper_mode", "return");
+        int wi = 0;
+        for (int i = 0; i < 3; i++) if (wm[i].equals(wcur)) wi = i;
+        final int wnext = (wi + 1) % 3;
+        row("New random wallpaper", wn[wi], () -> prefs.edit().putString("wallpaper_mode", wm[wnext]).apply());
+        java.io.File[] clips = AdhanService.clipsDir().listFiles((d, n) -> n.toLowerCase(java.util.Locale.ROOT).endsWith(".mp4"));
+        int count = clips == null ? 0 : clips.length;
+        row("Swap the wallpaper now (" + count + " clips in Movies/TVWallpapers)", "▶", () ->
+                startForegroundService(new Intent(this, AdhanService.class).setAction("swap")));
+        TextView wnote = text("In Projectivy, set the video wallpaper to Movies/Projectivy/wallpaper.mp4 once. This app swaps a random clip into that file.", 24, fMedium, 0xB8F6F3FF);
+        wnote.setPadding(px(28), px(10), px(28), 0);
+        list.addView(wnote);
+        if (!android.os.Environment.isExternalStorageManager()) {
+            TextView need = text("Needs file access: adb shell appops set com.family.adhan MANAGE_EXTERNAL_STORAGE allow", 24, fMedium, 0xFFFF8F8F);
+            need.setPadding(px(28), px(6), px(28), 0);
+            list.addView(need);
+        }
+
         header("ADHAN SOUND");
         for (int i = 0; i < 6; i++) {
             if (i == 1) continue;
