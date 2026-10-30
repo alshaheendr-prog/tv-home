@@ -369,10 +369,10 @@ public class KidsActivity extends Activity {
         left.setBackground(glass(48));
         LinearLayout kick = new LinearLayout(this);
         kick.setGravity(Gravity.CENTER_VERTICAL);
-        TextView welcome = text("WELCOME", 26, fBold, DIM);
+        TextView welcome = text("WELCOME", 30, fBold, DIM);
         welcome.setLetterSpacing(0.2f);
         kick.addView(welcome);
-        worldChip = text("", 24, fBold, WHITE);
+        worldChip = text("", 30, fBold, WHITE);
         worldChip.setLetterSpacing(0.12f);
         worldChip.setPadding(26, 0, 0, 0);
         kick.addView(worldChip);
@@ -399,16 +399,16 @@ public class KidsActivity extends Activity {
         LinearLayout inRing = new LinearLayout(this);
         inRing.setOrientation(LinearLayout.VERTICAL);
         inRing.setGravity(Gravity.CENTER);
-        ringBig = text("", 40, fHeavy, WHITE);
+        ringBig = text("", 46, fHeavy, WHITE);
         ringBig.setIncludeFontPadding(false);
         ringBig.setGravity(Gravity.CENTER);
-        ringSmall = text("", 22, fBold, DIM);
+        ringSmall = text("", 30, fBold, DIM);
         ringSmall.setIncludeFontPadding(false);
         ringSmall.setGravity(Gravity.CENTER);
         inRing.addView(ringBig);
         inRing.addView(ringSmall);
         ringBox.addView(inRing, new FrameLayout.LayoutParams(-1, -1));
-        card.addView(ringBox, new LinearLayout.LayoutParams(184, 184));
+        card.addView(ringBox, new LinearLayout.LayoutParams(200, 200));
         LinearLayout right = new LinearLayout(this);
         right.setOrientation(LinearLayout.VERTICAL);
         right.setPadding(40, 0, 0, 0);
@@ -431,7 +431,7 @@ public class KidsActivity extends Activity {
 
     private void buildMiddle() {
         mascot = new Mascot(this, fHeavy);
-        place(mascot, 210, 390, 360, 360);
+        place(mascot, 210, 380, 360, 360);
         bob(mascot);
 
         LinearLayout card = new LinearLayout(this);
@@ -440,7 +440,7 @@ public class KidsActivity extends Activity {
         card.setBackground(glass(48));
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
-        TextView kick = text("CHARACTER OF THE DAY", 24, fBold, DIM);
+        TextView kick = text("CHARACTER OF THE DAY", 30, fBold, DIM);
         kick.setLetterSpacing(0.2f);
         t.addView(kick);
         LinearLayout nameRow = new LinearLayout(this);
@@ -455,7 +455,6 @@ public class KidsActivity extends Activity {
         nl.topMargin = 10;
         t.addView(nameRow, nl);
         charFact = text("", 34, fMed, SOFT);
-        charFact.setMaxLines(3);
         charFact.setLineSpacing(0, 1.05f);
         charFact.setPadding(0, 10, 0, 0);
         t.addView(charFact);
@@ -468,7 +467,7 @@ public class KidsActivity extends Activity {
         LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(220, 220);
         pl.leftMargin = 36;
         card.addView(charPhoto, pl);
-        place(card, 610, 420, 1110, -2);
+        place(card, 610, 404, 1180, -2);
     }
 
     private void buildTiles() {
@@ -571,7 +570,7 @@ public class KidsActivity extends Activity {
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             if (pkg.isEmpty()) {
                 tile.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{world.body, world.bodyDark}));
-                TextView t = text("▶  Cartoons", Math.max(26, w / 8.5f), fHeavy, WHITE);
+                TextView t = text("▶ Cartoons", 32, fHeavy, WHITE);
                 t.setGravity(Gravity.CENTER);
                 tile.addView(t, new FrameLayout.LayoutParams(-1, -1));
             } else {
@@ -703,13 +702,13 @@ public class KidsActivity extends Activity {
         } else if (left == Long.MAX_VALUE) {
             ring.set(1, world == null ? WHITE : world.accent);
             ringBig.setText("∞");
-            ringSmall.setText("free play");
+            ringSmall.setText("no limit");
             ringNote.setText("No time limit today");
         } else {
             float f = limit <= 0 ? 0 : left / (limit * 60f);
             ring.set(f, f > 0.25f ? (world == null ? WHITE : world.accent) : 0xFFFF6B5B);
             ringBig.setText(shortMinutes(left));
-            ringSmall.setText("left today");
+            ringSmall.setText("left");
             int bed = Rules.bedtime(this);
             ringNote.setText(bed < 0 ? "Enjoy your shows!" : "Bedtime " + bedLabel(bed));
         }
@@ -865,21 +864,20 @@ public class KidsActivity extends Activity {
         show(cartoonsPanel);
         for (int i = 0; i < cartoons.size(); i++) {
             File f = cartoons.get(i);
-            FrameLayout card = new FrameLayout(this);
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
             card.setFocusable(true);
             card.setBackground(glass(26));
             card.setClipToOutline(true);
             card.setOutlineProvider(rounded(26));
             ImageView img = new ImageView(this);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            card.addView(img, new FrameLayout.LayoutParams(-1, 216));
-            TextView t = text(title(f), 28, fBold, WHITE);
-            t.setSingleLine(true);
-            t.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            t.setPadding(20, 0, 20, 0);
-            t.setGravity(Gravity.CENTER_VERTICAL);
-            FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(-1, 64, Gravity.BOTTOM);
-            card.addView(t, tl);
+            card.addView(img, new LinearLayout.LayoutParams(-1, 216));
+            // the whole name, on as many lines as it needs
+            TextView t = text(title(f), 30, fBold, WHITE);
+            t.setPadding(20, 12, 20, 16);
+            t.setLineSpacing(0, 1.05f);
+            card.addView(t, new LinearLayout.LayoutParams(-1, -2));
             card.setOnFocusChangeListener((v, has) -> {
                 v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
                 v.setBackground(has ? solid(WHITE, 26, 0x33) : glass(26));
@@ -888,7 +886,7 @@ public class KidsActivity extends Activity {
             final int index = i;
             card.setOnClickListener(v -> play(index));
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-            lp.width = 384; lp.height = 280;
+            lp.width = 384; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
             lp.setMargins(0, 0, 40, 40);
             cartoonGrid.addView(card, lp);
             thumb(f, img);
@@ -934,7 +932,7 @@ public class KidsActivity extends Activity {
         pinTitle = text("", 50, fHeavy, WHITE);
         pinTitle.setGravity(Gravity.CENTER);
         box.addView(pinTitle);
-        pinSub = text("", 28, fMed, DIM);
+        pinSub = text("", 30, fMed, DIM);
         pinSub.setGravity(Gravity.CENTER);
         pinSub.setPadding(0, 4, 0, 26);
         box.addView(pinSub, new LinearLayout.LayoutParams(-1, -2));
@@ -1056,7 +1054,7 @@ public class KidsActivity extends Activity {
         col.setPadding(56, 44, 56, 44);
         col.setBackground(solid(0xFF161028, 44, 0));
         col.addView(text("Kids Corner settings", 52, fHeavy, WHITE));
-        TextView hint = text("Left and right change a setting. Back closes.", 26, fMed, DIM);
+        TextView hint = text("Left and right change a setting. Back closes.", 30, fMed, DIM);
         hint.setPadding(0, 0, 0, 18);
         col.addView(hint);
         ScrollView sv = new ScrollView(this);
@@ -1077,29 +1075,31 @@ public class KidsActivity extends Activity {
         for (int i = 0; i < worlds.length; i++) worlds[i] = i - 1;
         choiceRow("World", worlds, "world", -1, v -> v < 0 ? "A new one every day" : Worlds.ALL[v].name);
 
+        TextView extraTitle = text("Extra time now", 32, fBold, WHITE);
+        extraTitle.setPadding(28, 18, 0, 8);
+        parentList.addView(extraTitle);
         LinearLayout extra = new LinearLayout(this);
-        extra.setPadding(0, 18, 0, 6);
-        extra.addView(text("Extra time now", 32, fBold, DIM), new LinearLayout.LayoutParams(330, -2));
+        extra.setPadding(28, 0, 0, 6);
         int[][] gifts = {{15}, {30}, {60}};
         for (int[] g : gifts) {
-            TextView b = button(g[0] == 60 ? "+1 hour" : "+" + g[0] + " min", 26);
+            TextView b = button(g[0] == 60 ? "+1 hour" : "+" + g[0] + " min", 30);
             b.setOnClickListener(v -> { Rules.giveExtra(this, g[0]); toastIn(b, "Added"); tick(); });
             LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(-2, -2);
             bl.rightMargin = 16;
             extra.addView(b, bl);
         }
-        TextView reset = button("Reset today", 26);
+        TextView reset = button("Reset today", 30);
         reset.setOnClickListener(v -> { Rules.setUsed(this, 0); Rules.prefs(this).edit().remove("extra_until").apply(); toastIn(reset, "Reset"); tick(); });
         extra.addView(reset);
         parentList.addView(extra);
 
-        TextView watched = text("Watched today: " + minutes(Rules.used(this)), 28, fMed, DIM);
-        watched.setPadding(330, 0, 0, 12);
+        TextView watched = text("Watched today: " + minutes(Rules.used(this)), 30, fMed, DIM);
+        watched.setPadding(28, 8, 0, 12);
         parentList.addView(watched);
 
         actionRow("Their apps", "Choose which apps they can open", this::openApps);
         actionRow("Change PIN", "", () -> askPin("set", this::openParent));
-        setupText = text(setupSummary(), 28, fMed, DIM);
+        setupText = text(setupSummary(), 30, fMed, DIM);
         setupText.setPadding(0, 18, 0, 18);
         setupText.setLineSpacing(0, 1.1f);
         parentList.addView(setupText);
@@ -1156,7 +1156,7 @@ public class KidsActivity extends Activity {
         row.setPadding(28, 14, 28, 14);
         TextView t = text(name, 32, fBold, WHITE);
         row.addView(t);
-        if (!sub.isEmpty()) row.addView(text(sub, 24, fMed, DIM));
+        if (!sub.isEmpty()) row.addView(text(sub, 30, fMed, DIM));
         row.setOnFocusChangeListener((v, has) -> row.setBackground(has ? solid(0x26FFFFFF, 22, 0) : null));
         row.setOnClickListener(v -> run.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
@@ -1213,7 +1213,7 @@ public class KidsActivity extends Activity {
         col.setOrientation(LinearLayout.VERTICAL);
         col.setPadding(110, 70, 110, 0);
         col.addView(text("Their apps", 64, fHeavy, WHITE));
-        col.addView(text("OK ticks or unticks an app. YouTube, the Play Store, Settings and browsers are never allowed.", 28, fMed, DIM));
+        col.addView(text("OK ticks or unticks an app. YouTube, the Play Store, Settings and browsers are never allowed.", 30, fMed, DIM));
         ScrollView sv = new ScrollView(this);
         sv.setPadding(0, 30, 0, 60);
         sv.setClipToPadding(false);
@@ -1239,12 +1239,10 @@ public class KidsActivity extends Activity {
             ImageView icon = new ImageView(this);
             try { icon.setImageDrawable(r.loadIcon(pm)); } catch (Exception ignored) { }
             cell.addView(icon, new LinearLayout.LayoutParams(110, 110));
-            TextView name = text(r.loadLabel(pm).toString(), 26, fBold, WHITE);
+            TextView name = text(r.loadLabel(pm).toString(), 30, fBold, WHITE);
             name.setGravity(Gravity.CENTER);
-            name.setSingleLine(true);
-            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
             cell.addView(name, new LinearLayout.LayoutParams(-1, -2));
-            TextView mark = text("", 24, fBold, WHITE);
+            TextView mark = text("", 30, fBold, WHITE);
             cell.addView(mark);
             Runnable draw = () -> {
                 boolean on = Rules.apps(this).contains(pkg);
@@ -1256,7 +1254,7 @@ public class KidsActivity extends Activity {
             cell.setOnFocusChangeListener((v, has) -> cell.setBackground(has ? solid(0x26FFFFFF, 24, 0) : null));
             cell.setOnClickListener(v -> { Rules.toggleApp(this, pkg); draw.run(); });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-            lp.width = 300; lp.height = 230;
+            lp.width = 300; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
             lp.setMargins(0, 0, 40, 30);
             appGrid.addView(cell, lp);
         }
