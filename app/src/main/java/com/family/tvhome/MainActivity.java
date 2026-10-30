@@ -1328,7 +1328,7 @@ public class MainActivity extends Activity {
             Quran.cacheDir = getCacheDir();
             List<Quran.Reciter> all = Quran.local(n);
             if (all.isEmpty() || (all.size() == 1 && not != null && all.get(0).server.equals(not.server))) all = Quran.reciters(getCacheDir());
-            Quran.Reciter r = Quran.pick(all, not, random);
+            Quran.Reciter r = Quran.pick(all, n, not, random);
             ui.post(() -> startQuran(n, r));
         });
     }

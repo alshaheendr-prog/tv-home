@@ -46,7 +46,9 @@ final class Quran {
 
     static final class Reciter {
         final String en, ar, server;
+        java.util.Set<Integer> surahs; // null means all 114
         Reciter(String en, String ar, String server) { this.en = en; this.ar = ar; this.server = server; }
+        boolean has(int surah) { return surahs == null || surahs.contains(surah); }
         String url(int surah) { return server + String.format(Locale.US, "%03d.mp3", surah); }
     }
 
@@ -91,12 +93,17 @@ final class Quran {
                 JSONArray ms = o.getJSONArray("moshaf");
                 for (int j = 0; j < ms.length(); j++) {
                     JSONObject m = ms.getJSONObject(j);
-                    if (m.optInt("rewaya_id") != 1 || m.optInt("surah_total") != 114) continue;
+                    if (m.optInt("rewaya_id") != 1 || m.optInt("surah_total") < 30) continue;
                     if (!m.optString("name").toLowerCase(Locale.ROOT).contains("murattal")) continue;
                     String server = m.getString("server");
                     if (excluded(server)) continue;
                     if (!server.endsWith("/")) server += "/";
-                    out.add(new Reciter(name, arName, server));
+                    Reciter rc = new Reciter(name, arName, server);
+                    if (m.optInt("surah_total") < 114) {
+                        rc.surahs = new java.util.HashSet<>();
+                        for (String x : m.optString("surah_list").split(",")) try { rc.surahs.add(Integer.parseInt(x.trim())); } catch (Exception ignored) { }
+                    }
+                    out.add(rc);
                     break;
                 }
             }
@@ -138,7 +145,10 @@ final class Quran {
         return arNames.get(id);
     }
 
-    static Reciter pick(List<Reciter> all, Reciter not, Random random) {
+    static Reciter pick(List<Reciter> list, int surah, Reciter not, Random random) {
+        List<Reciter> all = new ArrayList<>();
+        for (Reciter r : list) if (r.has(surah)) all.add(r);
+        if (all.isEmpty()) all = list;
         for (int i = 0; i < 10; i++) {
             Reciter r = all.get(random.nextInt(all.size()));
             if (not == null || !r.server.equals(not.server)) return r;
