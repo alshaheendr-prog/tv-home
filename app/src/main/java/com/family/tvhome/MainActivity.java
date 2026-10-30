@@ -229,6 +229,8 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        lastInput = System.currentTimeMillis();
+        if (ambient) leaveAmbient();
         hideBars();
         playRandomClip();
         updateDrive();
@@ -248,6 +250,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (ambient) leaveAmbient();
         closePanels();
         dockTiles.get(lastDock).requestFocus();
     }
@@ -276,6 +279,8 @@ public class MainActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         int code = e.getKeyCode();
+        lastInput = System.currentTimeMillis();
+        if (ambient) { if (e.getAction() == KeyEvent.ACTION_UP) leaveAmbient(); return true; } // the first press only wakes the screen
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) closePanels();
             return true; // the home screen never closes itself
@@ -654,7 +659,7 @@ public class MainActivity extends Activity {
         }
         updatePill();
 
-        if (System.currentTimeMillis() - lastLineSwitch > 15000) nextLine(now);
+        if (!ambient && System.currentTimeMillis() - lastLineSwitch > 15000) nextLine(now);
         if (System.currentTimeMillis() - lastWeather > 30 * 60 * 1000) { lastWeather = System.currentTimeMillis(); fetchWeather(); }
         ui.postDelayed(this::tick, 1000 - (System.currentTimeMillis() % 1000));
     }
@@ -674,6 +679,8 @@ public class MainActivity extends Activity {
         int left = target - nowSec;
         String cd = String.format(Locale.US, "%d:%02d:%02d", left / 3600, left % 3600 / 60, left % 60);
         adhanCountdown.setText(cd);
+        adhanCountdown.setTextColor(left <= 15 * 60 ? 0xFFF1D58A : WHITE); // gold in the last 15 minutes
+        if (!ambient && resumed && !anyPanelOpen() && System.currentTimeMillis() - lastInput > AMBIENT_AFTER) enterAmbient();
         adhanName.setText(PrayerTimes.EN[next]);
         adhanAr.setText(PrayerTimes.AR[next]);
         if (pillTextOverride != null) { pillText.setText(pillTextOverride); pillText.animate().alpha(1).setDuration(200).start(); }
@@ -1497,5 +1504,32 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, 76);
         p.topMargin = 6;
         parentList.addView(r, p);
+    }
+
+    // ================================================================== ambient mode
+
+    /** After two quiet minutes the dock and the verse card fade away, leaving the clock, the cards and the video. */
+    static final long AMBIENT_AFTER = 2 * 60 * 1000;
+    private boolean ambient;
+    private long lastInput = System.currentTimeMillis();
+
+    private void enterAmbient() {
+        ambient = true;
+        bottomGroup.animate().alpha(0).translationY(40).setDuration(1200).setInterpolator(EASE).start();
+        lineBox.animate().alpha(0).setDuration(1200).start();
+        dockLabel.animate().alpha(0).setDuration(400).start();
+        for (View t : topParts) t.animate().alpha(0.7f).setDuration(1500).start();
+        centerGroup.animate().translationY(90).setDuration(1500).setInterpolator(EASE).start();
+    }
+
+    private void leaveAmbient() {
+        ambient = false;
+        lastInput = System.currentTimeMillis();
+        bottomGroup.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
+        lineBox.animate().alpha(1).setDuration(450).start();
+        for (View t : topParts) t.animate().alpha(1).setDuration(450).start();
+        centerGroup.animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
+        View f = dockTiles.get(lastDock);
+        if (f.hasFocus()) showDockLabel(f, DOCK[lastDock].name); else f.requestFocus();
     }
 }
