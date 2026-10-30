@@ -16,6 +16,11 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <!-- Lets TV Home (same signing key) read the week of stats for its family stats page. -->
+    <permission
+        android:name="com.family.kids.permission.READ_STATS"
+        android:protectionLevel="signature" />
+
     <application
         android:label="Kids Corner"
         android:icon="@drawable/icon"
@@ -50,6 +55,12 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Keeps the kids home screen in front and counts daily screen time while kids mode is on" />
         </service>
+
+        <provider
+            android:name=".StatsProvider"
+            android:authorities="com.family.kids.stats"
+            android:exported="true"
+            android:readPermission="com.family.kids.permission.READ_STATS" />
 
         <receiver
             android:name=".BootReceiver"

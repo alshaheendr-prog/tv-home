@@ -795,6 +795,7 @@ public class KidsActivity extends Activity {
             b.setOnClickListener(v -> {
                 if (Rules.stars(this, kid) <= 0) return;
                 Rules.setStars(this, kid, Rules.stars(this, kid) - 1);
+                Stats.starSpent(this, kid);
                 Rules.giveExtra(this, Rules.STAR_MINUTES);
                 drawStars();
                 tick();
