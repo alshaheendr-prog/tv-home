@@ -36,7 +36,7 @@ A separate home screen for the kids, in its own app (`com.family.kids`).
 - While kids mode is on, a small service brings Kids Corner back whenever anything else comes to the front (the Home button, the YouTube button on the remote, Settings), and keeps going after a restart.
 - Daily screen time: 1 h 30 min on school days and 2 h on Fridays and Saturdays to start with, plus a bedtime (8:30 pm to 7 am). A note floats over his show 5 minutes and 1 minute before the end; then a sleepy rest screen stays up until tomorrow or until a parent adds time.
 - A welcome card for Ghanim & Noha with the date and Kuwait weather, a clock with the time-left ring, and a glass dock like the family home screen.
-- A different world each day (Power Up, Mushroom Hills, Speed Loop, Dream Sky, Block World) with its own colours, Pip the buddy whose eyes follow the remote, and a character of the day with a fun fact.
+- A different world each day (Power Up, Mushroom Hills, Speed Loop, Dream Sky, Block World) with its own colours and a character of the day with a fun fact.
 - The background is always one of the family home screen's videos (`Movies/TVWallpapers`), picked to fit the world when a file name matches (Goku, Mario, Sonic, Kirby, Minecraft).
 - **Reward stars:** the parent gives Ghanim and Noha stars in the settings. On the time's-up screen each child can spend a star for 15 more minutes (not at bedtime).
 - **Bedtime wind-down:** in the 20 minutes before bedtime the screen slowly turns warm (even over Netflix) and the volume eases to half. At bedtime a short surah plays once, from `Music/Quran` on the box or mp3quran.net (never Alafasy). The volume comes back after bedtime. It can be switched off in the settings.
