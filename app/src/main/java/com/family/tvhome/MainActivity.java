@@ -243,6 +243,9 @@ public class MainActivity extends Activity {
         hideBars();
         playRandomClip();
         updateDrive();
+        quietStopped = false;
+        ui.removeCallbacks(startQuiet);
+        ui.postDelayed(startQuiet, 4000);
         // No frosted backdrop: on this box the video is on a hardware layer and a copy of it comes back black.
         ui.postDelayed(() -> { loadDockIcons(); refreshApps(); }, 600);
     }
@@ -251,6 +254,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         resumed = false;
         ui.removeCallbacks(grabBackdrop);
+        ui.removeCallbacks(startQuiet);
         player.pause();
         super.onPause();
     }
@@ -1278,7 +1282,7 @@ public class MainActivity extends Activity {
                 v.setBackground(has ? glass(24, 0x4DFFFFFF, 0x99FFFFFF) : glass(24, 0x1AFFFFFF, 0));
                 v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).setInterpolator(EASE).start();
             });
-            cell.setOnClickListener(v -> playSurah(n, false));
+            cell.setOnClickListener(v -> { quranQuiet = false; playSurah(n, false); });
             GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
             gp.width = 268; gp.height = 118;
             gp.setMargins(9, 9, 9, 9);
@@ -1317,6 +1321,21 @@ public class MainActivity extends Activity {
     }
 
     /** Plays a surah from a random reciter (never Mishary Alafasy). anotherReciter keeps the surah and changes the voice. */
+    /** While the home screen is in front, a random surah from a random reciter plays softly (parent menu can turn it off). */
+    static final float QUIET_VOLUME = 0.22f;
+    private boolean quranQuiet, quietStopped;
+    private final Runnable startQuiet = this::backgroundQuran;
+
+    private void backgroundQuran() {
+        if (!resumed || quietStopped || !prefs.getBoolean("quiet_quran", true)) return;
+        if (quran != null && quranSurah > 0) {
+            if (quranQuiet && !quran.getPlayWhenReady()) quran.play(); // carry on where it paused
+            return;
+        }
+        quranQuiet = true;
+        playSurah(1 + random.nextInt(114), false);
+    }
+
     private void playSurah(int n, boolean anotherReciter) {
         if (n <= 0) return;
         if (!anotherReciter) quranErrors = 0;
@@ -1340,17 +1359,22 @@ public class MainActivity extends Activity {
             quran.addListener(new Player.Listener() {
                 @Override public void onIsPlayingChanged(boolean playing) { if (playing) quranErrors = 0; drawQuranState(); }
                 @Override public void onPlaybackStateChanged(int state) {
-                    if (state == Player.STATE_ENDED) { quranSurah = 0; drawQuranState(); }
+                    if (state == Player.STATE_ENDED) {
+                        quranSurah = 0;
+                        drawQuranState();
+                        if (quranQuiet) ui.postDelayed(MainActivity.this::backgroundQuran, 2000); // the next one, quietly
+                    }
                 }
                 @Override public void onPlayerError(PlaybackException e) {
-                    if (++quranErrors > 3) { toast("The Quran couldn't load. Check the internet."); stopQuran(); return; }
-                    toast("That recitation didn't load. Trying another reciter…");
+                    if (++quranErrors > 3) { if (!quranQuiet) toast("The Quran couldn't load. Check the internet."); stopQuran(); return; }
+                    if (!quranQuiet) toast("That recitation didn't load. Trying another reciter…");
                     playSurah(quranSurah, true);
                 }
             });
         }
         quranSurah = n;
         quranReciter = r;
+        quran.setVolume(quranQuiet ? QUIET_VOLUME : 1f);
         quran.setMediaItem(MediaItem.fromUri(r.url(n)));
         quran.prepare();
         quran.play();
@@ -1358,6 +1382,8 @@ public class MainActivity extends Activity {
     }
 
     private void stopQuran() {
+        quietStopped = true; // Stop means quiet, until the next return to the home screen
+        quranQuiet = false;
         if (quran != null) quran.stop();
         quranSurah = 0;
         drawQuranState();
@@ -1528,6 +1554,12 @@ public class MainActivity extends Activity {
             prefs.edit().putBoolean("clock24", !h24).apply();
             shownClock = "";
             drawParent(4);
+        });
+        boolean quiet = prefs.getBoolean("quiet_quran", true);
+        parentRow("Soft Quran on the home screen", quiet ? "On" : "Off", () -> {
+            prefs.edit().putBoolean("quiet_quran", !quiet).apply();
+            if (quiet && quranQuiet) stopQuran(); else if (!quiet) { quietStopped = false; backgroundQuran(); }
+            drawParent(5);
         });
         parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
         View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
