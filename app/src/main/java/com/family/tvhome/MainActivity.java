@@ -146,7 +146,7 @@ public class MainActivity extends Activity {
     private String[] ayahToday;
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
     private long lastWeather, lastLineSwitch;
-    private int lineIndex = -1;
+    private int lineIndex = -1, shownAdhkar = -1;
 
     private FrameLayout pinPanel, appsPanel, quranPanel, parentPanel;
     private TextView pinTitle, pinSub;
@@ -419,6 +419,13 @@ public class MainActivity extends Activity {
         leftCard = left;
         View leftFrame = card(left, CARD_W, CARD_H, Gravity.TOP | Gravity.START, 80, 56);
 
+        // A small gold chip under the card on special days: Ramadan, the Eids, Arafah, Ashura, the White Days.
+        eventText = text("", 22, fSemi, 0xFFF1D58A);
+        eventText.setIncludeFontPadding(true);
+        eventText.setPadding(26, 10, 28, 12);
+        eventChip = glassCard(stage, eventText, -1, -1, Gravity.TOP | Gravity.START, 80, 56 + CARD_H + 16, 26, 18, 0x40F1D58A, CARD_TINT, false);
+        eventChip.setVisibility(View.GONE);
+
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(36, 28, 36, 22);
@@ -472,6 +479,15 @@ public class MainActivity extends Activity {
     }
 
     private View[] topParts;
+    private TextView eventText;
+    private View eventChip;
+
+    private void drawEventChip(Calendar now) {
+        String[] b = Events.badge(now);
+        if (b == null) { eventChip.setVisibility(View.GONE); return; }
+        eventText.setText("●  " + b[0] + "  ·  " + b[1]);
+        eventChip.setVisibility(View.VISIBLE);
+    }
     private ThinBar adhanBar, lineBar, nowBar;
     private ValueAnimator lineTimer;
     static final long LINE_SECONDS = 30;
@@ -702,7 +718,13 @@ public class MainActivity extends Activity {
         List<Uri> clips = new ArrayList<>();
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "TVWallpapers");
         File[] files = dir.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".mp4"));
-        if (files != null) for (File f : files) if (f.canRead()) clips.add(Uri.fromFile(f));
+        // In Ramadan only clips with "ramadan" in their name play (when there are any); the rest of the year they rest.
+        boolean ramadan = Events.isRamadan(Calendar.getInstance(KUWAIT)), anyRamadan = false;
+        if (files != null) for (File f : files) if (f.getName().toLowerCase(Locale.ROOT).contains("ramadan")) anyRamadan = true;
+        if (files != null) for (File f : files) {
+            boolean r = f.getName().toLowerCase(Locale.ROOT).contains("ramadan");
+            if (f.canRead() && (ramadan && anyRamadan ? r : !r)) clips.add(Uri.fromFile(f));
+        }
         if (clips.isEmpty()) {
             // no clips yet: the calm gradient below. Just after the box turns on the storage may still be
             // getting ready, so look again every few seconds for the first two minutes.
@@ -738,6 +760,7 @@ public class MainActivity extends Activity {
             tomorrow = PrayerTimes.forDate(tm.get(Calendar.YEAR), tm.get(Calendar.MONTH) + 1, tm.get(Calendar.DAY_OF_MONTH));
             for (int i = 0; i < 5; i++) prayerTexts[i][2].setText(PrayerTimes.clock(today[BAR_PRAYERS[i]]));
             drawDayLine();
+            drawEventChip(now);
             SimpleDateFormat f = new SimpleDateFormat("EEEE d MMMM", Locale.UK);
             f.setTimeZone(KUWAIT);
             dateText.setText(f.format(now.getTime()));
@@ -759,7 +782,15 @@ public class MainActivity extends Activity {
         }
         updatePill();
 
-        if (System.currentTimeMillis() - lastLineSwitch >= LINE_SECONDS * 1000) nextLine(now);
+        int adhkar = Widgets.adhkarMode(now, today);
+        if (adhkar != shownAdhkar) {
+            // Fajr or Maghrib has come in: the adhkar take over the card straight away
+            boolean begins = shownAdhkar != -1 && adhkar != 0;
+            shownAdhkar = adhkar;
+            lineIndex = -1;
+            nextLine(now);
+            if (begins) toast(adhkar == 1 ? "Morning adhkar · أذكار الصباح" : "Evening adhkar · أذكار المساء");
+        } else if (System.currentTimeMillis() - lastLineSwitch >= LINE_SECONDS * 1000) nextLine(now);
         if (nowBar != null && quran != null && quran.getDuration() > 0) nowBar.setProgress(quran.getCurrentPosition() / (float) quran.getDuration());
         if (System.currentTimeMillis() - lastWeather > 30 * 60 * 1000) { lastWeather = System.currentTimeMillis(); fetchWeather(); }
         ui.postDelayed(this::tick, 1000 - (System.currentTimeMillis() % 1000));
@@ -788,8 +819,10 @@ public class MainActivity extends Activity {
         adhanCountdown.setTextColor(left <= 15 * 60 ? 0xFFF1D58A : WHITE); // gold in the last 15 minutes
         if (!ambient && resumed && !anyPanelOpen() && System.currentTimeMillis() - lastInput > AMBIENT_AFTER) enterAmbient();
         if (ambient && !nightDim && System.currentTimeMillis() - lastInput > DIM_AFTER) enterNightDim();
-        adhanName.setText(PrayerTimes.EN[next]);
-        adhanAr.setText(PrayerTimes.AR[next]);
+        boolean ramadan = Events.isRamadan(now);
+        if (ramadan && next == 4) { adhanName.setText("Iftar"); adhanAr.setText("الإفطار · المغرب"); }
+        else if (ramadan && next == 0) { adhanName.setText("Suhoor ends"); adhanAr.setText("الإمساك · الفجر"); }
+        else { adhanName.setText(PrayerTimes.EN[next]); adhanAr.setText(PrayerTimes.AR[next]); }
         if (pillTextOverride != null) {
             pillText.setText(pillTextOverride);
             pillText.animate().alpha(1).setDuration(200).start();
@@ -1447,7 +1480,27 @@ public class MainActivity extends Activity {
             return;
         }
         quranQuiet = true;
+        if (taraweehTime()) {
+            // Ramadan nights: the Quran in order, carrying on each night where it stopped, from the imams of the Haramain when stored
+            int n = prefs.getInt("khatma_next", 1);
+            prefs.edit().putInt("khatma_next", n % 114 + 1).apply();
+            taraweeh = true;
+            playSurah(n, false);
+            return;
+        }
+        taraweeh = false;
         playSurah(1 + random.nextInt(114), false);
+    }
+
+    private boolean taraweeh;
+    static final java.util.regex.Pattern IMAMS = java.util.regex.Pattern.compile("(?i)suda[iy]?s|sudaes|shura[iy]m|maher|qatami|سديس|شريم|المعيقلي|القطامي");
+
+    /** Ramadan, between Isha and Fajr. */
+    private boolean taraweehTime() {
+        Calendar now = Calendar.getInstance(KUWAIT);
+        if (!Events.isRamadan(now) || today == null) return false;
+        int min = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+        return min >= today[5] || min < today[0];
     }
 
     private void playSurah(int n, boolean anotherReciter) {
@@ -1460,6 +1513,11 @@ public class MainActivity extends Activity {
             Quran.cacheDir = getCacheDir();
             List<Quran.Reciter> all = Quran.local(n);
             if (all.isEmpty() || (all.size() == 1 && not != null && all.get(0).server.equals(not.server))) all = Quran.reciters(getCacheDir());
+            if (taraweeh && quranQuiet) {
+                List<Quran.Reciter> imams = new ArrayList<>();
+                for (Quran.Reciter x : all) if (IMAMS.matcher(x.en + " " + x.ar).find() && x.has(n)) imams.add(x);
+                if (!imams.isEmpty() && (not == null || imams.size() > 1)) all = imams;
+            }
             Quran.Reciter r = Quran.pick(all, n, not, random);
             ui.post(() -> startQuran(n, r));
         });
