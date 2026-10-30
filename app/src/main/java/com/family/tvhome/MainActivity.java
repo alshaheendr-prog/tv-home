@@ -226,16 +226,17 @@ public class MainActivity extends Activity {
         player.setRepeatMode(Player.REPEAT_MODE_ONE);
         player.setVolume(0f);
         player.addListener(new Player.Listener() {
-            @Override public void onRenderedFirstFrame() { clipErrors = 0; videoCover.animate().alpha(0).setDuration(700).start(); }
+            @Override public void onRenderedFirstFrame() { clipErrors = 0; videoCover.animate().alpha(0).setDuration(700).start(); splashReady(); }
             @Override public void onPlayerError(androidx.media3.common.PlaybackException e) {
                 // a clip that can't play (an unusual format): keep the calm gradient and try another one
                 videoCover.setAlpha(1);
-                if (++clipErrors < 4) ui.postDelayed(MainActivity.this::playRandomClip, 500);
+                // right after the box turns on the files may not be readable yet, so keep trying for a while
+                if (++clipErrors < 12) ui.postDelayed(MainActivity.this::playRandomClip, clipErrors < 4 ? 500 : 3000);
             }
         });
 
         dockTiles.get(0).requestFocus();
-        introAnimation();
+        if (coldStart) showSplash(); else introAnimation();
         tick();
     }
 
@@ -297,6 +298,7 @@ public class MainActivity extends Activity {
     public boolean dispatchKeyEvent(KeyEvent e) {
         int code = e.getKeyCode();
         lastInput = System.currentTimeMillis();
+        if (splash != null) { if (e.getAction() == KeyEvent.ACTION_UP) hideSplash(); return true; } // a press skips the intro
         if (ambient) { if (e.getAction() == KeyEvent.ACTION_UP) leaveAmbient(); return true; } // the first press only wakes the screen
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) closePanels();
@@ -645,6 +647,71 @@ public class MainActivity extends Activity {
         dockLabel.animate().alpha(1).translationY(y).setDuration(220).setInterpolator(EASE).start();
     }
 
+    private int clipRetries;
+    private final Runnable retryClips = () -> { if (resumed) playRandomClip(); };
+
+    // ================================================================== start-up intro
+
+    /** True only for the first start after the box turns on (or after the app is updated). */
+    private static boolean coldStart = true;
+    private FrameLayout splash;
+    private long splashSince;
+    private ValueAnimator splashFill;
+
+    /** A calm Bismillah over black while the first wallpaper loads; it fades into the home screen once the video shows. */
+    private void showSplash() {
+        coldStart = false;
+        splashSince = System.currentTimeMillis();
+        for (View v : new View[]{topParts[0], topParts[1], centerGroup, lineFrame, bottomGroup}) v.setAlpha(0);
+        splash = new FrameLayout(this);
+        splash.setBackgroundColor(Color.BLACK);
+        splash.setElevation(60);
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        TextView bism = text("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", 84, fQuran, 0xFFF1D58A);
+        bism.setIncludeFontPadding(true);
+        bism.setShadowLayer(48, 0, 0, 0x66F1D58A);
+        TextView welcome = kicker(text("WELCOME HOME  ·  أهلاً بكم", 20, fSemi, DIM));
+        welcome.setPadding(0, 26, 0, 0);
+        ThinBar bar = new ThinBar(this);
+        bar.setColor(0x99F1D58A);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(260, 3);
+        bp.topMargin = 40;
+        col.addView(bism);
+        col.addView(welcome);
+        col.addView(bar, bp);
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER);
+        splash.addView(col, cp);
+        stage.addView(splash, new FrameLayout.LayoutParams(1920, 1080));
+        bism.setAlpha(0); bism.setScaleX(0.94f); bism.setScaleY(0.94f);
+        bism.animate().alpha(1).scaleX(1).scaleY(1).setDuration(1600).setInterpolator(EASE).start();
+        welcome.setAlpha(0);
+        welcome.animate().alpha(1).setStartDelay(700).setDuration(1000).start();
+        splashFill = ValueAnimator.ofFloat(0, 0.9f);
+        splashFill.setDuration(SPLASH_MAX);
+        splashFill.addUpdateListener(v -> bar.setProgress((float) v.getAnimatedValue()));
+        splashFill.start();
+        ui.postDelayed(this::hideSplash, SPLASH_MAX); // never wait longer than this, even without a video
+    }
+
+    static final long SPLASH_MIN = 2800, SPLASH_MAX = 12000;
+
+    private void splashReady() {
+        if (splash == null) return;
+        long wait = SPLASH_MIN - (System.currentTimeMillis() - splashSince);
+        ui.postDelayed(this::hideSplash, Math.max(0, wait));
+    }
+
+    private void hideSplash() {
+        if (splash == null) return;
+        FrameLayout s = splash;
+        splash = null;
+        splashFill.cancel();
+        s.animate().alpha(0).setDuration(900).withEndAction(() -> stage.removeView(s)).start();
+        introAnimation();
+    }
+
     private void introAnimation() {
         View[] parts = {topParts[0], topParts[1], centerGroup, lineFrame, bottomGroup};
         for (int i = 0; i < parts.length; i++) {
@@ -664,7 +731,16 @@ public class MainActivity extends Activity {
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "TVWallpapers");
         File[] files = dir.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".mp4"));
         if (files != null) for (File f : files) if (f.canRead()) clips.add(Uri.fromFile(f));
-        if (clips.isEmpty()) { videoCover.setAlpha(1); player.stop(); return; } // no clips yet: the calm gradient below
+        if (clips.isEmpty()) {
+            // no clips yet: the calm gradient below. Just after the box turns on the storage may still be
+            // getting ready, so look again every few seconds for the first two minutes.
+            videoCover.setAlpha(1);
+            player.stop();
+            ui.removeCallbacks(retryClips);
+            if (resumed && ++clipRetries < 40) ui.postDelayed(retryClips, 3000);
+            return;
+        }
+        clipRetries = 0;
         Uri pick = clips.get(random.nextInt(clips.size()));
         if (clips.size() > 1) while (pick.toString().equals(currentClip)) pick = clips.get(random.nextInt(clips.size()));
         currentClip = pick.toString();
