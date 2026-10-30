@@ -104,7 +104,7 @@ final class Stats {
         return l.subList(0, Math.min(n, l.size()));
     }
 
-    /** Per child over the last seven days: {child, minutes, top app, stars}. Null if Kids Corner can't share it yet. */
+    /** Per row name over the last seven days: {child, minutes, top app, stars spent, stars held now}. Kids Corner puts the shared screen time under "Kids" and each child's stars under their name. Null if Kids Corner can't share it yet. */
     static List<String[]> kidsWeek(Context c) {
         List<String> days = week();
         Map<String, int[]> totals = new LinkedHashMap<>();
@@ -112,13 +112,13 @@ final class Stats {
         try (Cursor cur = c.getContentResolver().query(KIDS_WEEK, null, null, null, null)) {
             if (cur == null) return null;
             int ci = cur.getColumnIndex("child"), di = cur.getColumnIndex("day"), mi = cur.getColumnIndex("minutes"),
-                    ai = cur.getColumnIndex("top_app"), si = cur.getColumnIndex("stars");
+                    ai = cur.getColumnIndex("top_app"), si = cur.getColumnIndex("stars"), li = cur.getColumnIndex("stars_left");
             if (mi < 0) return null;
             while (cur.moveToNext()) {
                 if (di >= 0 && !days.contains(cur.getString(di))) continue;
                 String child = ci >= 0 && cur.getString(ci) != null ? cur.getString(ci) : "Kids";
                 int[] t = totals.get(child);
-                if (t == null) { t = new int[2]; totals.put(child, t); apps.put(child, new LinkedHashMap<>()); }
+                if (t == null) { t = new int[]{0, 0, li >= 0 ? cur.getInt(li) : 0}; totals.put(child, t); apps.put(child, new LinkedHashMap<>()); } // newest row first: stars held now
                 int min = cur.getInt(mi);
                 t[0] += min;
                 if (si >= 0) t[1] += cur.getInt(si);
@@ -131,7 +131,7 @@ final class Stats {
         List<String[]> out = new ArrayList<>();
         for (Map.Entry<String, int[]> e : totals.entrySet()) {
             List<Map.Entry<String, Integer>> a = top(apps.get(e.getKey()), 1);
-            out.add(new String[]{e.getKey(), "" + e.getValue()[0], a.isEmpty() ? "" : a.get(0).getKey(), "" + e.getValue()[1]});
+            out.add(new String[]{e.getKey(), "" + e.getValue()[0], a.isEmpty() ? "" : a.get(0).getKey(), "" + e.getValue()[1], "" + e.getValue()[2]});
         }
         return out;
     }

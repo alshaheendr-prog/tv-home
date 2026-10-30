@@ -1825,8 +1825,11 @@ public class MainActivity extends Activity {
         if (kids == null) statLine("Kids Corner will share its numbers after its next update.", DIM);
         else if (kids.isEmpty()) statLine("No time in Kids Corner this week.", DIM);
         else for (String[] k : kids) {
-            String extra = (k[2].isEmpty() ? "" : "  ·  most: " + k[2]) + ("0".equals(k[3]) ? "" : "  ·  ⭐ " + k[3]);
-            statLine(k[0] + "   " + Stats.hm(Integer.parseInt(k[1])) + extra, WHITE);
+            int min = Integer.parseInt(k[1]);
+            if (min > 0 || "Kids".equals(k[0]))
+                statLine((("Kids".equals(k[0])) ? "Kids Corner" : k[0]) + "   " + Stats.hm(min) + (k[2].isEmpty() ? "" : "  ·  most: " + k[2]), WHITE);
+            else
+                statLine(k[0] + "   ⭐ " + k[3] + " stars used this week  ·  " + k[4] + " saved", SOFT);
         }
         statHeading("QURAN THIS WEEK  ·  القرآن هذا الأسبوع");
         Object[] q = Stats.quranWeek(this);
