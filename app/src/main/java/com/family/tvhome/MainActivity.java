@@ -341,7 +341,7 @@ public class MainActivity extends Activity {
     }
 
     private GlassFrame card(View content, int w, int h, int gravity, int x, int y) {
-        return glassCard(stage, content, w, h, gravity, x, y, 34, CARD_GLOW, 0x33FFFFFF, 0x14000000, false);
+        return glassCard(stage, content, w, h, gravity, x, y, 34, CARD_GLOW, 0x33FFFFFF, CARD_TINT, false);
     }
 
     private static GradientDrawable ring(float radius, int width, int color) {
@@ -373,6 +373,8 @@ public class MainActivity extends Activity {
     private volatile String hiLo = "";
 
     static final int CARD_W = 560, CARD_H = 300;
+    // Light dark wash behind the glass so text stays readable on busy wallpapers
+    static final int CARD_TINT = 0x3A000000;
 
     private static TextView kicker(TextView t) { t.setLetterSpacing(0.16f); return t; }
 
@@ -570,7 +572,7 @@ public class MainActivity extends Activity {
             tileFocus.add(new Drawable[]{new Glass(30, 30, 0xB3FFFFFF, 0), ring(30, 3, 0xE6FFFFFF)});
         }
         bottomGroup = glassCard(stage, dock, -1, DOCK_H, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, DOCK_Y,
-                48, 34, 0x40FFFFFF, 0x14000000, false);
+                48, 34, 0x40FFFFFF, CARD_TINT, false);
 
         dockLabel = text("", 24, fSemi, WHITE);
         dockLabel.setPadding(22, 8, 22, 10);
@@ -1446,7 +1448,7 @@ public class MainActivity extends Activity {
         texts.addView(nowSurah);
         texts.addView(nowReciter);
         row.addView(texts);
-        nowWidget = glassCard(stage, row, -1, -1, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 56, 30, 22, 0x33FFFFFF, 0x14000000, false);
+        nowWidget = glassCard(stage, row, -1, -1, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 56, 30, 22, 0x33FFFFFF, CARD_TINT, false);
         nowWidget.setAlpha(0);
         nowWidget.setVisibility(View.GONE);
     }
