@@ -37,15 +37,16 @@ canvas{position:absolute;inset:0;width:1920px;height:1080px}
 .prow.passed{opacity:.5}
 .prow.next{background:var(--accent);color:var(--ink)}
 .prow.next .ar{color:var(--ink)}
-#hubs{position:absolute;left:72px;right:72px;bottom:124px;display:flex;gap:22px}
-.tile{flex:1;min-width:0;height:200px;border-radius:26px;display:flex;flex-direction:column;justify-content:flex-end;padding:20px 22px;font-size:30px;background-size:cover!important;background-position:center!important;font-weight:800;color:#fff;position:relative;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease;outline:none;border:4px solid transparent}
-.tile svg{position:absolute;top:20px;left:22px;width:62px;height:62px}
-.tile .mark{position:absolute;top:16px;left:22px;font-size:58px;font-weight:800;line-height:1}
+#hubs{position:absolute;left:52px;right:52px;bottom:104px;padding:24px 20px;overflow:hidden}
+#track{display:flex;gap:22px;transition:transform .25s ease}
+.tile{flex:0 0 320px;box-sizing:border-box;height:180px;border-radius:22px;display:flex;flex-direction:column;justify-content:flex-end;padding:16px 20px;font-size:30px;background-size:contain!important;background-repeat:no-repeat!important;background-position:center!important;font-weight:800;color:#fff;position:relative;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease;outline:none;border:4px solid transparent}
+.tile svg{position:absolute;top:16px;left:20px;width:52px;height:52px}
+.tile .mark{position:absolute;top:10px;left:20px;font-size:52px;font-weight:800;line-height:1}
 .tile.banner>:not(.lock){visibility:hidden}
 .tile>div:first-of-type{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .sub{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;opacity:.85}
 .tile .lock{position:absolute;top:16px;right:16px;font-size:20px;background:rgba(0,0,0,.35);padding:4px 14px;border-radius:99px}
-.tile.focus{transform:scale(1.09) translateY(-10px);border-color:#fff;box-shadow:0 0 0 6px var(--accent),0 24px 50px rgba(0,0,0,.55)}
+.tile.focus{transform:scale(1.08);border-color:#fff;box-shadow:0 0 0 6px var(--accent),0 18px 36px rgba(0,0,0,.5)}
 #themes{position:absolute;left:72px;bottom:44px;display:flex;gap:18px;align-items:center}
 #themes .lbl{font-size:24px;color:var(--muted);margin:0 0 0 22px}
 .chip{font-size:25px;font-weight:700;padding:10px 22px;white-space:nowrap;border-radius:99px;cursor:pointer;border:3px solid transparent;background:var(--glass);color:var(--text);transition:transform .15s}
@@ -74,6 +75,9 @@ canvas{position:absolute;inset:0;width:1920px;height:1080px}
 .tv #wrap{max-width:none;height:100%}
 .tv #frame{border-radius:0;box-shadow:none;width:100vw;height:100vh;aspect-ratio:auto}
 .tv .notes{display:none}
+.tv .glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,12,22,.8)}
+.tv .tile.focus{box-shadow:0 0 0 6px var(--accent)}
+.tv canvas{image-rendering:auto}
 #apps{position:absolute;inset:0;background:rgba(5,6,12,.82);padding:70px 90px;box-sizing:border-box}
 #apps h2{margin:0 0 26px;font-size:52px}
 #appgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:22px;max-height:860px;overflow:hidden}
@@ -101,7 +105,7 @@ canvas{position:absolute;inset:0;width:1920px;height:1080px}
         <div class="plist" id="plist"></div>
       </div>
 
-      <div id="hubs"></div>
+      <div id="hubs"><div id="track"></div></div>
       <div id="themes"></div>
 
       <div id="toast" class="glass" hidden></div>
@@ -210,7 +214,7 @@ const THEMES=[
   {id:"dream",name:"Dream Sky",accent:"#ff8fc8"},
   {id:"blocks",name:"Block World",accent:"#7ddc4a"}
 ];
-const hubsEl=document.getElementById("hubs"),themesEl=document.getElementById("themes");
+const hubsEl=document.getElementById("track"),themesEl=document.getElementById("themes");
 HUBS.forEach(h=>{const d=document.createElement("div");d.className="tile";d.style.background=h.bg;d.dataset.hub=h.id;
   d.innerHTML=(h.icon?ICON[h.icon]:`<span class="mark" style="color:${h.markc}">${h.mark}</span>`)+(h.lock?'<span class="lock">🔒 PIN</span>':"")+`<div>${h.name}</div><div class="sub">${h.sub}</div>`;hubsEl.appendChild(d)});
 UTILS.forEach(u=>{const c=document.createElement("div");c.className="chip util";c.dataset.hub=u.id;c.textContent=u.name;themesEl.appendChild(c)});
@@ -218,7 +222,8 @@ themesEl.insertAdjacentHTML("beforeend",'<span class="lbl">World</span>');
 THEMES.forEach(t=>{const c=document.createElement("div");c.className="chip";c.dataset.theme=t.id;c.textContent=t.name;themesEl.appendChild(c)});
 const rows=[[...hubsEl.children],[...themesEl.querySelectorAll(".chip")]];
 let fr=0,fc=0,theme;
-function setFocus(r,c){rows.flat().forEach(e=>e.classList.remove("focus"));fr=r;fc=Math.max(0,Math.min(c,rows[r].length-1));rows[r][fc].classList.add("focus")}
+function setFocus(r,c){rows.flat().forEach(e=>e.classList.remove("focus"));fr=r;fc=Math.max(0,Math.min(c,rows[r].length-1));rows[r][fc].classList.add("focus");
+  if(r===0){const step=342,view=1776,total=rows[0].length*step-22,x=Math.max(0,Math.min(total-view,fc*step-step*1.5));hubsEl.style.transform=`translateX(${-x}px)`;hubsEl.dataset.x=x}}
 function setTheme(id){theme=THEMES.find(t=>t.id===id);document.documentElement.style.setProperty("--accent",theme.accent);
   rows[1].forEach(c=>c.dataset.theme&&c.classList.toggle("on",c.dataset.theme===id));try{localStorage.setItem("tvtheme",id)}catch(e){}}
 let saved="power";try{saved=localStorage.getItem("tvtheme")||"power"}catch(e){}
@@ -231,9 +236,11 @@ const A=window.Android;
 const PKG={yt:BYID.yt.pkgs};
 const PREVIEW={movies:"Opens your movie library in Kodi (or VLC).",shows:"Opens your TV shows in Kodi (or VLC).",browser:"Opens the TV Bro browser, handy for hotel Wi-Fi login pages.",
   kids:"Opens the Kids hub: only the apps you pick for your son.",apps:"Shows every installed app.",settings:"Opens Google TV settings."};
+let appCache=null;
+function getApps(){if(!appCache){try{appCache=JSON.parse(A.listApps())}catch(e){appCache=[]}}return appCache}
 function launchHub(h){
   for(const p of h.pkgs||[])if(A.launch(p))return true;
-  const word=(h.match||h.name).toLowerCase();let list=[];try{list=JSON.parse(A.listApps())}catch(e){}
+  const word=(h.match||h.name).toLowerCase();const list=getApps();
   const hit=list.find(x=>x.label.toLowerCase().includes(word));if(hit&&A.launch(hit.pkg))return true;
   return false;
 }
@@ -247,10 +254,11 @@ function open(id){
   toast(`${name} is not installed yet. Opening the Play Store…`);setTimeout(()=>A.openStore(h.pkgs[0]),1200);
 }
 /* Show each app's own TV banner on its tile once it is installed. */
+const bannerDone={};
 function loadBanners(){if(!A||!A.getBanner)return;
-  rows[0].forEach(el=>{const h=BYID[el.dataset.hub];if(h.noBanner)return;let url="";
+  rows[0].forEach(el=>{const h=BYID[el.dataset.hub];if(h.noBanner||bannerDone[h.id])return;let url="";
     for(const p of h.pkgs){try{url=A.getBanner(p)}catch(e){}if(url)break}
-    if(url){el.style.background=`#000 url("${url}") center/cover no-repeat`;el.classList.add("banner")}})}
+    if(url){bannerDone[h.id]=1;el.style.background=`#000 url("${url}") center/contain no-repeat`;el.classList.add("banner")}})}
 function activate(){const el=rows[fr][fc];
   if(el.dataset.theme)setTheme(el.dataset.theme);
   else if(el.dataset.hub==="yt")openPin();else open(el.dataset.hub)}
@@ -259,7 +267,7 @@ loadBanners();
 /* All apps / Kids picks. Hold OK (long press) on an app in All apps to add or remove it from Kids. */
 const appsEl=document.getElementById("apps"),gridEl=document.getElementById("appgrid");let appList=[],af=0,appMode="apps";
 let kidPicks=[];try{kidPicks=JSON.parse(localStorage.getItem("kidpicks")||"[]")}catch(e){}
-function openApps(mode){appMode=mode;try{appList=JSON.parse(A.listApps())}catch(e){appList=[]}
+function openApps(mode){appMode=mode;appList=getApps().slice();
   appList.sort((x,y)=>x.label.localeCompare(y.label));
   const hidden=["com.google.android.youtube.tv","com.google.android.youtube"]; // YouTube only through the PIN tile
   appList=appList.filter(x=>!hidden.includes(x.pkg));
@@ -274,20 +282,28 @@ function toggleKid(){const p=appList[af]&&appList[af].pkg;if(!p)return;
   kidPicks=kidPicks.includes(p)?kidPicks.filter(x=>x!==p):[...kidPicks,p];try{localStorage.setItem("kidpicks",JSON.stringify(kidPicks))}catch(e){}
   toast(kidPicks.includes(p)?"Added to Kids":"Removed from Kids");openApps(appMode)}
 window.onBack=()=>{if(!pinEl.hidden)pinEl.hidden=true;else if(!appsEl.hidden)appsEl.hidden=true};
-window.onHomeResume=()=>{pinEl.hidden=true;appsEl.hidden=true;loadBanners()};
+window.onHomeResume=()=>{pinEl.hidden=true;appsEl.hidden=true;setTimeout(()=>{appCache=null;loadBanners()},1500)};
 
-/* PIN pad. Default PIN 1234; change it by holding OK on the YouTube tile and entering the old PIN, then the new one. */
-function parentPin(){try{return localStorage.getItem("tvpin")||"1234"}catch(e){return "1234"}}
+/* PIN pad. The parent chooses the PIN the first time YouTube is opened; holding OK on the YouTube tile changes it. */
+function parentPin(){try{return localStorage.getItem("tvpin")||""}catch(e){return ""}}
+const PINTEXT={check:["YouTube is locked","Enter the parent PIN"],old:["Change the PIN","Enter the current PIN first"],
+  set:["Choose a parent PIN","4 digits. You'll need it to open YouTube. Hold OK on the YouTube tile to change it."],confirm:["Choose a parent PIN","Enter the same 4 digits again"]};
+let pinMode="check",newPin="",pinThen=null;
 const pinEl=document.getElementById("pin"),keysEl=document.getElementById("keys");let pin="",kf=0,held=false,armed=false;
-if(!A)document.querySelector("#pin p").textContent="Enter the parent PIN (demo PIN: 1234)";
 const KEYS=["1","2","3","4","5","6","7","8","9","✕","0","⌫"];
 keysEl.innerHTML=KEYS.map(k=>`<div class="key" data-k="${k}">${k}</div>`).join("");
 const keyEls=[...keysEl.children];
 function drawPin(){[...document.getElementById("dots").children].forEach((d,i)=>d.classList.toggle("f",i<pin.length));keyEls.forEach((k,i)=>k.classList.toggle("focus",i===kf))}
-function openPin(){pin="";kf=0;pinEl.hidden=false;drawPin()}
+function setPinMode(m){pinMode=m;pin="";document.querySelector("#pin h2").textContent=PINTEXT[m][0];document.querySelector("#pin p").textContent=PINTEXT[m][1];drawPin()}
+function openPin(change){kf=0;pinThen=change?null:"yt";pinEl.hidden=false;setPinMode(!parentPin()?"set":change?"old":"check")}
+function shakePin(){const b=document.getElementById("pinbox");b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake");pin="";setTimeout(drawPin,200)}
+function pinDone(){pinEl.hidden=true;if(pinThen!=="yt")return;if(!A)return toast("PIN accepted: YouTube would open now.");if(!launchHub(BYID.yt))toast("YouTube is not installed.")}
 function pressKey(k){if(k==="✕"){pinEl.hidden=true;return}if(k==="⌫"){pin=pin.slice(0,-1)}else if(pin.length<4)pin+=k;drawPin();
-  if(pin.length===4){if(pin===parentPin()){pinEl.hidden=true;if(!A)return toast("PIN accepted: YouTube would open now.");if(!launchHub(BYID.yt))toast("YouTube is not installed.")}
-    else{const b=document.getElementById("pinbox");b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake");pin="";setTimeout(drawPin,200)}}}
+  if(pin.length<4)return;
+  if(pinMode==="check"){pin===parentPin()?pinDone():shakePin()}
+  else if(pinMode==="old"){pin===parentPin()?setPinMode("set"):shakePin()}
+  else if(pinMode==="set"){newPin=pin;setTimeout(()=>setPinMode("confirm"),150)}
+  else if(pinMode==="confirm"){if(pin===newPin){try{localStorage.setItem("tvpin",newPin)}catch(e){}toast("PIN saved");pinDone()}else{shakePin();setTimeout(()=>setPinMode("set"),400)}}}
 keyEls.forEach((k,i)=>k.addEventListener("click",e=>{e.stopPropagation();kf=i;pressKey(k.dataset.k)}));
 
 document.addEventListener("keydown",e=>{
@@ -309,9 +325,13 @@ document.addEventListener("keydown",e=>{
   }
   if(k==="ArrowLeft")setFocus(fr,fc-1);if(k==="ArrowRight")setFocus(fr,fc+1);
   if(k==="ArrowUp"&&fr===1)setFocus(0,Math.min(7,Math.round(fc*.8)));if(k==="ArrowDown"&&fr===0)setFocus(1,Math.round(fc*1.15));
-  if(k==="Enter"||k===" ")activate();
+  if(k==="Enter"||k===" "){
+    if(!e.repeat){mainArmed=true;mainHeld=false;return}
+    if(mainArmed&&!mainHeld&&rows[fr][fc].dataset.hub==="yt"){mainHeld=true;openPin(true)}
+  }
 });
-document.addEventListener("keyup",e=>{if(!appsEl.hidden&&(e.key==="Enter"||e.key===" ")){if(armed&&!held&&appList[af])A.launch(appList[af].pkg);held=false;armed=false}});
+let mainArmed=false,mainHeld=false;
+document.addEventListener("keyup",e=>{if((e.key==="Enter"||e.key===" ")&&mainArmed){const go=!mainHeld;mainArmed=mainHeld=false;if(go)activate();return}if(!appsEl.hidden&&(e.key==="Enter"||e.key===" ")){if(armed&&!held&&appList[af])A.launch(appList[af].pkg);held=false;armed=false}});
 rows.forEach((row,r)=>row.forEach((el,c)=>{el.addEventListener("mouseenter",()=>setFocus(r,c));el.addEventListener("click",()=>{setFocus(r,c);activate()})}));
 
 /* Scale stage to frame */
@@ -321,6 +341,7 @@ new ResizeObserver(fit).observe(frame);fit();
 
 /* ---------- Animated worlds ---------- */
 const cv=document.getElementById("bg"),ctx=cv.getContext("2d"),W=1920,H=1080;
+const TV=!!window.Android,RES=TV?.5:1,FPS=TV?30:60;cv.width=W*RES;cv.height=H*RES;
 const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
 let look={x:960,y:800},lookS={x:960,y:800},par=0;
 function focusPoint(){const el=rows[fr][fc];if(!pinEl.hidden)return{x:960,y:540};
@@ -453,9 +474,11 @@ const SCENES={
   }
 };
 let last=performance.now(),T=0;
-function frameLoop(now){const dt=Math.min(.05,(now-last)/1000);last=now;T+=reduced?0:dt;
+function frameLoop(now){requestAnimationFrame(frameLoop);
+  if(now-last<1000/FPS-2||document.hidden||!appsEl.hidden)return;
+  const dt=Math.min(.1,(now-last)/1000);last=now;T+=reduced?0:dt;ctx.setTransform(RES,0,0,RES,0,0);
   look=focusPoint();lookS.x+=(look.x-lookS.x)*.12;lookS.y+=(look.y-lookS.y)*.12;par+=(((look.x-960)/960)-par)*.06;
-  SCENES[theme.id](T);requestAnimationFrame(frameLoop)}
+  SCENES[theme.id](T)}
 requestAnimationFrame(frameLoop);
 frame.addEventListener("click",()=>frame.focus&&frame.focus());
 </script>

@@ -23,7 +23,7 @@ adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
 
 ## Using it
 - Arrows move, OK opens, Back closes a panel.
-- YouTube asks for the parent PIN (1234 to start).
+- YouTube asks for the parent PIN. The first time, you choose it. Hold OK on the YouTube tile to change it.
 - **All apps**: hold OK on an app to add it to (or remove it from) the **Kids** tile.
 - Movies and TV Shows open Kodi (or VLC if Kodi isn't installed).
 - A tile for an app that isn't installed opens its Play Store page. Once installed, the tile shows the app's own artwork.
