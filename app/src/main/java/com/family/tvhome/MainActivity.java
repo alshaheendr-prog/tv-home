@@ -74,6 +74,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -146,7 +147,7 @@ public class MainActivity extends Activity {
     private String[] ayahToday;
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
     private long lastWeather, lastLineSwitch;
-    private int lineIndex = -1, shownAdhkar = -1;
+    private int lineIndex = -1, shownAdhkar = -1, listenSec, remindedFor = -1;
 
     private FrameLayout pinPanel, appsPanel, quranPanel, parentPanel;
     private TextView pinTitle, pinSub;
@@ -791,6 +792,7 @@ public class MainActivity extends Activity {
             nextLine(now);
             if (begins) toast(adhkar == 1 ? "Morning adhkar · أذكار الصباح" : "Evening adhkar · أذكار المساء");
         } else if (System.currentTimeMillis() - lastLineSwitch >= LINE_SECONDS * 1000) nextLine(now);
+        if (quran != null && quran.isPlaying() && ++listenSec >= 60) { Stats.listened(this, listenSec); listenSec = 0; }
         if (nowBar != null && quran != null && quran.getDuration() > 0) nowBar.setProgress(quran.getCurrentPosition() / (float) quran.getDuration());
         if (System.currentTimeMillis() - lastWeather > 30 * 60 * 1000) { lastWeather = System.currentTimeMillis(); fetchWeather(); }
         ui.postDelayed(this::tick, 1000 - (System.currentTimeMillis() % 1000));
@@ -809,6 +811,12 @@ public class MainActivity extends Activity {
         int target = next >= 0 ? today[next] * 60 : tomorrow[0] * 60 + 86400;
         if (next < 0) next = 0;
         int left = target - nowSec;
+        if (left <= 600 && left > 590 && remindedFor != target) {
+            // ten minutes to go (inside other apps the adhan app shows the same reminder)
+            remindedFor = target;
+            int n = next >= 0 ? next : 0;
+            toast(PrayerTimes.EN[n] + " in 10 minutes · " + PrayerTimes.AR[n] + " بعد ١٠ دقائق");
+        }
         int prev = -1;
         for (int i = 0; i < 6; i++) if (i != 1 && today[i] * 60 <= nowSec) prev = today[i] * 60;
         if (prev < 0) prev = today[5] * 60 - 86400; // after midnight: counting from last night's Isha
@@ -1546,6 +1554,7 @@ public class MainActivity extends Activity {
         }
         quranSurah = n;
         quranReciter = r;
+        Stats.surahPlayed(this, n, r.en.isEmpty() ? r.ar : r.en);
         quran.setVolume(quranQuiet ? QUIET_VOLUME : 1f);
         quran.setMediaItem(MediaItem.fromUri(r.url(n)));
         quran.prepare();
@@ -1776,35 +1785,85 @@ public class MainActivity extends Activity {
     private void drawParent(int focus) {
         parentList.removeAllViews();
         int bright = prefs.getInt("brightness", 100);
+        parentRow("This week's family stats", "›", this::drawStats);
         parentRow("Change the YouTube PIN", "›", () -> openPin(true));
         parentRow("Play a different wallpaper", "›", () -> { closePanels(); playRandomClip(); });
         parentRow("Wallpaper brightness", bright + "%", () -> {
             int next = bright == 100 ? 85 : bright == 85 ? 70 : 100;
             prefs.edit().putInt("brightness", next).apply();
             dimView.animate().alpha(1 - next / 100f).setDuration(300).start();
-            drawParent(2);
+            drawParent(3);
         });
         boolean verse = prefs.getBoolean("verse", true);
         parentRow("Verse and hadith card", verse ? "Shown" : "Hidden", () -> {
             prefs.edit().putBoolean("verse", !verse).apply();
             lineFrame.setVisibility(!verse ? View.VISIBLE : View.GONE);
-            drawParent(3);
+            drawParent(4);
         });
         boolean h24 = prefs.getBoolean("clock24", false);
         parentRow("Clock", h24 ? "24-hour" : "12-hour", () -> {
             prefs.edit().putBoolean("clock24", !h24).apply();
             shownClock = "";
-            drawParent(4);
+            drawParent(5);
         });
         boolean quiet = prefs.getBoolean("quiet_quran", true);
         parentRow("Soft Quran on the home screen", quiet ? "On" : "Off", () -> {
             prefs.edit().putBoolean("quiet_quran", !quiet).apply();
             if (quiet && quranQuiet) stopQuran(); else if (!quiet) { quietStopped = false; backgroundQuran(); }
-            drawParent(5);
+            drawParent(6);
         });
         parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
         View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
         f.post(f::requestFocus);
+    }
+
+    /** The weekly family stats page, inside the parent menu: screen time from Kids Corner and the Quran heard this week. */
+    private void drawStats() {
+        parentList.removeAllViews();
+        statHeading("SCREEN TIME · LAST 7 DAYS  ·  وقت الشاشة");
+        List<String[]> kids = Stats.kidsWeek(this);
+        if (kids == null) statLine("Kids Corner will share its numbers after its next update.", DIM);
+        else if (kids.isEmpty()) statLine("No time in Kids Corner this week.", DIM);
+        else for (String[] k : kids) {
+            String extra = (k[2].isEmpty() ? "" : "  ·  most: " + k[2]) + ("0".equals(k[3]) ? "" : "  ·  ⭐ " + k[3]);
+            statLine(k[0] + "   " + Stats.hm(Integer.parseInt(k[1])) + extra, WHITE);
+        }
+        statHeading("QURAN THIS WEEK  ·  القرآن هذا الأسبوع");
+        Object[] q = Stats.quranWeek(this);
+        statLine(Stats.hm((int) q[0]) + " of listening  ·  " + q[1] + " surahs played", WHITE);
+        @SuppressWarnings("unchecked") List<Map.Entry<String, Integer>> top = (List<Map.Entry<String, Integer>>) q[2];
+        if (!top.isEmpty()) {
+            StringBuilder sb = new StringBuilder("Most played: ");
+            for (int i = 0; i < top.size(); i++) {
+                int n = Integer.parseInt(top.get(i).getKey());
+                sb.append(i == 0 ? "" : ",  ").append(Quran.EN[n - 1]).append(" (").append(top.get(i).getValue()).append(")");
+            }
+            statLine(sb.toString(), SOFT);
+        }
+        @SuppressWarnings("unchecked") List<Map.Entry<String, Integer>> rec = (List<Map.Entry<String, Integer>>) q[3];
+        if (!rec.isEmpty()) {
+            StringBuilder sb = new StringBuilder("Reciters: ");
+            for (int i = 0; i < rec.size(); i++) sb.append(i == 0 ? "" : ",  ").append(rec.get(i).getKey());
+            statLine(sb.toString(), SOFT);
+        }
+        View back = new View(this);
+        parentList.addView(back, new LinearLayout.LayoutParams(-1, 18));
+        parentRow("Back", "‹", () -> drawParent(0));
+        View b = parentList.getChildAt(parentList.getChildCount() - 1);
+        b.post(b::requestFocus);
+    }
+
+    private void statHeading(String s) {
+        TextView t = kicker(text(s, 20, fSemi, DIM));
+        t.setPadding(30, 22, 30, 8);
+        parentList.addView(t);
+    }
+
+    private void statLine(String s, int color) {
+        TextView t = text(s, 26, fMed, color);
+        t.setPadding(30, 6, 30, 6);
+        t.setLineSpacing(0, 1.1f);
+        parentList.addView(t, new LinearLayout.LayoutParams(-1, -2));
     }
 
     private void parentRow(String label, String value, Runnable onClick) {

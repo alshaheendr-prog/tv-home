@@ -296,6 +296,7 @@ public class AdhanService extends Service {
 
     private void showAlert(int i) {
         if (!canOverlay(this)) return;
+        hideReminder.run();
         alertTitle.setText("حان الآن موعد أذان " + PrayerTimes.AR[i]);
         alertSub.setText("It's time for " + PrayerTimes.EN[i] + " · " + PrayerTimes.clock(today[i]));
         if (!alertShown) {
@@ -304,6 +305,54 @@ public class AdhanService extends Service {
         alert.setAlpha(0);
         alert.animate().alpha(1).setDuration(300).start();
     }
+
+    // ------------------------------------------------------------------ the 10-minute reminder
+
+    static final int REMIND_MIN = 10;
+    private FrameLayout reminder;
+    private TextView reminderTitle, reminderSub;
+    private boolean reminderShown;
+
+    private void buildReminder() {
+        reminder = new FrameLayout(this);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding((int) px(40), (int) px(24), (int) px(44), (int) px(26));
+        GradientDrawable bg = rounded(0xD90A0C16, px(30));
+        bg.setStroke((int) Math.max(1, px(2)), 0x99FFC24A);
+        box.setBackground(bg);
+        reminderTitle = text("", 36, fBold, GOLD);
+        reminderSub = text("", 28, fMedium, TEXT);
+        reminderSub.setPadding(0, (int) px(6), 0, 0);
+        box.addView(reminderTitle);
+        box.addView(reminderSub);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2);
+        lp.setMargins((int) px(60), (int) px(50), (int) px(60), (int) px(50));
+        reminder.addView(box, lp);
+    }
+
+    private void showReminder(int i) {
+        if (!canOverlay(this) || alertShown) return;
+        if (reminder == null) buildReminder();
+        reminderTitle.setText(PrayerTimes.EN[i] + " in " + REMIND_MIN + " minutes");
+        reminderSub.setText(PrayerTimes.AR[i] + " بعد " + REMIND_MIN + " دقائق  ·  " + PrayerTimes.clock(today[i]));
+        if (!reminderShown) {
+            try { wm.addView(reminder, overlayParams(Gravity.TOP | Gravity.END)); reminderShown = true; } catch (Exception ignored) { return; }
+        }
+        reminder.setAlpha(0);
+        reminder.setTranslationY(-px(20));
+        reminder.animate().alpha(1).translationY(0).setDuration(500).start();
+        ui.removeCallbacks(hideReminder);
+        ui.postDelayed(hideReminder, 15_000);
+    }
+
+    private final Runnable hideReminder = () -> {
+        if (!reminderShown) return;
+        reminderShown = false;
+        reminder.animate().alpha(0).setDuration(500).withEndAction(() -> {
+            try { wm.removeView(reminder); } catch (Exception ignored) { }
+        }).start();
+    };
 
     private void hideAlert() {
         if (!alertShown) return;
@@ -337,6 +386,17 @@ public class AdhanService extends Service {
         }
         int h = now.get(Calendar.HOUR_OF_DAY), mi = now.get(Calendar.MINUTE), s = now.get(Calendar.SECOND);
         int nowSec = h * 3600 + mi * 60 + s;
+
+        // Ten minutes before each adhan, a gentle reminder in the corner, over any app (the home screen shows its own).
+        for (int i = 0; i < 6; i++) {
+            if (i == 1) continue;
+            String id = "pre_" + PrayerTimes.KEYS[i];
+            if (today[i] - REMIND_MIN == h * 60 + mi && !fired.contains(id)) {
+                fired.add(id);
+                updateForeground();
+                if (!"com.family.tvhome".equals(foreground) && prefs.getBoolean("remind", true)) showReminder(i);
+            }
+        }
 
         // Adhan time?
         for (int i = 0; i < 6; i++) {
