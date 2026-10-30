@@ -1121,7 +1121,8 @@ public class MainActivity extends Activity {
 
     private FrameLayout overlay() {
         FrameLayout o = new FrameLayout(this);
-        o.setBackgroundColor(0x99000000);
+        // a soft scrim: darker at the top and bottom where the headers and last rows sit, lighter in the middle
+        o.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xD9060912, 0xA6060912, 0xD9060912}));
         o.setVisibility(View.GONE);
         o.setElevation(30);
         stage.addView(o, new FrameLayout.LayoutParams(1920, 1080));
@@ -1131,8 +1132,41 @@ public class MainActivity extends Activity {
     private void show(View v) {
         v.setAlpha(0);
         v.setVisibility(View.VISIBLE);
-        v.animate().alpha(1).setDuration(220).start();
-        for (View p : new View[]{centerGroup, bottomGroup, lineFrame, topParts[0], topParts[1]}) p.animate().alpha(0.12f).setDuration(220).start();
+        v.animate().alpha(1).setDuration(260).setInterpolator(EASE).start();
+        // every panel rises a little into place
+        ViewGroup g = (ViewGroup) v;
+        for (int i = 0; i < g.getChildCount(); i++) {
+            View c = g.getChildAt(i);
+            c.setTranslationY(28);
+            c.animate().translationY(0).setStartDelay(i * 40L).setDuration(420).setInterpolator(new DecelerateInterpolator(2.2f)).start();
+        }
+        for (View p : homeParts()) if (p != null) p.animate().alpha(0).setDuration(220).start();
+    }
+
+    /** Everything on the home screen that steps back while a panel is open. */
+    private View[] homeParts() {
+        return new View[]{centerGroup, bottomGroup, lineFrame, topParts[0], topParts[1], eventChip, sunCard, nowWidget};
+    }
+
+    /** The shared panel header: a small spaced kicker over a large title, top left. Returns the title. */
+    private TextView panelHeader(FrameLayout panel, String kickerText, String titleText) {
+        LinearLayout h = new LinearLayout(this);
+        h.setOrientation(LinearLayout.VERTICAL);
+        h.addView(kicker(text(kickerText, 20, fSemi, 0xCCF1D58A)));
+        TextView t = text(titleText, 52, fSemi, WHITE);
+        t.setPadding(0, 8, 0, 0);
+        h.addView(t);
+        panel.addView(h, at(-2, -2, Gravity.TOP | Gravity.START, 110, 56));
+        return t;
+    }
+
+    /** A hint pill at the top right of a panel, e.g. which button does what. */
+    private TextView panelHint(FrameLayout panel, String hint) {
+        TextView t = text(hint, 22, fMed, SOFT);
+        t.setPadding(26, 12, 28, 14);
+        t.setBackground(glass(99, 0x14FFFFFF, GLASS_EDGE));
+        panel.addView(t, at(-2, -2, Gravity.TOP | Gravity.END, 110, 74));
+        return t;
     }
 
     private void closePanels() {
@@ -1145,7 +1179,7 @@ public class MainActivity extends Activity {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
-        for (View p : new View[]{centerGroup, bottomGroup, lineFrame, topParts[0], topParts[1]}) p.animate().alpha(1).setDuration(250).start();
+        for (View p : homeParts()) if (p != null && !(p == nowWidget && p.getVisibility() != View.VISIBLE)) p.animate().alpha(1).setDuration(250).start();
         if (wasOpen) ui.postDelayed(back::requestFocus, 200);
     }
 
@@ -1186,12 +1220,12 @@ public class MainActivity extends Activity {
         dots.setGravity(Gravity.CENTER);
         for (int i = 0; i < 4; i++) {
             View dot = new View(this);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(22, 22);
-            p.leftMargin = 16; p.rightMargin = 16;
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(26, 26);
+            p.leftMargin = 18; p.rightMargin = 18;
             dots.addView(dot, p);
             pinDots[i] = dot;
         }
-        box.addView(dots, new LinearLayout.LayoutParams(-1, 30));
+        box.addView(dots, new LinearLayout.LayoutParams(-1, 40));
 
         GridLayout keys = new GridLayout(this);
         keys.setColumnCount(3);
@@ -1234,6 +1268,28 @@ public class MainActivity extends Activity {
 
     private String savedPin() { return prefs.getString("pin", ""); }
 
+    /** The parent lock face: a gold padlock on deep night blue, for the parent settings code. */
+    private Drawable lockFace() {
+        Bitmap b = Bitmap.createBitmap(168, 168, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(b);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setShader(new android.graphics.LinearGradient(0, 0, 0, 168, 0xFF1E2A50, 0xFF0B1022, android.graphics.Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, 168, 168, p);
+        p.setShader(null);
+        p.setColor(0xFFF1D58A);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(12);
+        c.drawArc(new android.graphics.RectF(56, 34, 112, 100), 180, 180, false, p);
+        c.drawLine(56, 68, 56, 82, p);
+        c.drawLine(112, 68, 112, 82, p);
+        p.setStyle(Paint.Style.FILL);
+        c.drawRoundRect(new android.graphics.RectF(42, 78, 126, 140), 16, 16, p);
+        p.setColor(0xFF0B1022);
+        c.drawCircle(84, 104, 9, p);
+        c.drawRect(80, 106, 88, 124, p);
+        return new BitmapDrawable(getResources(), b);
+    }
+
     private void openPin(boolean change) {
         pinLaunchAfter = !change;
         pinThen = null;
@@ -1267,6 +1323,9 @@ public class MainActivity extends Activity {
             boolean f = i < pinEntry.length();
             d.setColor(f ? dotColor : 0x14FFFFFF);
             d.setStroke(2, f ? dotColor : 0x80FFFFFF);
+            pinDots[i].setElevation(f ? 10 : 0);
+            pinDots[i].setOutlineAmbientShadowColor(dotColor);
+            pinDots[i].setOutlineSpotShadowColor(dotColor);
             boolean justFilled = f && i == pinEntry.length() - 1 && pinDots[i].getTag() == null;
             pinDots[i].setBackground(d);
             pinDots[i].setTag(f ? Boolean.TRUE : null);
@@ -1324,17 +1383,17 @@ public class MainActivity extends Activity {
     private void buildApps() {
         appsPanel = overlay();
         calendarPanel = overlay();
-        appsTitle = text("All apps", 48, fSemi, WHITE);
-        appsPanel.addView(appsTitle, at(-2, -2, Gravity.TOP | Gravity.START, 110, 70));
+        panelHeader(appsPanel, "ALL APPS  ·  كل التطبيقات", "Apps");
+        appsTitle = panelHint(appsPanel, "Hold OK to add an app to Kids ⭐");
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
         sv.setClipToPadding(false);
         sv.setPadding(0, 20, 0, 60);
         appGrid = new GridLayout(this);
-        appGrid.setColumnCount(8);
+        appGrid.setColumnCount(7);
         appGrid.setClipChildren(false);
         sv.addView(appGrid);
-        appsPanel.addView(sv, at(1920 - 200, 1080 - 160, Gravity.TOP | Gravity.START, 100, 150));
+        appsPanel.addView(sv, at(1920 - 200, 1080 - 190, Gravity.TOP | Gravity.START, 100, 190));
     }
 
     private void refreshApps() {
@@ -1350,7 +1409,7 @@ public class MainActivity extends Activity {
                     AppEntry a = new AppEntry();
                     a.pkg = pkg;
                     a.label = r.loadLabel(pm).toString();
-                    a.icon = r.loadIcon(pm);
+                    a.icon = fullBleed(r.loadIcon(pm)); // square, edge to edge, ready for the rounded tile
                     out.add(a);
                 }
             }
@@ -1358,7 +1417,7 @@ public class MainActivity extends Activity {
             AppEntry settings = new AppEntry();
             settings.pkg = SETTINGS;
             settings.label = "Settings";
-            try { settings.icon = pm.getApplicationIcon("com.android.tv.settings"); } catch (Exception e) { settings.icon = null; }
+            try { settings.icon = fullBleed(pm.getApplicationIcon("com.android.tv.settings")); } catch (Exception e) { settings.icon = null; }
             out.add(0, settings);
             AppEntry cal = new AppEntry();
             cal.pkg = CALENDAR;
@@ -1376,32 +1435,47 @@ public class MainActivity extends Activity {
         List<AppEntry> all = appCache;
         if (all == null) { refreshApps(); ui.postDelayed(() -> openApps(mode), 600); return; }
         Set<String> kids = kidPicks();
-        appsTitle.setText("All apps   ·   hold OK to add an app to Kids ⭐");
+        appsTitle.setText("Hold OK to add an app to Kids ⭐");
         appGrid.removeAllViews();
         View first = null;
         // Kids picks first, marked with a star.
         List<AppEntry> shown = new ArrayList<>();
         for (AppEntry a : all) if (!HIDDEN_FROM_LIST.contains(a.pkg) && kids.contains(a.pkg)) shown.add(a);
         for (AppEntry a : all) if (!HIDDEN_FROM_LIST.contains(a.pkg) && !kids.contains(a.pkg)) shown.add(a);
+        int index = 0;
         for (AppEntry a : shown) {
             LinearLayout item = new LinearLayout(this);
             item.setOrientation(LinearLayout.VERTICAL);
             item.setGravity(Gravity.CENTER_HORIZONTAL);
-            item.setPadding(10, 20, 10, 14);
+            item.setPadding(12, 18, 12, 12);
             item.setFocusable(true);
             item.setClickable(true);
+            item.setClipChildren(false);
             ImageView icon = new ImageView(this);
             icon.setImageDrawable(a.icon);
-            item.addView(icon, new LinearLayout.LayoutParams(96, 96));
-            TextView label = text((kids.contains(a.pkg) ? "⭐ " : "") + a.label, 22, fMed, WHITE);
+            icon.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            icon.setOutlineProvider(new ViewOutlineProvider() {
+                @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 30); }
+            });
+            icon.setClipToOutline(true);
+            icon.setElevation(6);
+            item.addView(icon, new LinearLayout.LayoutParams(124, 124));
+            TextView label = text((kids.contains(a.pkg) ? "⭐ " : "") + a.label, 24, fMed, SOFT);
             label.setGravity(Gravity.CENTER);
-            label.setPadding(0, 12, 0, 0);
+            label.setLineSpacing(0, 1.05f);
+            label.setPadding(0, 14, 0, 0);
             item.addView(label, new LinearLayout.LayoutParams(-1, -2));
             item.setOnFocusChangeListener((v, has) -> {
-                v.setBackground(has ? glass(28, 0x40FFFFFF, 0x99FFFFFF) : null);
-                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(180)
-                        .setInterpolator(new DecelerateInterpolator()).start();
+                v.setBackground(has ? glass(30, 0x33FFFFFF, 0xB3FFFFFF) : null);
+                label.setTextColor(has ? WHITE : SOFT);
+                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).translationZ(has ? 12 : 0).setDuration(200)
+                        .setInterpolator(EASE).start();
             });
+            // the grid fades in row by row
+            item.setAlpha(0);
+            item.setTranslationY(18);
+            item.animate().alpha(1).translationY(0).setStartDelay(Math.min(index, 28) / 7 * 60L + 80).setDuration(360).setInterpolator(EASE).start();
+            index++;
             item.setOnClickListener(v -> {
                 if (a.pkg.equals(SETTINGS)) openSettings();
                 else if (a.pkg.equals(CALENDAR)) openCalendar();
@@ -1409,8 +1483,8 @@ public class MainActivity extends Activity {
             });
             if (!a.pkg.equals(SETTINGS) && !a.pkg.equals(CALENDAR)) item.setOnLongClickListener(v -> { toggleKid(a.pkg); return true; });
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
-            p.width = 196; p.height = 196;
-            p.setMargins(8, 8, 8, 8);
+            p.width = 220; p.height = 236;
+            p.setMargins(10, 10, 10, 10);
             appGrid.addView(item, p);
             if (first == null) first = item;
         }
@@ -1449,10 +1523,9 @@ public class MainActivity extends Activity {
 
     private void buildQuran() {
         quranPanel = overlay();
-        TextView title = text("القرآن الكريم   ·   The Holy Quran", 46, fArSemi, WHITE);
-        quranPanel.addView(title, at(-2, -2, Gravity.TOP | Gravity.START, 110, 62));
-        TextView sub = text("Pick a surah · a different reciter every time", 22, fAr, DIM);
-        quranPanel.addView(sub, at(-2, -2, Gravity.TOP | Gravity.START, 112, 126));
+        TextView title = panelHeader(quranPanel, "THE HOLY QURAN  ·  pick a surah, a different reciter every time", "القرآن الكريم");
+        title.setTypeface(fQuran);
+        title.setIncludeFontPadding(true);
 
         quranControls = new LinearLayout(this);
         quranControls.setGravity(Gravity.CENTER_VERTICAL);
@@ -1466,7 +1539,7 @@ public class MainActivity extends Activity {
         });
         quranButton("Another reciter", () -> playSurah(quranSurah, true));
         quranButton("Stop", this::stopQuran);
-        quranPanel.addView(quranControls, at(-2, -2, Gravity.TOP | Gravity.END, 110, 58));
+        quranPanel.addView(quranControls, at(-2, -2, Gravity.TOP | Gravity.END, 110, 80));
 
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
@@ -1482,25 +1555,39 @@ public class MainActivity extends Activity {
             cell.setGravity(Gravity.CENTER);
             cell.setFocusable(true);
             cell.setClickable(true);
-            cell.setBackground(glass(24, 0x1AFFFFFF, 0));
-            TextView ar = text(Quran.AR[i], 34, fArSemi, WHITE);
-            ar.setGravity(Gravity.CENTER);
-            TextView en = text(n + "  ·  " + Quran.EN[i], 22, fMed, DIM);
-            en.setPadding(0, 8, 0, 0);
-            cell.addView(ar);
+            cell.setBackground(glass(24, 0x14FFFFFF, 0x1FFFFFFF));
+            // a small gold medallion with the surah number, the name in Amiri, then the English name
+            LinearLayout top = new LinearLayout(this);
+            top.setGravity(Gravity.CENTER_VERTICAL);
+            TextView num = text(String.valueOf(n), 18, fSemi, 0xFFF1D58A);
+            num.setGravity(Gravity.CENTER);
+            GradientDrawable medal = new GradientDrawable();
+            medal.setShape(GradientDrawable.OVAL);
+            medal.setColor(0x1AF1D58A);
+            medal.setStroke(2, 0x99F1D58A);
+            num.setBackground(medal);
+            top.addView(num, new LinearLayout.LayoutParams(40, 40));
+            TextView ar = text(Quran.AR[i], 36, fQuran, WHITE);
+            ar.setIncludeFontPadding(true);
+            ar.setPadding(14, 0, 0, 0);
+            top.addView(ar);
+            TextView en = text(Quran.EN[i], 22, fMed, DIM);
+            en.setPadding(0, 2, 0, 0);
+            cell.addView(top);
             cell.addView(en);
             cell.setOnFocusChangeListener((v, has) -> {
-                v.setBackground(has ? glass(24, 0x4DFFFFFF, 0x99FFFFFF) : glass(24, 0x1AFFFFFF, 0));
-                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).setInterpolator(EASE).start();
+                v.setBackground(has ? glass(24, 0x40FFFFFF, 0xB3FFFFFF) : glass(24, 0x14FFFFFF, 0x1FFFFFFF));
+                en.setTextColor(has ? SOFT : DIM);
+                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).translationZ(has ? 10 : 0).setDuration(180).setInterpolator(EASE).start();
             });
             cell.setOnClickListener(v -> { quranQuiet = false; playSurah(n, false); });
             GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
-            gp.width = 268; gp.height = 118;
+            gp.width = 268; gp.height = 128;
             gp.setMargins(9, 9, 9, 9);
             surahGrid.addView(cell, gp);
         }
         sv.addView(surahGrid);
-        quranPanel.addView(sv, at(1920 - 200, 1080 - 190, Gravity.TOP | Gravity.START, 100, 180));
+        quranPanel.addView(sv, at(1920 - 200, 1080 - 200, Gravity.TOP | Gravity.START, 100, 200));
 
         // On the home screen: what is playing, at the bottom of the weather card.
         buildNowReciting();
@@ -1830,6 +1917,7 @@ public class MainActivity extends Activity {
             pinLaunchAfter = false;
             pinThen = this::openParent;
             pinTitle.setText("Parent settings");
+            pinIcon.setImageDrawable(lockFace());
         });
     }
 
