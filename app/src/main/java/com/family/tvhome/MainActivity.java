@@ -656,9 +656,8 @@ public class MainActivity extends Activity {
     private static boolean coldStart = true;
     private FrameLayout splash;
     private long splashSince;
-    private ValueAnimator splashFill;
 
-    /** A calm Bismillah over black while the first wallpaper loads; it fades into the home screen once the video shows. */
+    /** An animated intro while the first wallpaper loads; it fades into the home screen once both are done. */
     private void showSplash() {
         coldStart = false;
         splashSince = System.currentTimeMillis();
@@ -666,36 +665,16 @@ public class MainActivity extends Activity {
         splash = new FrameLayout(this);
         splash.setBackgroundColor(Color.BLACK);
         splash.setElevation(60);
-        LinearLayout col = new LinearLayout(this);
-        col.setOrientation(LinearLayout.VERTICAL);
-        col.setGravity(Gravity.CENTER_HORIZONTAL);
-        TextView bism = text("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", 84, fQuran, 0xFFF1D58A);
-        bism.setIncludeFontPadding(true);
-        bism.setShadowLayer(48, 0, 0, 0x66F1D58A);
-        TextView welcome = kicker(text("WELCOME HOME  ·  أهلاً بكم", 20, fSemi, DIM));
-        welcome.setPadding(0, 26, 0, 0);
-        ThinBar bar = new ThinBar(this);
-        bar.setColor(0x99F1D58A);
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(260, 3);
-        bp.topMargin = 40;
-        col.addView(bism);
-        col.addView(welcome);
-        col.addView(bar, bp);
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER);
-        splash.addView(col, cp);
+        // One of ten animated intros, picked at random and never the same one twice in a row.
+        int last = prefs.getInt("last_intro", -1), pick = random.nextInt(IntroView.COUNT);
+        if (pick == last) pick = (pick + 1 + random.nextInt(IntroView.COUNT - 1)) % IntroView.COUNT;
+        prefs.edit().putInt("last_intro", pick).apply();
+        splash.addView(new IntroView(this, pick, fQuran, fSemi), new FrameLayout.LayoutParams(1920, 1080));
         stage.addView(splash, new FrameLayout.LayoutParams(1920, 1080));
-        bism.setAlpha(0); bism.setScaleX(0.94f); bism.setScaleY(0.94f);
-        bism.animate().alpha(1).scaleX(1).scaleY(1).setDuration(1600).setInterpolator(EASE).start();
-        welcome.setAlpha(0);
-        welcome.animate().alpha(1).setStartDelay(700).setDuration(1000).start();
-        splashFill = ValueAnimator.ofFloat(0, 0.9f);
-        splashFill.setDuration(SPLASH_MAX);
-        splashFill.addUpdateListener(v -> bar.setProgress((float) v.getAnimatedValue()));
-        splashFill.start();
         ui.postDelayed(this::hideSplash, SPLASH_MAX); // never wait longer than this, even without a video
     }
 
-    static final long SPLASH_MIN = 2800, SPLASH_MAX = 12000;
+    static final long SPLASH_MIN = IntroView.LENGTH + 300, SPLASH_MAX = 14000;
 
     private void splashReady() {
         if (splash == null) return;
@@ -707,7 +686,6 @@ public class MainActivity extends Activity {
         if (splash == null) return;
         FrameLayout s = splash;
         splash = null;
-        splashFill.cancel();
         s.animate().alpha(0).setDuration(900).withEndAction(() -> stage.removeView(s)).start();
         introAnimation();
     }
