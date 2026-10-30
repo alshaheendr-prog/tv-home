@@ -2,6 +2,15 @@ package com.family.tvhome;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.view.PixelCopy;
+import android.text.format.Formatter;
+import android.os.storage.StorageVolume;
+import android.os.storage.StorageManager;
+import android.os.StatFs;
+import android.os.Build;
+import android.content.IntentFilter;
+import android.content.Context;
+import android.content.BroadcastReceiver;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -74,7 +83,7 @@ import java.util.concurrent.Executors;
  */
 public class MainActivity extends Activity {
     static final TimeZone KUWAIT = TimeZone.getTimeZone("Asia/Kuwait");
-    static final int WHITE = 0xFFFFFFFF, SOFT = 0xD9FFFFFF, DIM = 0xA6FFFFFF;
+    static final int WHITE = 0xFFF5F5F7, SOFT = 0xD9FFFFFF, DIM = 0xA6FFFFFF;
     static final int GLASS = 0x29FFFFFF, GLASS_EDGE = 0x47FFFFFF, GLASS_HI = 0x4DFFFFFF, SHADE = 0x8C000000;
 
     /** The apps in the dock. pkgs are tried in order, then any installed app whose name matches, then the Play Store. */
@@ -105,7 +114,10 @@ public class MainActivity extends Activity {
 
     private FrameLayout root, stage;
     private SurfaceView video;
-    private View videoCover;
+    private View videoCover, dimView;
+    private boolean resumed;
+    private int lastDock;
+    private final ExecutorService blurThread = Executors.newSingleThreadExecutor();
     private ExoPlayer player;
     private String currentClip = "";
 
@@ -130,12 +142,13 @@ public class MainActivity extends Activity {
     private long lastWeather, lastLineSwitch;
     private int lineIndex = -1;
 
-    private FrameLayout pinPanel, appsPanel, quranPanel;
+    private FrameLayout pinPanel, appsPanel, quranPanel, parentPanel;
     private TextView pinTitle, pinSub;
     private final View[] pinDots = new View[4];
     private View firstPinKey;
     private String pinEntry = "", pinMode = "check", newPin = "";
     private boolean pinLaunchAfter;
+    private Runnable pinThen;
     private GridLayout appGrid;
     private TextView appsTitle;
     private String appsMode = "apps";
@@ -164,6 +177,10 @@ public class MainActivity extends Activity {
         videoCover = new View(this);
         videoCover.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF1B2A4A, 0xFF0E1426, 0xFF241A3A}));
         root.addView(videoCover, new FrameLayout.LayoutParams(-1, -1));
+        dimView = new View(this);
+        dimView.setBackgroundColor(Color.BLACK);
+        dimView.setAlpha(1 - prefs.getInt("brightness", 100) / 100f);
+        root.addView(dimView, new FrameLayout.LayoutParams(-1, -1));
         // Soft dark gradients at the top and bottom keep the text readable on any video.
         View topScrim = new View(this);
         topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x00000000, 0x00000000}));
@@ -174,6 +191,7 @@ public class MainActivity extends Activity {
             stage.setScaleX(s); stage.setScaleY(s);
             stage.setTranslationX(((r - l) - 1920 * s) / 2);
             stage.setTranslationY(((b - t) - 1080 * s) / 2);
+            Glass.setScreen(r - l, b - t, s);
         });
         View bottomScrim = new View(this);
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000, 0x00000000}));
@@ -190,6 +208,9 @@ public class MainActivity extends Activity {
         buildPin();
         buildApps();
         buildQuran();
+        buildParent();
+        lineBox.setVisibility(prefs.getBoolean("verse", true) ? View.VISIBLE : View.GONE);
+        registerDriveWatcher();
 
         player = new ExoPlayer.Builder(this).build();
         player.setVideoSurfaceView(video);
@@ -207,13 +228,19 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        resumed = true;
         hideBars();
         playRandomClip();
+        updateDrive();
+        ui.removeCallbacks(grabBackdrop);
+        ui.postDelayed(grabBackdrop, 1500);
         ui.postDelayed(() -> { loadDockIcons(); refreshApps(); }, 600);
     }
 
     @Override
     protected void onPause() {
+        resumed = false;
+        ui.removeCallbacks(grabBackdrop);
         player.pause();
         super.onPause();
     }
@@ -222,7 +249,7 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         closePanels();
-        dockTiles.get(0).requestFocus();
+        dockTiles.get(lastDock).requestFocus();
     }
 
     @Override
@@ -236,6 +263,8 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         player.release();
         if (quran != null) quran.release();
+        try { unregisterReceiver(driveWatcher); } catch (Exception ignored) { }
+        blurThread.shutdownNow();
         bg.shutdownNow();
         super.onDestroy();
     }
@@ -251,6 +280,7 @@ public class MainActivity extends Activity {
             if (e.getAction() == KeyEvent.ACTION_UP) closePanels();
             return true; // the home screen never closes itself
         }
+        if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0 && !anyPanelOpen()) secretKey(code);
         if (pinPanel.getVisibility() == View.VISIBLE && e.getAction() == KeyEvent.ACTION_DOWN) {
             if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) { pinPress(String.valueOf(code - KeyEvent.KEYCODE_0)); return true; }
             if (code == KeyEvent.KEYCODE_DEL) { pinPress("⌫"); return true; }
@@ -280,7 +310,7 @@ public class MainActivity extends Activity {
     }
 
     /** The panel look shared by every card: frosted glass with a soft glow. */
-    private static Glass card() { return new Glass(34, 28, 0x38FFFFFF, 0x1A000000); }
+    private static Glass card() { return new Glass(34, 28, 0x38FFFFFF, 0x1F000000).frosted(); }
 
     private static GradientDrawable ring(float radius, int width, int color) {
         GradientDrawable d = new GradientDrawable();
@@ -307,7 +337,7 @@ public class MainActivity extends Activity {
 
     // ================================================================== layout
 
-    private TextView adhanName, adhanAr, adhanCountdown;
+    private TextView adhanName, adhanAr, adhanCountdown, driveText;
 
     static final int CARD_W = 560, CARD_H = 290;
 
@@ -319,7 +349,13 @@ public class MainActivity extends Activity {
         left.setOrientation(LinearLayout.VERTICAL);
         left.setPadding(36, 28, 36, 24);
         left.setBackground(card());
-        left.addView(kicker(text("KUWAIT CITY  ·  مدينة الكويت", 18, fSemi, DIM)));
+        LinearLayout kRow = new LinearLayout(this);
+        kRow.setGravity(Gravity.CENTER_VERTICAL);
+        kRow.addView(kicker(text("KUWAIT CITY  ·  مدينة الكويت", 18, fSemi, DIM)), new LinearLayout.LayoutParams(0, -2, 1));
+        driveText = text("", 17, fSemi, DIM);
+        driveText.setVisibility(View.GONE);
+        kRow.addView(driveText);
+        left.addView(kRow, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout wx = new LinearLayout(this);
         wx.setGravity(Gravity.BOTTOM);
         wx.setPadding(0, 12, 0, 0);
@@ -455,7 +491,7 @@ public class MainActivity extends Activity {
         dock.setPadding(30, 0, 30, 0);
         dock.setClipChildren(false);
         dock.setClipToPadding(false);
-        dock.setBackground(new Glass(48, 34, 0x4DFFFFFF, 0x26000000));
+        dock.setBackground(new Glass(48, 34, 0x4DFFFFFF, 0x26000000).frosted());
         ViewOutlineProvider rounded = new ViewOutlineProvider() {
             @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 30); }
         };
@@ -489,7 +525,7 @@ public class MainActivity extends Activity {
             if (d.id.equals("yt")) tile.setOnLongClickListener(v -> { openPin(true); return true; });
             tile.setOnClickListener(v -> openDock(d));
             tile.setOnFocusChangeListener((v, has) -> {
-                if (has) { magnify(dockTiles.indexOf(v)); showDockLabel(v, d.name); }
+                if (has) { lastDock = dockTiles.indexOf(v); magnify(lastDock); showDockLabel(v, d.name); }
                 else if (!anyDockFocused()) { magnify(-1); dockLabel.animate().alpha(0).setDuration(150).start(); }
             });
             LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(TILE, TILE);
@@ -609,11 +645,12 @@ public class MainActivity extends Activity {
         if (!key.equals(ayahDay)) { ayahDay = key; fetchAyah(now.get(Calendar.DAY_OF_YEAR) + y * 400); }
 
         int h = now.get(Calendar.HOUR_OF_DAY), mi = now.get(Calendar.MINUTE);
-        String clock = ((h + 11) % 12 + 1) + ":" + (mi < 10 ? "0" : "") + mi;
+        boolean h24 = prefs.getBoolean("clock24", false);
+        String clock = (h24 ? (h < 10 ? "0" + h : "" + h) : "" + ((h + 11) % 12 + 1)) + ":" + (mi < 10 ? "0" : "") + mi;
         if (!clock.equals(shownClock)) {
             shownClock = clock;
             clockText.setText(clock);
-            ampmText.setText(h < 12 ? "AM" : "PM");
+            ampmText.setText(h24 ? "" : h < 12 ? "AM" : "PM");
         }
         updatePill();
 
@@ -848,10 +885,10 @@ public class MainActivity extends Activity {
 
     private void closePanels() {
         boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE
-                || quranPanel.getVisibility() == View.VISIBLE;
+                || quranPanel.getVisibility() == View.VISIBLE || parentPanel.getVisibility() == View.VISIBLE;
         View back = dockTiles.get(dockIndex(quranPanel.getVisibility() == View.VISIBLE ? "quran"
-                : pinPanel.getVisibility() == View.VISIBLE ? "yt" : appsPanel.getVisibility() == View.VISIBLE ? "apps" : "netflix"));
-        for (View v : new View[]{pinPanel, appsPanel, quranPanel}) {
+                : pinPanel.getVisibility() == View.VISIBLE ? "yt" : appsPanel.getVisibility() == View.VISIBLE ? "apps" : DOCK[lastDock].id));
+        for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel}) {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
@@ -945,6 +982,7 @@ public class MainActivity extends Activity {
 
     private void openPin(boolean change) {
         pinLaunchAfter = !change;
+        pinThen = null;
         try { pinIcon.setImageDrawable(fullBleed(getPackageManager().getApplicationIcon(DOCK[dockIndex("yt")].pkgs[0]))); }
         catch (Exception e) { pinIcon.setImageDrawable(tileFace(0xFFE62117, 0xFF8A140E)); }
         show(pinPanel);
@@ -1019,7 +1057,10 @@ public class MainActivity extends Activity {
 
     private void pinDone() {
         flashDots(0xFF5BE38A, () -> {
+            Runnable then = pinThen;
+            pinThen = null;
             closePanels();
+            if (then != null) { ui.postDelayed(then, 260); return; }
             if (pinLaunchAfter && !launchAny(DOCK[dockIndex("yt")].pkgs, "YouTube")) toast("YouTube isn't installed.");
         });
     }
@@ -1284,5 +1325,177 @@ public class MainActivity extends Activity {
         quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
         quranNowHome.setText((quran.getPlayWhenReady() ? "▶  " : "❚❚  ") + "سورة " + Quran.AR[quranSurah - 1] + "  ·  " + quranReciter.en);
         quranNowHome.setVisibility(View.VISIBLE);
+    }
+
+    // ================================================================== frosted glass backdrop
+
+    /** Every 1.5 s, a tiny copy of the video frame is blurred and shown through the glass panels. */
+    private final Runnable grabBackdrop = new Runnable() {
+        @Override public void run() {
+            if (!resumed) return;
+            if (videoCover.getAlpha() < 0.5f && player.isPlaying() && video.getHolder().getSurface().isValid()) {
+                final Bitmap frame = Bitmap.createBitmap(192, 108, Bitmap.Config.ARGB_8888);
+                try {
+                    PixelCopy.request(video, frame, result -> {
+                        if (result != PixelCopy.SUCCESS) return;
+                        blurThread.execute(() -> {
+                            Bitmap b = Blur.blur(frame, 5);
+                            ui.post(() -> { if (resumed) Glass.setBackdrop(b); });
+                        });
+                    }, ui);
+                } catch (Exception ignored) { }
+            } else if (videoCover.getAlpha() >= 0.5f) {
+                Glass.setBackdrop(null);
+            }
+            ui.postDelayed(this, 1500);
+        }
+    };
+
+    // ================================================================== hard drive status
+
+    private BroadcastReceiver driveWatcher;
+
+    private void registerDriveWatcher() {
+        IntentFilter f = new IntentFilter();
+        for (String a : new String[]{Intent.ACTION_MEDIA_MOUNTED, Intent.ACTION_MEDIA_UNMOUNTED, Intent.ACTION_MEDIA_REMOVED,
+                Intent.ACTION_MEDIA_BAD_REMOVAL, Intent.ACTION_MEDIA_EJECT}) f.addAction(a);
+        f.addDataScheme("file");
+        driveWatcher = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) { ui.postDelayed(MainActivity.this::updateDrive, 800); }
+        };
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(driveWatcher, f, Context.RECEIVER_EXPORTED);
+        else registerReceiver(driveWatcher, f);
+    }
+
+    /** A small line in the weather card: the USB drive's free space, or a warning once a known drive is unplugged. */
+    private void updateDrive() {
+        bg.execute(() -> {
+            String label = null;
+            try {
+                StorageManager sm = getSystemService(StorageManager.class);
+                for (StorageVolume v : sm.getStorageVolumes()) {
+                    if (!v.isRemovable() || !Environment.MEDIA_MOUNTED.equals(v.getState())) continue;
+                    File dir = Build.VERSION.SDK_INT >= 30 ? v.getDirectory() : null;
+                    if (dir == null) { label = "USB drive"; break; }
+                    StatFs st = new StatFs(dir.getPath());
+                    label = "USB  " + Formatter.formatShortFileSize(this, st.getAvailableBytes()) + " free";
+                    break;
+                }
+            } catch (Exception ignored) { }
+            final String found = label;
+            ui.post(() -> {
+                if (found != null) {
+                    prefs.edit().putBoolean("drive_seen", true).apply();
+                    driveText.setText("●  " + found);
+                    driveText.setTextColor(0xCC9BE7B4);
+                    driveText.setVisibility(View.VISIBLE);
+                } else if (prefs.getBoolean("drive_seen", false)) {
+                    driveText.setText("●  Drive unplugged");
+                    driveText.setTextColor(0xFFFF9A8F);
+                    driveText.setVisibility(View.VISIBLE);
+                } else driveText.setVisibility(View.GONE);
+            });
+        });
+    }
+
+    // ================================================================== secret parent menu (Up Up Down Down)
+
+    private final int[] secret = {KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_DOWN};
+    private final int[] lastKeys = new int[4];
+    private final long[] lastTimes = new long[4];
+
+    private boolean anyPanelOpen() {
+        for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel}) if (v != null && v.getVisibility() == View.VISIBLE) return true;
+        return false;
+    }
+
+    private void secretKey(int code) {
+        System.arraycopy(lastKeys, 1, lastKeys, 0, 3);
+        System.arraycopy(lastTimes, 1, lastTimes, 0, 3);
+        lastKeys[3] = code;
+        lastTimes[3] = System.currentTimeMillis();
+        if (lastTimes[3] - lastTimes[0] > 2500) return;
+        for (int i = 0; i < 4; i++) if (lastKeys[i] != secret[i]) return;
+        Arrays.fill(lastKeys, 0);
+        ui.post(() -> {
+            if (savedPin().isEmpty()) { openParent(); return; }
+            openPin(false);
+            pinLaunchAfter = false;
+            pinThen = this::openParent;
+            pinTitle.setText("Parent settings");
+        });
+    }
+
+    private LinearLayout parentList;
+
+    private void buildParent() {
+        parentPanel = overlay();
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(56, 44, 56, 40);
+        box.setBackground(new Glass(44, 40, 0x59FFFFFF, 0x4D000000));
+        TextView k = kicker(text("PARENTS ONLY  ·  للوالدين", 17, fSemi, DIM));
+        box.addView(k);
+        TextView title = text("Parent settings", 46, fSemi, WHITE);
+        title.setPadding(0, 10, 0, 24);
+        box.addView(title);
+        parentList = new LinearLayout(this);
+        parentList.setOrientation(LinearLayout.VERTICAL);
+        box.addView(parentList, new LinearLayout.LayoutParams(-1, -2));
+        parentPanel.addView(box, new FrameLayout.LayoutParams(900, -2, Gravity.CENTER));
+    }
+
+    private void openParent() {
+        drawParent(0);
+        show(parentPanel);
+        View box = parentPanel.getChildAt(0);
+        box.setScaleX(0.94f); box.setScaleY(0.94f); box.setAlpha(0);
+        box.animate().scaleX(1).scaleY(1).alpha(1).setDuration(340).setInterpolator(new DecelerateInterpolator(2.2f)).start();
+    }
+
+    private void drawParent(int focus) {
+        parentList.removeAllViews();
+        int bright = prefs.getInt("brightness", 100);
+        parentRow("Change the YouTube PIN", "›", () -> openPin(true));
+        parentRow("Play a different wallpaper", "›", () -> { closePanels(); playRandomClip(); });
+        parentRow("Wallpaper brightness", bright + "%", () -> {
+            int next = bright == 100 ? 85 : bright == 85 ? 70 : 100;
+            prefs.edit().putInt("brightness", next).apply();
+            dimView.animate().alpha(1 - next / 100f).setDuration(300).start();
+            drawParent(2);
+        });
+        boolean verse = prefs.getBoolean("verse", true);
+        parentRow("Verse and hadith card", verse ? "Shown" : "Hidden", () -> {
+            prefs.edit().putBoolean("verse", !verse).apply();
+            lineBox.setVisibility(!verse ? View.VISIBLE : View.GONE);
+            drawParent(3);
+        });
+        boolean h24 = prefs.getBoolean("clock24", false);
+        parentRow("Clock", h24 ? "24-hour" : "12-hour", () -> {
+            prefs.edit().putBoolean("clock24", !h24).apply();
+            shownClock = "";
+            drawParent(4);
+        });
+        parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
+        View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
+        f.post(f::requestFocus);
+    }
+
+    private void parentRow(String label, String value, Runnable onClick) {
+        LinearLayout r = new LinearLayout(this);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(30, 0, 30, 0);
+        r.setFocusable(true);
+        r.setClickable(true);
+        r.addView(text(label, 28, fMed, WHITE), new LinearLayout.LayoutParams(0, -2, 1));
+        r.addView(text(value, 26, fSemi, DIM));
+        r.setOnFocusChangeListener((v, has) -> {
+            v.setBackground(has ? glass(22, 0x33FFFFFF, 0x80FFFFFF) : null);
+            v.animate().scaleX(has ? 1.02f : 1f).scaleY(has ? 1.02f : 1f).setDuration(160).setInterpolator(EASE).start();
+        });
+        r.setOnClickListener(v -> onClick.run());
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, 76);
+        p.topMargin = 6;
+        parentList.addView(r, p);
     }
 }
