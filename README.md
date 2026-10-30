@@ -38,6 +38,8 @@ A separate home screen for the kids, in its own app (`com.family.kids`).
 - A welcome card for Ghanim & Noha with the date and Kuwait weather, a clock with the time-left ring, and a glass dock like the family home screen.
 - A different world each day (Power Up, Mushroom Hills, Speed Loop, Dream Sky, Block World) with its own colours, Pip the buddy whose eyes follow the remote, and a character of the day with a fun fact.
 - The background is always one of the family home screen's videos (`Movies/TVWallpapers`), picked to fit the world when a file name matches (Goku, Mario, Sonic, Kirby, Minecraft).
+- **Reward stars:** the parent gives Ghanim and Noha stars in the settings. On the time's-up screen each child can spend a star for 15 more minutes (not at bedtime).
+- **Bedtime wind-down:** in the 20 minutes before bedtime the screen slowly turns warm (even over Netflix) and the volume eases to half. At bedtime a short surah plays once, from `Music/Quran` on the box or mp3quran.net (never Alafasy). The volume comes back after bedtime. It can be switched off in the settings.
 - **My cartoons** plays videos from `Movies/Kids` on the box, or a `Kids` or `Cartoons` folder on a USB drive, and remembers where each episode stopped.
 - Optional extra on the box: character pictures in `Pictures/KidsCorner/` named after the character (`Goku.png`).
 
@@ -48,5 +50,6 @@ adb shell appops set com.family.kids GET_USAGE_STATS allow
 adb shell appops set com.family.kids SYSTEM_ALERT_WINDOW allow
 adb shell pm grant com.family.kids android.permission.READ_MEDIA_VIDEO
 adb shell pm grant com.family.kids android.permission.READ_MEDIA_IMAGES
+adb shell pm grant com.family.kids android.permission.READ_MEDIA_AUDIO
 ```
 Forgot the PIN? `adb shell pm clear com.family.kids` resets Kids Corner (the PIN, the settings and today's time).

@@ -79,6 +79,9 @@ public class KidsActivity extends Activity {
     private Mascot mascot;
     private TextView hello, names, worldChip, weatherText, clockText, ampmText, ringBig, ringSmall, ringNote, charName, charFrom, charFact, tileLabel;
     private View labelPill;
+    private TextView starsText, restSurah;
+    private LinearLayout restStars;
+    private MediaPlayer surah;
     private volatile String weather = "";
     private long lastWeather;
     private ImageView charPhoto;
@@ -149,7 +152,7 @@ public class KidsActivity extends Activity {
             Guard.start(this);
         }
         if (checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED)
-            requestPermissions(new String[]{Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES}, 1);
+            requestPermissions(new String[]{Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_AUDIO}, 1);
         tick();
     }
 
@@ -174,6 +177,7 @@ public class KidsActivity extends Activity {
     protected void onStop() {
         // Another app (Netflix, a cartoon) needs the video decoder: let ours go until we come back.
         stopClip();
+        stopSurah();
         super.onStop();
     }
 
@@ -235,7 +239,7 @@ public class KidsActivity extends Activity {
 
     private void focusAfterPanel() {
         if (parentPanel.getVisibility() == View.VISIBLE) parentFirst.requestFocus();
-        else if (restPanel.getVisibility() == View.VISIBLE) restButton.requestFocus();
+        else if (restPanel.getVisibility() == View.VISIBLE) (restStars.getChildCount() > 0 ? restStars.getChildAt(0) : restButton).requestFocus();
         else if (!tiles.isEmpty()) tiles.get(Math.min(lastTile, tiles.size() - 1)).requestFocus();
     }
 
@@ -386,6 +390,9 @@ public class KidsActivity extends Activity {
         weatherText = text("", 34, fBold, WHITE);
         weatherText.setPadding(0, 2, 0, 0);
         left.addView(weatherText);
+        starsText = text("", 34, fBold, 0xFFFFD45A);
+        starsText.setPadding(0, 6, 0, 0);
+        left.addView(starsText);
         place(left, 80, 56, -2, -2);
 
         // clock and time left, top right
@@ -498,6 +505,18 @@ public class KidsActivity extends Activity {
         hello.setText((h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening") + "  ·  " + day.format(now.getTime()));
         weatherText.setText(weather);
         weatherText.setVisibility(weather.isEmpty() ? View.GONE : View.VISIBLE);
+        drawStars();
+    }
+
+    /** "★ 3 Ghanim   ★ 2 Noha": the reward stars each child has saved up. */
+    private void drawStars() {
+        String[] kids = Rules.kids(this);
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < kids.length; i++) {
+            if (i > 0) b.append("     ");
+            b.append("★ ").append(Rules.stars(this, i)).append("  ").append(kids[i]);
+        }
+        starsText.setText(b.toString());
     }
 
     /** Puts the name pill just above the focused tile. */
@@ -740,44 +759,140 @@ public class KidsActivity extends Activity {
         restPanel.setVisibility(View.GONE);
         restPanel.setClickable(true);
         stage.addView(restPanel, new FrameLayout.LayoutParams(1920, 1080));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
         restMascot = new Mascot(this, fHeavy);
         restMascot.setAsleep(true);
-        FrameLayout.LayoutParams ml = new FrameLayout.LayoutParams(460, 460, Gravity.CENTER_HORIZONTAL);
-        ml.topMargin = 110;
-        restPanel.addView(restMascot, ml);
-        restTitle = text("", 92, fHeavy, WHITE);
+        col.addView(restMascot, new LinearLayout.LayoutParams(380, 380));
+        restTitle = text("", 88, fHeavy, WHITE);
         restTitle.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(-1, -2);
-        tl.topMargin = 590;
-        restPanel.addView(restTitle, tl);
-        restSub = text("", 42, fMed, SOFT);
+        col.addView(restTitle, new LinearLayout.LayoutParams(-1, -2));
+        restSub = text("", 40, fMed, SOFT);
         restSub.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams sl = new FrameLayout.LayoutParams(-1, -2);
-        sl.topMargin = 720;
-        restPanel.addView(restSub, sl);
+        col.addView(restSub, new LinearLayout.LayoutParams(-1, -2));
+        restSurah = text("", 34, fBold, 0xFFFFD45A);
+        restSurah.setGravity(Gravity.CENTER);
+        restSurah.setPadding(0, 14, 0, 0);
+        col.addView(restSurah, new LinearLayout.LayoutParams(-1, -2));
+        restStars = new LinearLayout(this);
+        restStars.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
+        sl.topMargin = 30;
+        col.addView(restStars, sl);
         TextView b = button("Grown-ups", 30);
         b.setOnClickListener(v -> askPin("check", this::openParent));
-        FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER_HORIZONTAL);
-        bl.topMargin = 880;
-        restPanel.addView(b, bl);
+        LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(-2, -2);
+        bl.topMargin = 30;
+        col.addView(b, bl);
         restButton = b;
+        restPanel.addView(col, new FrameLayout.LayoutParams(1700, -2, Gravity.CENTER));
+    }
+
+    /** On the time's-up screen, each child can spend a reward star for 15 more minutes. */
+    private void drawRestStars(boolean bed) {
+        restStars.removeAllViews();
+        if (bed) return;
+        String[] kids = Rules.kids(this);
+        View first = null;
+        for (int i = 0; i < kids.length; i++) {
+            int n = Rules.stars(this, i);
+            if (n <= 0) continue;
+            final int kid = i;
+            TextView b = button(kids[i] + ": use a ★ for " + Rules.STAR_MINUTES + " min  (" + n + " left)", 32);
+            b.setOnClickListener(v -> {
+                if (Rules.stars(this, kid) <= 0) return;
+                Rules.setStars(this, kid, Rules.stars(this, kid) - 1);
+                Rules.giveExtra(this, Rules.STAR_MINUTES);
+                drawStars();
+                tick();
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+            lp.leftMargin = lp.rightMargin = 14;
+            restStars.addView(b, lp);
+            if (first == null) first = b;
+        }
+        restStars.setVisibility(first == null ? View.GONE : View.VISIBLE);
+    }
+
+    // ---------------------------------------------------------------- bedtime surah
+
+    /** Short surahs for bedtime: Al-Fatihah, Al-Qadr, Al-Asr, Al-Kawthar, Al-Ikhlas, Al-Falaq, An-Nas. */
+    static final int[] BED_SURAHS = {1, 97, 103, 108, 112, 113, 114};
+    static final String[] BED_NAMES = {"Al-Fatihah", "Al-Qadr", "Al-Asr", "Al-Kawthar", "Al-Ikhlas", "Al-Falaq", "An-Nas"};
+    /** Hafs murattal reciters (never Mishary Alafasy), used when the box has no recitations of its own. */
+    static final String[][] RECITERS = {
+            {"Mahmoud Khalil Al-Hussary", "https://cdn.mp3quran.net/audio/mahmoud-husary/r1/"},
+            {"Mohammed Siddiq Al-Minshawi", "https://cdn.mp3quran.net/audio/muhammad-minshawi/r1/"},
+            {"Maher Al-Muaiqly", "https://cdn.mp3quran.net/audio/maher-muaiqly/r1/"},
+            {"Idrees Abkar", "https://cdn.mp3quran.net/audio/idrees-abkar/r1/"},
+            {"Mohammed Ayyub", "https://cdn.mp3quran.net/audio/muhammad-ayyub/r1/"},
+    };
+
+    /** Once a night, when bedtime starts: a random short surah at the softened volume. */
+    private void playBedSurah() {
+        if (!Rules.windDownOn(this) || surah != null) return;
+        Calendar night = Calendar.getInstance(Rules.KUWAIT);
+        night.add(Calendar.HOUR_OF_DAY, -12); // the same "night" from evening until the morning
+        String key = night.get(Calendar.YEAR) + "-" + night.get(Calendar.DAY_OF_YEAR);
+        if (key.equals(Rules.prefs(this).getString("surah_night", ""))) return;
+        Rules.prefs(this).edit().putString("surah_night", key).apply();
+        int pick = random.nextInt(BED_SURAHS.length), number = BED_SURAHS[pick];
+        String file = String.format(Locale.US, "%03d.mp3", number), source = null, reciter = null;
+        // recitations the PC copied to the box (Music/Quran/<reciter>/001.mp3) come first
+        File[] dirs = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "Quran").listFiles(File::isDirectory);
+        List<File> local = new ArrayList<>();
+        if (dirs != null) for (File d : dirs) {
+            String n = d.getName().toLowerCase(Locale.ROOT);
+            if (n.contains("afasy") || n.contains("afasi") || n.contains("عفاسي")) continue;
+            if (new File(d, file).canRead()) local.add(d);
+        }
+        if (!local.isEmpty()) {
+            File d = local.get(random.nextInt(local.size()));
+            source = new File(d, file).getPath();
+            reciter = d.getName().replaceAll("\\s*\\(\\d+\\)\\s*$", "");
+        } else {
+            String[] r = RECITERS[random.nextInt(RECITERS.length)];
+            source = r[1] + file;
+            reciter = r[0];
+        }
+        try {
+            MediaPlayer p = new MediaPlayer();
+            p.setDataSource(source);
+            p.setOnPreparedListener(MediaPlayer::start);
+            p.setOnCompletionListener(mp -> stopSurah());
+            p.setOnErrorListener((mp, a, b) -> { stopSurah(); return true; });
+            p.prepareAsync();
+            surah = p;
+            restSurah.setText("Surah " + BED_NAMES[pick] + "  ·  " + reciter);
+        } catch (Exception e) { stopSurah(); }
+    }
+
+    private void stopSurah() {
+        if (surah != null) try { surah.release(); } catch (Exception ignored) { }
+        surah = null;
+        if (restSurah != null) restSurah.setText("");
     }
 
     private void showRest(String why) {
         boolean bed = why.equals("bed");
         restTitle.setText(bed ? "Time for bed!" : "That's all for today!");
         restSub.setText(bed ? "Sleep well. Your shows will be waiting in the morning." : "Great watching! Let's play something else. See you tomorrow!");
+        drawRestStars(bed);
+        if (bed) playBedSurah();
         hide(cartoonsPanel);
         restPanel.setVisibility(View.VISIBLE);
         syncFocus();
         restPanel.setAlpha(0);
         restPanel.animate().alpha(1).setDuration(600).start();
         bob(restMascot);
-        if (pinPanel.getVisibility() != View.VISIBLE && parentPanel.getVisibility() != View.VISIBLE) restButton.requestFocus();
+        if (pinPanel.getVisibility() != View.VISIBLE && parentPanel.getVisibility() != View.VISIBLE)
+            (restStars.getChildCount() > 0 ? restStars.getChildAt(0) : restButton).requestFocus();
         if (player != null) player.pause();
     }
 
     private void hideRest() {
+        stopSurah();
         restPanel.animate().alpha(0).setDuration(400).withEndAction(() -> {
             restPanel.setVisibility(View.GONE);
             syncFocus();
@@ -1074,6 +1189,15 @@ public class KidsActivity extends Activity {
         int[] worlds = new int[Worlds.ALL.length + 1];
         for (int i = 0; i < worlds.length; i++) worlds[i] = i - 1;
         choiceRow("World", worlds, "world", -1, v -> v < 0 ? "A new one every day" : Worlds.ALL[v].name);
+        choiceRow("Bedtime wind-down", new int[]{0, 1}, "winddown", 1, v -> v == 1 ? "On" : "Off");
+        TextView starsTitle = text("Reward stars  (each star buys " + Rules.STAR_MINUTES + " min of extra time)", 32, fBold, WHITE);
+        starsTitle.setPadding(28, 18, 28, 4);
+        parentList.addView(starsTitle);
+        int[] counts = new int[31];
+        for (int i = 0; i < counts.length; i++) counts[i] = i;
+        String[] kids = Rules.kids(this);
+        for (int i = 0; i < kids.length; i++)
+            choiceRow("★  " + kids[i], counts, "stars_" + i, 0, v -> v + (v == 1 ? " star" : " stars"));
 
         TextView extraTitle = text("Extra time now", 32, fBold, WHITE);
         extraTitle.setPadding(28, 18, 0, 8);
@@ -1140,6 +1264,8 @@ public class KidsActivity extends Activity {
             Rules.prefs(this).edit().putInt(key, values[at]).apply();
             draw.run();
             if (key.equals("world")) { applyWorld(); refreshTiles(); }
+            drawStars();
+            if (restPanel.getVisibility() == View.VISIBLE) drawRestStars(Rules.resting(this).equals("bed"));
             tick();
             return true;
         });
