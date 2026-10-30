@@ -113,7 +113,12 @@ public class Guard extends Service {
         // Screen time counts while the screen is on and he isn't on the rest screen.
         if (pm.isInteractive() && rest.isEmpty()) {
             carry += delta;
-            if (carry >= 1000) { Rules.setUsed(this, Rules.used(this) + carry / 1000); carry %= 1000; }
+            if (carry >= 1000) {
+                long secs = carry / 1000;
+                carry %= 1000;
+                Rules.setUsed(this, Rules.used(this) + secs);
+                Stats.addSeconds(this, passThrough.contains(foreground) && !ours ? "" : foreground, secs);
+            }
         }
 
         if (!rest.isEmpty()) {
