@@ -26,7 +26,7 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" > /dev/null
       - name: Build
-        run: gradle :app:assembleRelease --stacktrace 2>&1 | tee build.log; test ${PIPESTATUS[0]} -eq 0
+        run: gradle :app:assembleRelease :adhan:assembleRelease --stacktrace 2>&1 | tee build.log; test ${PIPESTATUS[0]} -eq 0
       - name: Report failure on the commit
         if: failure()
         env:
@@ -35,14 +35,18 @@ jobs:
           { echo '```'; tail -n 60 build.log 2>/dev/null || echo "no build log"; echo '```'; } > body.md
           gh api repos/${{ github.repository }}/commits/${{ github.sha }}/comments -F body=@body.md
       - name: Rename
-        run: cp app/build/outputs/apk/release/app-release.apk tv-home.apk
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk tv-home.apk
+          cp adhan/build/outputs/apk/release/adhan-release.apk family-adhan.apk
       - uses: actions/upload-artifact@v4
         with:
           name: tv-home-apk
-          path: tv-home.apk
+          path: |
+            tv-home.apk
+            family-adhan.apk
       - name: Publish as a release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest tv-home.apk --title "Latest build #${{ github.run_number }}" --notes "Built from ${{ github.sha }}"
+          gh release create latest tv-home.apk family-adhan.apk --title "Latest build #${{ github.run_number }}" --notes "Built from ${{ github.sha }}"

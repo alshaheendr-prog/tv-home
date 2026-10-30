@@ -6,3 +6,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "tv-home"
 include(":app")
+include(":adhan")
