@@ -372,7 +372,7 @@ public class MainActivity extends Activity {
     private TextView adhanName, adhanAr, adhanCountdown, driveText, dayText;
     private volatile String hiLo = "";
 
-    static final int CARD_W = 560, CARD_H = 290;
+    static final int CARD_W = 560, CARD_H = 300;
 
     private static TextView kicker(TextView t) { t.setLetterSpacing(0.16f); return t; }
 
@@ -400,14 +400,14 @@ public class MainActivity extends Activity {
         wx.addView(skyText, new LinearLayout.LayoutParams(0, -2, 1));
         left.addView(wx);
         dateText = text("", 30, fSemi, WHITE);
-        dateText.setPadding(0, 14, 0, 0);
+        dateText.setPadding(0, 10, 0, 0);
         hijriText = text("", 26, fAr, SOFT);
         hijriText.setIncludeFontPadding(true);
         hijriText.setPadding(0, 4, 0, 0);
         left.addView(dateText);
         left.addView(hijriText);
         dayText = text("", 21, fMed, DIM);
-        dayText.setPadding(0, 14, 0, 0);
+        dayText.setPadding(0, 8, 0, 0);
         left.addView(dayText);
         leftCard = left;
         View leftFrame = card(left, CARD_W, CARD_H, Gravity.TOP | Gravity.START, 80, 56);
@@ -470,17 +470,17 @@ public class MainActivity extends Activity {
         c.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout clockRow = new LinearLayout(this);
         clockRow.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        clockText = text("--:--", 260, fSemi, 0xD9FFFFFF);
+        clockText = text("--:--", 210, fSemi, 0xD9FFFFFF);
         clockText.setFontFeatureSettings("tnum");
         clockText.setLetterSpacing(-0.03f);
         clockText.setShadowLayer(40, 0, 4, 0x40000000);
-        ampmText = text("", 56, fSemi, 0xA6FFFFFF);
-        ampmText.setPadding(16, 0, 0, 46);
+        ampmText = text("", 46, fSemi, 0xA6FFFFFF);
+        ampmText.setPadding(14, 0, 0, 38);
         clockRow.addView(clockText);
         clockRow.addView(ampmText);
         c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 222));
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 296));
         centerGroup = c;
 
         // The verse / hadith card, low on the screen just above the dock: Amiri for the Arabic, an italic serif for the English.
