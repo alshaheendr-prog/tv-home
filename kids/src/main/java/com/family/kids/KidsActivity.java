@@ -256,7 +256,7 @@ public class KidsActivity extends Activity {
         Worlds.World w = Worlds.today(Rules.prefs(this).getInt("world", -1));
         boolean changed = w != world;
         world = w;
-        cover.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, w.sky));
+        cover.setBackgroundColor(0xFF0B0B12); // shown only until the wallpaper video starts
         mascot.setWorld(w);
         restMascot.setWorld(w);
         worldChip.setText("★  " + w.name.toUpperCase(Locale.ROOT));
@@ -314,18 +314,17 @@ public class KidsActivity extends Activity {
     }
 
     /**
-     * The same video wallpapers as the family home screen (Movies/TVWallpapers): one that fits today's world if there is one.
-     * Otherwise the world's own clip in Movies/KidsCorner, otherwise any of the home screen's videos.
+     * Only the family home screen's own video wallpapers (Movies/TVWallpapers): one that fits today's world if there is one,
+     * otherwise any of them.
      */
     private File clipFor(Worlds.World w) {
         File movies = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
-        List<File> home = videosIn(new File(movies, "TVWallpapers")), fits = new ArrayList<>(), own = new ArrayList<>();
+        List<File> home = videosIn(new File(movies, "TVWallpapers")), fits = new ArrayList<>();
         for (File f : home) {
             String n = f.getName().toLowerCase(Locale.ROOT);
             for (String word : clipWords(w.id)) if (n.contains(word)) { fits.add(f); break; }
         }
-        for (File f : videosIn(new File(movies, "KidsCorner"))) if (f.getName().toLowerCase(Locale.ROOT).startsWith(w.clip)) own.add(f);
-        List<File> pick = !fits.isEmpty() ? fits : !own.isEmpty() ? own : home;
+        List<File> pick = !fits.isEmpty() ? fits : home;
         return pick.isEmpty() ? null : pick.get(random.nextInt(pick.size()));
     }
 
