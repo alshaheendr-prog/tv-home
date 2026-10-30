@@ -3,9 +3,11 @@ package com.family.kids;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -99,6 +101,41 @@ final class Rules {
     static void giveExtra(Context c, int minutes) {
         long from = Math.max(System.currentTimeMillis(), extraUntil(c));
         prefs(c).edit().putLong("extra_until", from + minutes * 60_000L).apply();
+    }
+
+    // ------------------------------------------------------------------ the children and their reward stars
+
+    /** Minutes of extra cartoon time one star buys. */
+    static final int STAR_MINUTES = 15;
+
+    /** "Ghanim & Noha" -> [Ghanim, Noha]. */
+    static String[] kids(Context c) {
+        String[] parts = prefs(c).getString("names", "Ghanim & Noha").split("\\s*(&|,|\\band\\b)\\s*");
+        List<String> out = new ArrayList<>();
+        for (String p : parts) if (!p.trim().isEmpty()) out.add(p.trim());
+        return out.toArray(new String[0]);
+    }
+
+    static int stars(Context c, int kid) { return prefs(c).getInt("stars_" + kid, 0); }
+    static void setStars(Context c, int kid, int n) { prefs(c).edit().putInt("stars_" + kid, Math.max(0, n)).apply(); }
+
+    // ------------------------------------------------------------------ bedtime wind-down
+
+    static final int WIND_MINUTES = 20;
+
+    static boolean windDownOn(Context c) { return prefs(c).getInt("winddown", 1) == 1; }
+
+    /** 0 until 20 minutes before bedtime, then rising to 1 at bedtime (and 1 all through bedtime). */
+    static float windDown(Context c) {
+        if (!on(c) || !windDownOn(c) || System.currentTimeMillis() < extraUntil(c)) return 0;
+        if (inBedtime(c)) return 1;
+        int b = bedtime(c);
+        if (b < 0) return 0;
+        Calendar now = Calendar.getInstance(KUWAIT);
+        int m = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+        int until = (b - m + 1440) % 1440;
+        if (until == 0 || until > WIND_MINUTES) return 0;
+        return (WIND_MINUTES - until + now.get(Calendar.SECOND) / 60f) / WIND_MINUTES;
     }
 
     /** Why the TV is resting right now: "", "time" or "bed". */

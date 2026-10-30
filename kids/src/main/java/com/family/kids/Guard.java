@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.PixelFormat;
+import android.media.AudioManager;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.IBinder;
@@ -48,6 +49,8 @@ public class Guard extends Service {
     private int warned = Integer.MAX_VALUE; // the last warning shown, in minutes left
     private String warnedDay = "";
     private TextView note;
+    private View warm;
+    private AudioManager audio;
 
     static void start(Context c) {
         try { c.startForegroundService(new Intent(c, Guard.class)); } catch (Exception ignored) { }
@@ -63,6 +66,7 @@ public class Guard extends Service {
         usm = (UsageStatsManager) getSystemService(USAGE_STATS_SERVICE);
         pm = (PowerManager) getSystemService(POWER_SERVICE);
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        audio = (AudioManager) getSystemService(AUDIO_SERVICE);
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Kids Corner", NotificationManager.IMPORTANCE_MIN));
         Notification n = new Notification.Builder(this, CHANNEL)
@@ -92,6 +96,7 @@ public class Guard extends Service {
     public void onDestroy() {
         ui.removeCallbacksAndMessages(null);
         hideNote();
+        windDown(0);
         super.onDestroy();
     }
 
@@ -118,6 +123,7 @@ public class Guard extends Service {
         }
 
         warnIfNearTheEnd(ours, rest);
+        windDown(Rules.windDown(this));
         ui.postDelayed(this::tick, TICK);
     }
 
@@ -150,6 +156,54 @@ public class Guard extends Service {
             }
         } catch (Exception ignored) { }
         lastEventQuery = now;
+    }
+
+    // ------------------------------------------------------------------ bedtime wind-down
+
+    /**
+     * In the 20 minutes before bedtime the whole screen (his show too) slowly turns warm and the volume eases down to half.
+     * The volume the family had comes back after bedtime, or when kids mode is turned off.
+     */
+    private void windDown(float f) {
+        if (f <= 0) {
+            hideWarm();
+            int saved = Rules.prefs(this).getInt("vol_saved", -1);
+            if (saved >= 0) {
+                try { audio.setStreamVolume(AudioManager.STREAM_MUSIC, saved, 0); } catch (Exception ignored) { }
+                Rules.prefs(this).edit().remove("vol_saved").apply();
+            }
+            return;
+        }
+        showWarm((int) (f * 0x3A));
+        try {
+            int cur = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+            int saved = Rules.prefs(this).getInt("vol_saved", -1);
+            if (saved < 0) { saved = cur; Rules.prefs(this).edit().putInt("vol_saved", cur).apply(); }
+            int target = Math.round(saved * (1 - 0.5f * f));
+            if (cur > target) audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
+        } catch (Exception ignored) { }
+    }
+
+    private void showWarm(int alpha) {
+        if (!canOverlay(this)) return;
+        if (warm == null) {
+            warm = new View(this);
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    PixelFormat.TRANSLUCENT);
+            try { wm.addView(warm, lp); } catch (Exception e) { warm = null; return; }
+        }
+        warm.setBackgroundColor((alpha << 24) | 0xFF8A2A);
+    }
+
+    private void hideWarm() {
+        if (warm == null) return;
+        View v = warm;
+        warm = null;
+        try { wm.removeView(v); } catch (Exception ignored) { }
     }
 
     // ------------------------------------------------------------------ "5 minutes left" note
