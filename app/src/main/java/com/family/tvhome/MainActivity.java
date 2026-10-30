@@ -101,6 +101,7 @@ public class MainActivity extends Activity {
             new Dock("kodi", "Movies & Shows", 0xFF17B2E7, "org.xbmc.kodi", "org.videolan.vlc"),
             new Dock("browser", "Browser", 0xFF4A8CFF, "com.tcl.browser", "com.phlox.tvwebbrowser", "org.mozilla.firefox", "com.android.chrome"),
             new Dock("quran", "Quran · القرآن", 0xFFE8C97A),
+            new Dock("kids", "Kids Corner", 0xFFFFB238, "com.family.kids"),
             new Dock("apps", "All apps", 0xFF8A8FA8),
             new Dock("yt", "YouTube", 0xFFE62117, "com.google.android.youtube.tv", "com.google.android.youtube"),
     };
@@ -514,7 +515,7 @@ public class MainActivity extends Activity {
         stage.addView(pillText, at(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 60));
     }
 
-    static final int TILE = 140, DOCK_H = 188, DOCK_Y = 36;
+    static final int TILE = 132, DOCK_H = 188, DOCK_Y = 36;
 
     /** Bottom: the app dock, centred. Moving across it magnifies the focused app and, a little, its neighbours. */
     private void buildBottom() {
@@ -847,6 +848,7 @@ public class MainActivity extends Activity {
             case "yt": openPin(false); return;
             case "apps": openApps("apps"); return;
             case "quran": openQuran(); return;
+            case "kids": if (!launch("com.family.kids")) toast("Kids Corner isn't installed yet. Run Update TV on the PC."); return;
             default:
                 if (launchAny(d.pkgs, dockSearchName(d))) return;
                 toast(d.name + " isn't installed yet. Opening the Play Store…");
