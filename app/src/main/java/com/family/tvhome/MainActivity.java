@@ -98,7 +98,7 @@ public class MainActivity extends Activity {
     private ExoPlayer player;
     private String currentClip = "";
 
-    private View topGroup, centerGroup, bottomGroup;
+    private View centerGroup, bottomGroup;
     private TextView dateText, hijriText, tempText, skyText, clockText, ampmText, pillText, lineKicker, lineText;
     private LinearLayout lineBox;
     private final LinearLayout[] prayerCells = new LinearLayout[5];
@@ -274,59 +274,93 @@ public class MainActivity extends Activity {
 
     // ================================================================== layout
 
+    private TextView adhanName, adhanAr, adhanCountdown;
+
+    /** Top left: weather, then the date and Hijri date. */
     private void buildTop() {
-        FrameLayout top = new FrameLayout(this);
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
-        dateText = text("", 36, fSemi, WHITE);
-        hijriText = text("", 28, fAr, SOFT);
-        hijriText.setPadding(0, 8, 0, 0);
+        LinearLayout wx = new LinearLayout(this);
+        wx.setGravity(Gravity.BOTTOM);
+        tempText = text("--°", 64, fSemi, WHITE);
+        skyText = text("Kuwait City", 24, fMed, SOFT);
+        skyText.setPadding(18, 0, 0, 10);
+        wx.addView(tempText);
+        wx.addView(skyText);
+        left.addView(wx);
+        dateText = text("", 30, fSemi, WHITE);
+        dateText.setPadding(0, 16, 0, 0);
+        hijriText = text("", 26, fAr, SOFT);
+        hijriText.setPadding(0, 6, 0, 0);
         left.addView(dateText);
         left.addView(hijriText);
-        top.addView(left, at(-2, -2, Gravity.TOP | Gravity.START, 0, 0));
+        stage.addView(left, at(-2, -2, Gravity.TOP | Gravity.START, 96, 64));
 
-        LinearLayout right = new LinearLayout(this);
-        right.setOrientation(LinearLayout.VERTICAL);
-        right.setGravity(Gravity.END);
-        tempText = text("", 44, fSemi, WHITE);
-        skyText = text("Kuwait City", 24, fMed, SOFT);
-        skyText.setPadding(0, 6, 0, 0);
-        right.addView(tempText);
-        right.addView(skyText);
-        top.addView(right, at(-2, -2, Gravity.TOP | Gravity.END, 0, 0));
-        stage.addView(top, at(1920 - 192, -2, Gravity.TOP | Gravity.START, 96, 68));
-        topGroup = top;
+        // Top right: the adhan card.
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(30, 24, 30, 20);
+        card.setBackground(glass(32, GLASS, GLASS_EDGE));
+        TextView kicker = text("NEXT ADHAN  ·  الأذان القادم", 18, fSemi, DIM);
+        kicker.setLetterSpacing(0.14f);
+        card.addView(kicker);
+        LinearLayout nameRow = new LinearLayout(this);
+        nameRow.setGravity(Gravity.CENTER_VERTICAL);
+        adhanName = text("", 38, fSemi, WHITE);
+        adhanAr = text("", 34, fArSemi, SOFT);
+        nameRow.addView(adhanName, new LinearLayout.LayoutParams(0, -2, 1));
+        nameRow.addView(adhanAr);
+        nameRow.setPadding(0, 10, 0, 0);
+        card.addView(nameRow);
+        adhanCountdown = text("--:--:--", 52, fSemi, WHITE);
+        adhanCountdown.setFontFeatureSettings("tnum");
+        adhanCountdown.setPadding(0, 4, 0, 14);
+        card.addView(adhanCountdown);
+        for (int i = 0; i < 5; i++) {
+            int k = BAR_PRAYERS[i];
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(14, 0, 14, 0);
+            TextView en = text(PrayerTimes.EN[k], 24, fMed, SOFT);
+            TextView ar = text(PrayerTimes.AR[k], 22, fAr, DIM);
+            TextView tm = text("", 26, fSemi, WHITE);
+            tm.setFontFeatureSettings("tnum");
+            tm.setGravity(Gravity.END);
+            row.addView(en, new LinearLayout.LayoutParams(0, -2, 1));
+            row.addView(ar);
+            row.addView(tm, new LinearLayout.LayoutParams(110, -2));
+            prayerTexts[i][0] = en; prayerTexts[i][1] = ar; prayerTexts[i][2] = tm;
+            prayerCells[i] = row;
+            card.addView(row, new LinearLayout.LayoutParams(-1, 46));
+        }
+        stage.addView(card, at(440, -2, Gravity.TOP | Gravity.END, 96, 56));
+
+        topParts = new View[]{left, card};
     }
 
+    private View[] topParts;
+
+    /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
     private void buildCenter() {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
         c.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout clockRow = new LinearLayout(this);
         clockRow.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        clockText = text("--:--", 230, fSemi, WHITE);
+        clockText = text("--:--", 260, fSemi, 0xD9FFFFFF);
         clockText.setFontFeatureSettings("tnum");
         clockText.setLetterSpacing(-0.03f);
-        ampmText = text("", 54, fSemi, SOFT);
-        ampmText.setPadding(14, 0, 0, 40);
+        clockText.setShadowLayer(40, 0, 4, 0x40000000);
+        ampmText = text("", 56, fSemi, 0xA6FFFFFF);
+        ampmText.setPadding(16, 0, 0, 46);
         clockRow.addView(clockText);
         clockRow.addView(ampmText);
-        c.addView(clockRow);
-
-        pillText = text("", 30, fMed, WHITE);
-        pillText.setFontFeatureSettings("tnum");
-        pillText.setGravity(Gravity.CENTER);
-        pillText.setSingleLine(true);
-        pillText.setPadding(34, 14, 34, 16);
-        pillText.setBackground(glass(99, GLASS, GLASS_EDGE));
-        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(940, -2); // fixed width: no re-layout every second
-        pp.topMargin = 18;
-        c.addView(pillText, pp);
+        c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
         lineBox = new LinearLayout(this);
         lineBox.setOrientation(LinearLayout.VERTICAL);
         lineBox.setGravity(Gravity.CENTER_HORIZONTAL);
-        lineKicker = text("", 20, fSemi, DIM);
+        lineKicker = text("", 19, fSemi, DIM);
         lineKicker.setLetterSpacing(0.14f);
         lineText = text("", 28, fArSemi, SOFT);
         lineText.setGravity(Gravity.CENTER);
@@ -335,57 +369,30 @@ public class MainActivity extends Activity {
         lineText.setLineSpacing(0, 1.15f);
         lineText.setPadding(0, 10, 0, 0);
         lineBox.addView(lineKicker);
-        lineBox.addView(lineText, new LinearLayout.LayoutParams(1300, -2));
+        lineBox.addView(lineText, new LinearLayout.LayoutParams(1200, -2));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-        lp.topMargin = 28;
+        lp.topMargin = 12;
         c.addView(lineBox, lp);
-
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 170));
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 250));
         centerGroup = c;
+
+        // A small message pill, used for short notices like "PIN saved".
+        pillText = text("", 28, fMed, WHITE);
+        pillText.setGravity(Gravity.CENTER);
+        pillText.setPadding(34, 14, 34, 16);
+        pillText.setBackground(glass(99, 0x40FFFFFF, GLASS_EDGE));
+        pillText.setAlpha(0);
+        stage.addView(pillText, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 250));
     }
 
+    /** Bottom: the app dock, centred. Moving across it magnifies the focused app and, a little, its neighbours. */
     private void buildBottom() {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setGravity(Gravity.BOTTOM);
-        bar.setClipChildren(false);
-        bar.setClipToPadding(false);
-
-        // Prayer times
-        LinearLayout prayers = new LinearLayout(this);
-        prayers.setGravity(Gravity.CENTER_VERTICAL);
-        prayers.setPadding(14, 12, 14, 12);
-        prayers.setBackground(glass(36, GLASS, GLASS_EDGE));
-        for (int i = 0; i < 5; i++) {
-            int k = BAR_PRAYERS[i];
-            LinearLayout cell = new LinearLayout(this);
-            cell.setOrientation(LinearLayout.VERTICAL);
-            cell.setGravity(Gravity.CENTER_HORIZONTAL);
-            cell.setPadding(0, 12, 0, 14);
-            TextView en = text(PrayerTimes.EN[k], 22, fSemi, SOFT);
-            TextView ar = text(PrayerTimes.AR[k], 20, fAr, DIM);
-            ar.setPadding(0, 2, 0, 6);
-            TextView tm = text("", 34, fSemi, WHITE);
-            cell.addView(en); cell.addView(ar); cell.addView(tm);
-            prayerTexts[i][0] = en; prayerTexts[i][1] = ar; prayerTexts[i][2] = tm;
-            prayerCells[i] = cell;
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(150, -2);
-            cp.leftMargin = 4; cp.rightMargin = 4;
-            prayers.addView(cell, cp);
-        }
-        bar.addView(prayers, new LinearLayout.LayoutParams(-2, 150));
-
-        View gap = new View(this);
-        bar.addView(gap, new LinearLayout.LayoutParams(0, 1, 1));
-
-        // App dock
-        FrameLayout dockWrap = new FrameLayout(this);
-        dockWrap.setClipChildren(false);
         LinearLayout dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER_VERTICAL);
-        dock.setPadding(22, 0, 22, 0);
+        dock.setPadding(26, 0, 26, 0);
         dock.setClipChildren(false);
         dock.setClipToPadding(false);
-        dock.setBackground(glass(36, GLASS, GLASS_EDGE));
+        dock.setBackground(glass(44, GLASS, GLASS_EDGE));
         for (Dock d : DOCK) {
             FrameLayout tile = new FrameLayout(this);
             tile.setFocusable(true);
@@ -394,33 +401,47 @@ public class MainActivity extends Activity {
             tile.setBackground(tileOff);
             ImageView icon = new ImageView(this);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            tile.addView(icon, new FrameLayout.LayoutParams(60, 60, Gravity.CENTER));
-            TextView mark = text(d.id.equals("apps") ? "⋯" : d.name.substring(0, 1), 38, fBold, d.color);
+            tile.addView(icon, new FrameLayout.LayoutParams(80, 80, Gravity.CENTER));
+            TextView mark = text(d.id.equals("apps") ? "⋯" : d.name.substring(0, 1), 48, fBold, d.color);
             mark.setGravity(Gravity.CENTER);
             tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
+            tile.setPivotY(112);
             if (d.id.equals("yt")) tile.setOnLongClickListener(v -> { openPin(true); return true; });
             tile.setOnClickListener(v -> openDock(d));
             tile.setOnFocusChangeListener((v, has) -> {
-                v.animate().scaleX(has ? 1.28f : 1f).scaleY(has ? 1.28f : 1f).translationY(has ? -12 : 0)
-                        .setDuration(200).setInterpolator(EASE).withLayer().start();
-                v.setBackground(has ? tileOn : tileOff);
-                if (has) showDockLabel(v, d.name);
+                if (has) { magnify(dockTiles.indexOf(v)); showDockLabel(v, d.name); }
+                else if (!anyDockFocused()) { magnify(-1); dockLabel.animate().alpha(0).setDuration(150).start(); }
             });
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(80, 80);
-            tp.leftMargin = 5; tp.rightMargin = 5;
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(112, 112);
+            tp.leftMargin = 9; tp.rightMargin = 9;
             dock.addView(tile, tp);
             dockTiles.add(tile);
         }
-        dockWrap.addView(dock, new FrameLayout.LayoutParams(-2, 150, Gravity.BOTTOM));
-        bar.addView(dockWrap, new LinearLayout.LayoutParams(-2, 150));
-        stage.addView(bar, at(1920 - 192, 150, Gravity.BOTTOM | Gravity.START, 96, 64));
-        bottomGroup = bar;
+        stage.addView(dock, at(-2, 156, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 56));
+        bottomGroup = dock;
 
         dockLabel = text("", 24, fSemi, WHITE);
-        dockLabel.setPadding(20, 8, 20, 10);
+        dockLabel.setPadding(22, 8, 22, 10);
         dockLabel.setBackground(glass(99, 0x40FFFFFF, GLASS_EDGE));
         dockLabel.setAlpha(0);
         stage.addView(dockLabel, at(-2, -2, Gravity.TOP | Gravity.START, 0, 0));
+    }
+
+    private boolean anyDockFocused() {
+        for (View t : dockTiles) if (t.hasFocus() || t.isFocused()) return true;
+        return false;
+    }
+
+    /** Dock magnification: focused 1.3x and lifted, neighbours 1.1x, the rest at rest. */
+    private void magnify(int focused) {
+        for (int i = 0; i < dockTiles.size(); i++) {
+            View t = dockTiles.get(i);
+            int dist = focused < 0 ? 9 : Math.abs(i - focused);
+            float s = dist == 0 ? 1.3f : dist == 1 ? 1.1f : 1f;
+            float lift = dist == 0 ? -22 : dist == 1 ? -6 : 0;
+            t.animate().scaleX(s).scaleY(s).translationY(lift).setDuration(240).setInterpolator(EASE).withLayer().start();
+            t.setBackground(dist == 0 ? tileOn : tileOff);
+        }
     }
 
     private void showDockLabel(View tile, String name) {
@@ -430,23 +451,23 @@ public class MainActivity extends Activity {
         tile.getLocationOnScreen(a);
         stage.getLocationOnScreen(s);
         float sc = stage.getScaleX();
-        float cx = (a[0] - s[0]) / sc + tile.getWidth() / 2f;
-        float top = (a[1] - s[1]) / sc;
+        float cx = (a[0] - s[0]) / sc + tile.getWidth() * tile.getScaleX() / 2f;
         dockLabel.animate().cancel();
-        dockLabel.setX(Math.min(1920 - 96 - dockLabel.getMeasuredWidth(), cx - dockLabel.getMeasuredWidth() / 2f));
-        dockLabel.setY(top - 92);
+        dockLabel.setX(cx - dockLabel.getMeasuredWidth() / 2f);
+        dockLabel.setY(1080 - 56 - 156 - 96);
         dockLabel.setAlpha(0);
-        dockLabel.animate().alpha(1).setDuration(200).start();
+        dockLabel.setTranslationY(10);
+        dockLabel.animate().alpha(1).translationY(0).setDuration(220).setInterpolator(EASE).start();
     }
 
     private void introAnimation() {
-        View[] parts = {topGroup, centerGroup, bottomGroup};
+        View[] parts = {topParts[0], topParts[1], centerGroup, bottomGroup};
         for (int i = 0; i < parts.length; i++) {
             View v = parts[i];
             v.setAlpha(0);
-            v.setTranslationY(i == 2 ? 60 : 30);
-            v.animate().alpha(1).translationY(0).setStartDelay(150 + i * 140L).setDuration(700)
-                    .setInterpolator(new DecelerateInterpolator(2f)).start();
+            v.setTranslationY(i == 3 ? 70 : 30);
+            v.animate().alpha(1).translationY(0).setStartDelay(120 + i * 120L).setDuration(800)
+                    .setInterpolator(new DecelerateInterpolator(2.2f)).start();
         }
     }
 
@@ -522,8 +543,11 @@ public class MainActivity extends Activity {
         if (next < 0) next = 0;
         int left = target - nowSec;
         String cd = String.format(Locale.US, "%d:%02d:%02d", left / 3600, left % 3600 / 60, left % 60);
-        pillText.setText(pillTextOverride != null ? pillTextOverride
-                : "Next adhan   " + PrayerTimes.EN[next] + "  " + PrayerTimes.AR[next] + "   ·   " + cd);
+        adhanCountdown.setText(cd);
+        adhanName.setText(PrayerTimes.EN[next]);
+        adhanAr.setText(PrayerTimes.AR[next]);
+        if (pillTextOverride != null) { pillText.setText(pillTextOverride); pillText.animate().alpha(1).setDuration(200).start(); }
+        else if (pillText.getAlpha() > 0) pillText.animate().alpha(0).setDuration(300).start();
         int passedMask = 0;
         for (int i = 0; i < 5; i++) if (BAR_PRAYERS[i] != next && today[BAR_PRAYERS[i]] * 60 <= nowSec) passedMask |= 1 << i;
         if (next == shownNext && passedMask == shownPassedMask) return; // only redraw the bar when it changes
@@ -531,7 +555,7 @@ public class MainActivity extends Activity {
         shownPassedMask = passedMask;
         for (int i = 0; i < 5; i++) {
             boolean isNext = BAR_PRAYERS[i] == next;
-            prayerCells[i].setBackground(isNext ? glass(26, GLASS_HI, 0x80FFFFFF) : null);
+            prayerCells[i].setBackground(isNext ? glass(14, GLASS_HI, 0) : null);
             prayerCells[i].setAlpha((passedMask & (1 << i)) != 0 ? 0.55f : 1f);
         }
     }
@@ -576,7 +600,7 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) { }
                 String sky = !Double.isNaN(dustNow) && dustNow > 150 ? "Dusty · غبار" : skyName(code);
                 long t = Math.round(tempNow);
-                ui.post(() -> { tempText.setText(t + "°C"); skyText.setText(sky); });
+                ui.post(() -> { tempText.setText(t + "°"); skyText.setText(sky); });
             } catch (Exception e) {
                 lastWeather = System.currentTimeMillis() - 25 * 60 * 1000; // try again in 5 minutes
             }
@@ -685,8 +709,7 @@ public class MainActivity extends Activity {
         v.setAlpha(0);
         v.setVisibility(View.VISIBLE);
         v.animate().alpha(1).setDuration(220).start();
-        centerGroup.animate().alpha(0.15f).setDuration(220).start();
-        bottomGroup.animate().alpha(0.15f).setDuration(220).start();
+        for (View p : new View[]{centerGroup, bottomGroup, topParts[0], topParts[1]}) p.animate().alpha(0.12f).setDuration(220).start();
     }
 
     private void closePanels() {
@@ -695,8 +718,7 @@ public class MainActivity extends Activity {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
-        centerGroup.animate().alpha(1).setDuration(250).start();
-        bottomGroup.animate().alpha(1).setDuration(250).start();
+        for (View p : new View[]{centerGroup, bottomGroup, topParts[0], topParts[1]}) p.animate().alpha(1).setDuration(250).start();
         if (wasOpen) ui.postDelayed(() -> dockTiles.get(0).requestFocus(), 200);
     }
 
