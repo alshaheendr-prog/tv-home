@@ -243,8 +243,7 @@ public class MainActivity extends Activity {
         hideBars();
         playRandomClip();
         updateDrive();
-        ui.removeCallbacks(grabBackdrop);
-        ui.postDelayed(grabBackdrop, 1500);
+        // No frosted backdrop: on this box the video is on a hardware layer and a copy of it comes back black.
         ui.postDelayed(() -> { loadDockIcons(); refreshApps(); }, 600);
     }
 
@@ -338,7 +337,7 @@ public class MainActivity extends Activity {
     }
 
     private GlassFrame card(View content, int w, int h, int gravity, int x, int y) {
-        return glassCard(stage, content, w, h, gravity, x, y, 34, CARD_GLOW, 0x38FFFFFF, 0x1F000000, true);
+        return glassCard(stage, content, w, h, gravity, x, y, 34, CARD_GLOW, 0x33FFFFFF, 0x14000000, false);
     }
 
     private static GradientDrawable ring(float radius, int width, int color) {
@@ -567,7 +566,7 @@ public class MainActivity extends Activity {
             tileFocus.add(new Drawable[]{new Glass(30, 30, 0xB3FFFFFF, 0), ring(30, 3, 0xE6FFFFFF)});
         }
         bottomGroup = glassCard(stage, dock, -1, DOCK_H, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, DOCK_Y,
-                48, 34, 0x4DFFFFFF, 0x26000000, true);
+                48, 34, 0x40FFFFFF, 0x14000000, false);
 
         dockLabel = text("", 24, fSemi, WHITE);
         dockLabel.setPadding(22, 8, 22, 10);

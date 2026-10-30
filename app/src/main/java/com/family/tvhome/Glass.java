@@ -48,7 +48,7 @@ final class Glass extends Drawable {
         }
         p.setColor(tint);
         c.drawRoundRect(r, radius, radius, p);
-        p.setShader(new LinearGradient(0, g, 0, g + h, 0x33FFFFFF, 0x12FFFFFF, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(0, g, 0, g + h, 0x29FFFFFF, 0x0DFFFFFF, Shader.TileMode.CLAMP));
         c.drawRoundRect(r, radius, radius, p);
         // sheen on the upper part
         p.setShader(new LinearGradient(0, g, 0, g + Math.min(h * 0.5f, 140), 0x1CFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
