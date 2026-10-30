@@ -8,6 +8,7 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Base64;
@@ -101,6 +102,29 @@ public class MainActivity extends Activity {
             try { startActivity(i); } catch (Exception ignored) { }
         }
 
+        /** The app's TV banner (the wide artwork Google TV shows) as a PNG data URL, or "" if it has none. */
+        @JavascriptInterface
+        public String getBanner(String pkg) {
+            PackageManager pm = getPackageManager();
+            try {
+                Drawable d = null;
+                Intent i = pm.getLeanbackLaunchIntentForPackage(pkg);
+                if (i != null) d = pm.getActivityBanner(i);
+                if (d == null) d = pm.getApplicationBanner(pkg);
+                return d == null ? "" : toDataUrl(d, 320, 180);
+            } catch (Exception ex) {
+                return "";
+            }
+        }
+
+        /** Opens the Play Store page for an app that is not installed yet. */
+        @JavascriptInterface
+        public void openStore(String pkg) {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { startActivity(i); } catch (Exception ignored) { }
+        }
+
         /** Every launchable app as JSON: [{pkg, label, icon (PNG data URL)}], sorted by name. */
         @JavascriptInterface
         public String listApps() {
@@ -119,7 +143,7 @@ public class MainActivity extends Activity {
                         JSONObject o = new JSONObject();
                         o.put("pkg", pkg);
                         o.put("label", r.loadLabel(pm).toString());
-                        o.put("icon", toDataUrl(r.loadIcon(pm)));
+                        o.put("icon", toDataUrl(r.loadIcon(pm), 128, 128));
                         out.put(o);
                     } catch (Exception ignored) { }
                 }
@@ -128,10 +152,10 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static String toDataUrl(Drawable d) {
-        Bitmap b = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888);
+    private static String toDataUrl(Drawable d, int w, int h) {
+        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(b);
-        d.setBounds(0, 0, 128, 128);
+        d.setBounds(0, 0, w, h);
         d.draw(c);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         b.compress(Bitmap.CompressFormat.PNG, 100, bos);

@@ -1,6 +1,6 @@
 # Family TV Home
 
-A custom home screen for the Xiaomi TV Box S (3rd Gen): Kuwait City adhan times and countdown, five animated worlds for the kids, and hub tiles for YouTube (PIN), Movies and TV Shows (Kodi), Kids, All apps and Settings.
+A custom home screen for the Xiaomi TV Box S (3rd Gen): Kuwait City adhan times and countdown, five animated worlds for the kids, and tiles for YouTube (PIN), Netflix, Crunchyroll, Stremio, Prime Video, Shahid, Movies and TV Shows (Kodi, or VLC), plus Kids, Browser, All apps and Settings.
 
 The screen itself is `app/src/main/assets/index.html`. The Android part is a full-screen WebView in `MainActivity.java` with a small bridge to launch apps.
 
@@ -25,4 +25,6 @@ adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
 - Arrows move, OK opens, Back closes a panel.
 - YouTube asks for the parent PIN (1234 to start).
 - **All apps**: hold OK on an app to add it to (or remove it from) the **Kids** tile.
-- Movies and TV Shows open Kodi, so install Kodi first.
+- Movies and TV Shows open Kodi (or VLC if Kodi isn't installed).
+- A tile for an app that isn't installed opens its Play Store page. Once installed, the tile shows the app's own artwork.
+- Browser opens TV Bro (best with a remote); handy for hotel Wi-Fi login pages.
