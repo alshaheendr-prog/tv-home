@@ -4,7 +4,7 @@ import java.util.Calendar;
 
 /**
  * The five worlds, one a day, each with its own colours, background clip and characters.
- * The clips and any character pictures live on the box (Movies/KidsCorner, Pictures/KidsCorner), not in this app.
+ * The background videos are the family home screen's own (Movies/TVWallpapers); character pictures are optional (Pictures/KidsCorner).
  */
 final class Worlds {
     static final class World {

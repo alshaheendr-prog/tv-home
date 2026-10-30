@@ -37,9 +37,9 @@ A separate home screen for the kids, in its own app (`com.family.kids`).
 - Daily screen time: 1 h 30 min on school days and 2 h on Fridays and Saturdays to start with, plus a bedtime (8:30 pm to 7 am). A note floats over his show 5 minutes and 1 minute before the end; then a sleepy rest screen stays up until tomorrow or until a parent adds time.
 - A welcome card for Ghanim & Noha with the date and Kuwait weather, a clock with the time-left ring, and a glass dock like the family home screen.
 - A different world each day (Power Up, Mushroom Hills, Speed Loop, Dream Sky, Block World) with its own colours, Pip the buddy whose eyes follow the remote, and a character of the day with a fun fact.
-- The background is one of the family home screen's videos (`Movies/TVWallpapers`), picked to fit the world when a file name matches (Goku, Mario, Sonic, Kirby, Minecraft); otherwise the world's clip in `Movies/KidsCorner`.
+- The background is always one of the family home screen's videos (`Movies/TVWallpapers`), picked to fit the world when a file name matches (Goku, Mario, Sonic, Kirby, Minecraft).
 - **My cartoons** plays videos from `Movies/Kids` on the box, or a `Kids` or `Cartoons` folder on a USB drive, and remembers where each episode stopped.
-- Optional extras on the box: fallback world clips in `Movies/KidsCorner/` (`power-up.mp4`, `mushroom-hills.mp4`, …) and character pictures in `Pictures/KidsCorner/` named after the character (`Goku.png`).
+- Optional extra on the box: character pictures in `Pictures/KidsCorner/` named after the character (`Goku.png`).
 
 One-time setup over ADB (the PC script "Kids Corner setup" does all of this):
 ```
