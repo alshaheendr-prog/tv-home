@@ -200,8 +200,8 @@ public class MainActivity extends Activity {
         });
 
         dockTiles.get(0).requestFocus();
-        tick();
         introAnimation();
+        tick();
     }
 
     @Override
@@ -267,7 +267,7 @@ public class MainActivity extends Activity {
         t.setTypeface(tf);
         t.setTextColor(color);
         t.setIncludeFontPadding(false);
-        t.setShadowLayer(px > 60 ? 20 : 6, 0, 2, 0x66000000);
+        if (px >= 100) t.setShadowLayer(24, 0, 3, 0x4D000000);
         return t;
     }
 
@@ -309,7 +309,7 @@ public class MainActivity extends Activity {
 
     private TextView adhanName, adhanAr, adhanCountdown;
 
-    static final int CARD_W = 560, CARD_H = 272;
+    static final int CARD_W = 560, CARD_H = 290;
 
     private static TextView kicker(TextView t) { t.setLetterSpacing(0.16f); return t; }
 
@@ -348,13 +348,14 @@ public class MainActivity extends Activity {
         LinearLayout nameRow = new LinearLayout(this);
         nameRow.setGravity(Gravity.BOTTOM);
         nameRow.setPadding(0, 10, 0, 0);
+        nameRow.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout names = new LinearLayout(this);
         names.setOrientation(LinearLayout.VERTICAL);
-        adhanName = text("", 36, fSemi, WHITE);
+        adhanName = text("", 38, fSemi, WHITE);
         adhanAr = text("", 26, fArSemi, SOFT);
         adhanAr.setIncludeFontPadding(true);
-        names.addView(adhanName);
-        names.addView(adhanAr);
+        names.addView(adhanName, new LinearLayout.LayoutParams(-2, -2));
+        names.addView(adhanAr, new LinearLayout.LayoutParams(-2, -2));
         adhanCountdown = text("--:--:--", 56, fSemi, WHITE);
         adhanCountdown.setFontFeatureSettings("tnum");
         adhanCountdown.setGravity(Gravity.END);
@@ -374,9 +375,7 @@ public class MainActivity extends Activity {
             TextView tm = text("", 24, fSemi, WHITE);
             tm.setFontFeatureSettings("tnum");
             tm.setPadding(0, 4, 0, 0);
-            col.addView(en);
-            col.addView(ar);
-            col.addView(tm);
+            for (TextView t : new TextView[]{en, ar, tm}) { t.setGravity(Gravity.CENTER); col.addView(t, new LinearLayout.LayoutParams(-1, -2)); }
             prayerTexts[i][0] = en; prayerTexts[i][1] = ar; prayerTexts[i][2] = tm;
             prayerCells[i] = col;
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1);
@@ -538,6 +537,7 @@ public class MainActivity extends Activity {
     }
 
     private void showDockLabel(View tile, String name) {
+        if (tile.getWidth() == 0 || !tile.isLaidOut()) { tile.post(() -> { if (tile.hasFocus()) showDockLabel(tile, name); }); return; }
         dockLabel.setText(name);
         dockLabel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int[] a = new int[2], s = new int[2];
