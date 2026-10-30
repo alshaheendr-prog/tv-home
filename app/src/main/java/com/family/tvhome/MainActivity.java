@@ -330,7 +330,7 @@ public class MainActivity extends Activity {
     private GlassFrame glassCard(ViewGroup parent, View content, int w, int h, int gravity, int x, int y,
                                  float radius, int glow, int glowColor, int tint, boolean frosted) {
         GlassFrame f = new GlassFrame(this, radius, glow, glowColor, tint, frosted);
-        f.addView(content, new FrameLayout.LayoutParams(w < 0 ? -2 : -1, h < 0 ? -2 : -1));
+        f.setContent(content, w >= 0, h >= 0);
         int fw = w < 0 ? -2 : w + 2 * glow, fh = h < 0 ? -2 : h + 2 * glow;
         if (gravity == Gravity.CENTER) parent.addView(f, new FrameLayout.LayoutParams(fw, fh, Gravity.CENTER));
         else parent.addView(f, at(fw, fh, gravity, x - glow, y - glow));

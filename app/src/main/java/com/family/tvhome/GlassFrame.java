@@ -31,7 +31,6 @@ final class GlassFrame extends FrameLayout {
     GlassFrame(Context c, float radius, int glow, int glowColor, int tint, boolean frosted) {
         super(c);
         this.glow = glow;
-        setPadding(glow, glow, glow, glow);
         setClipChildren(false);
         setClipToPadding(false);
         if (glow > 0 && glowColor != 0) {
@@ -50,6 +49,34 @@ final class GlassFrame extends FrameLayout {
         LayoutParams p = new LayoutParams(-1, -1);
         p.setMargins(glow, glow, glow, glow);
         addView(frost, p);
+    }
+
+    /** Adds the card's content, inset by the glow. Call once, after the constructor. */
+    void setContent(View content, boolean fillWidth, boolean fillHeight) {
+        LayoutParams p = new LayoutParams(fillWidth ? -1 : -2, fillHeight ? -1 : -2);
+        p.setMargins(glow, glow, glow, glow);
+        addView(content, p);
+    }
+
+    /** The frame is exactly its content plus the glow; the glass layers then fill that size. */
+    @Override
+    protected void onMeasure(int wSpec, int hSpec) {
+        View content = getChildAt(getChildCount() - 1);
+        measureChildWithMargins(content, wSpec, 0, hSpec, 0);
+        int w = MeasureSpec.getMode(wSpec) == MeasureSpec.EXACTLY ? MeasureSpec.getSize(wSpec) : content.getMeasuredWidth() + 2 * glow;
+        int h = MeasureSpec.getMode(hSpec) == MeasureSpec.EXACTLY ? MeasureSpec.getSize(hSpec) : content.getMeasuredHeight() + 2 * glow;
+        setMeasuredDimension(w, h);
+        for (int i = 0; i < getChildCount() - 1; i++) {
+            View c = getChildAt(i);
+            LayoutParams lp = (LayoutParams) c.getLayoutParams();
+            c.measure(MeasureSpec.makeMeasureSpec(Math.max(0, w - lp.leftMargin - lp.rightMargin), MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(Math.max(0, h - lp.topMargin - lp.bottomMargin), MeasureSpec.EXACTLY));
+        }
+        if (MeasureSpec.getMode(wSpec) == MeasureSpec.EXACTLY || MeasureSpec.getMode(hSpec) == MeasureSpec.EXACTLY) {
+            LayoutParams lp = (LayoutParams) content.getLayoutParams();
+            content.measure(MeasureSpec.makeMeasureSpec(lp.width == -1 ? w - 2 * glow : content.getMeasuredWidth(), MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(lp.height == -1 ? h - 2 * glow : content.getMeasuredHeight(), MeasureSpec.EXACTLY));
+        }
     }
 
     // ------------------------------------------------------------ glow
