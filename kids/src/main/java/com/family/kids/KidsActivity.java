@@ -488,6 +488,8 @@ public class KidsActivity extends Activity {
     private void fitMiddle() {
         if (charCard == null || wordCard == null || welcomeCard == null) return;
         int h = Math.max(charCard.getHeight(), wordCard.getHeight());
+        // both cards take the taller one's height, so the row looks like one piece
+        if (charCard.getMinimumHeight() != h || wordCard.getMinimumHeight() != h) { charCard.setMinimumHeight(h); wordCard.setMinimumHeight(h); }
         int top = Math.min(welcomeCard.getBottom() + MID_GAP, MID_BOTTOM - h);
         for (View v : new View[]{charCard, wordCard}) {
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) v.getLayoutParams();
@@ -530,6 +532,8 @@ public class KidsActivity extends Activity {
 
     private void drawGoodWord() {
         if (wordCard == null) return;
+        charCard.setMinimumHeight(0); // fitMiddle evens them out again after the next layout
+        wordCard.setMinimumHeight(0);
         if (GoodWords.nameDay()) {
             GoodWords.Name n = GoodWords.name();
             wordKick.setText("A NAME OF ALLAH");
@@ -652,7 +656,7 @@ public class KidsActivity extends Activity {
             if (allowed.contains(p) && !Rules.NEVER.contains(p)) items.add(new String[]{p, r.loadLabel(pm).toString()});
         }
         int n = items.size();
-        int h = 136, w = Math.min(230, (1540 - 44 * n) / n);
+        int w = Math.min(242, 1500 / n - 44), h = w * 9 / 16; // TV banners are 16:9: nothing gets cropped
         for (int i = 0; i < n; i++) {
             String pkg = items.get(i)[0], label = items.get(i)[1];
             FrameLayout tile = new FrameLayout(this);
@@ -873,7 +877,7 @@ public class KidsActivity extends Activity {
             int n = Rules.stars(this, i);
             if (n <= 0) continue;
             final int kid = i;
-            TextView b = button(kids[i] + ": use a ★ for " + Rules.STAR_MINUTES + " min  (" + n + " left)", 32);
+            TextView b = goldButton("★  " + kids[i] + ": " + Rules.STAR_MINUTES + " more minutes  (" + n + " left)", 32);
             b.setOnClickListener(v -> {
                 if (Rules.stars(this, kid) <= 0) return;
                 Rules.setStars(this, kid, Rules.stars(this, kid) - 1);
@@ -979,17 +983,44 @@ public class KidsActivity extends Activity {
     // ================================================================== my cartoons
 
     private GridLayout cartoonGrid;
-    private TextView cartoonsEmpty;
+    private LinearLayout cartoonsEmpty;
+    private TextView cartoonsCount;
 
     private void buildCartoons() {
         cartoonsPanel = panel();
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(110, 70, 110, 0);
-        col.addView(text("My cartoons", 64, fHeavy, WHITE));
-        cartoonsEmpty = text("No cartoons yet.\nGrown-ups: put videos in Movies/Kids on the box, or a Kids folder on the USB drive.", 38, fMed, SOFT);
-        cartoonsEmpty.setPadding(0, 30, 0, 0);
-        col.addView(cartoonsEmpty);
+        col.setPadding(110, 64, 110, 0);
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.BOTTOM);
+        head.addView(text("🎬", 60, fMed, WHITE));
+        TextView title = text("My cartoons", 64, fHeavy, WHITE);
+        title.setPadding(22, 0, 0, -14);
+        head.addView(title);
+        cartoonsCount = text("", 32, fBold, DIM);
+        cartoonsCount.setPadding(26, 0, 0, -2);
+        head.addView(cartoonsCount);
+        col.addView(head);
+        cartoonsEmpty = new LinearLayout(this);
+        cartoonsEmpty.setOrientation(LinearLayout.VERTICAL);
+        cartoonsEmpty.setGravity(Gravity.CENTER_HORIZONTAL);
+        cartoonsEmpty.setPadding(80, 50, 80, 60);
+        cartoonsEmpty.setBackground(glass(48));
+        TextView tv = text("📺", 140, fMed, WHITE);
+        tv.setGravity(Gravity.CENTER);
+        cartoonsEmpty.addView(tv);
+        TextView none = text("No cartoons yet", 56, fHeavy, WHITE);
+        none.setGravity(Gravity.CENTER);
+        none.setPadding(0, 10, 0, 0);
+        cartoonsEmpty.addView(none);
+        TextView how = text("Grown-ups: put videos in Movies/Kids on the box, or in a Kids folder on the USB drive.", 34, fMed, SOFT);
+        how.setGravity(Gravity.CENTER);
+        how.setPadding(0, 16, 0, 0);
+        cartoonsEmpty.addView(how, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams el = new LinearLayout.LayoutParams(1100, -2);
+        el.gravity = Gravity.CENTER_HORIZONTAL;
+        el.topMargin = 140;
+        col.addView(cartoonsEmpty, el);
         ScrollView sv = new ScrollView(this);
         sv.setClipToPadding(false);
         sv.setPadding(0, 30, 0, 60);
@@ -1051,25 +1082,35 @@ public class KidsActivity extends Activity {
         if (!Rules.resting(this).isEmpty()) return;
         cartoonGrid.removeAllViews();
         cartoonsEmpty.setVisibility(cartoons.isEmpty() ? View.VISIBLE : View.GONE);
+        cartoonsCount.setText(cartoons.isEmpty() ? "" : cartoons.size() == 1 ? "1 video" : cartoons.size() + " videos");
         show(cartoonsPanel);
         for (int i = 0; i < cartoons.size(); i++) {
             File f = cartoons.get(i);
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setFocusable(true);
-            card.setBackground(glass(26));
+            card.setBackground(solid(0x1AFFFFFF, 26, 0x14));
             card.setClipToOutline(true);
             card.setOutlineProvider(rounded(26));
+            // the picture: today's world colours with a play mark, until the video's own frame is ready
+            FrameLayout pic = new FrameLayout(this);
+            pic.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{world.body, world.bodyDark}));
             ImageView img = new ImageView(this);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            card.addView(img, new LinearLayout.LayoutParams(-1, 216));
+            pic.addView(img, new FrameLayout.LayoutParams(-1, -1));
+            TextView playMark = text("▶", 56, fHeavy, WHITE);
+            playMark.setGravity(Gravity.CENTER);
+            playMark.setAlpha(0.9f);
+            pic.addView(playMark, new FrameLayout.LayoutParams(-1, -1));
+            card.addView(pic, new LinearLayout.LayoutParams(-1, 216));
             // the whole name, on as many lines as it needs
             TextView t = text(title(f), 30, fBold, WHITE);
             t.setPadding(20, 12, 20, 16);
+            t.setMinLines(2); // cards in a row stay the same height; long names still get every line they need
             card.addView(t, new LinearLayout.LayoutParams(-1, -2));
             card.setOnFocusChangeListener((v, has) -> {
                 v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
-                v.setBackground(has ? solid(WHITE, 26, 0x33) : glass(26));
+                v.setBackground(has ? solid(WHITE, 26, 0x33) : solid(0x1AFFFFFF, 26, 0x14));
                 t.setTextColor(has ? 0xFF1A1033 : WHITE);
             });
             final int index = i;
@@ -1116,8 +1157,11 @@ public class KidsActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER_HORIZONTAL);
-        box.setPadding(60, 50, 60, 50);
-        box.setBackground(solid(0xFF161028, 44, 0));
+        box.setPadding(60, 44, 60, 50);
+        box.setBackground(sheet(44));
+        TextView lockIcon = text("🔒", 64, fMed, WHITE);
+        lockIcon.setGravity(Gravity.CENTER);
+        box.addView(lockIcon, new LinearLayout.LayoutParams(-1, -2));
         pinTitle = text("", 50, fHeavy, WHITE);
         pinTitle.setGravity(Gravity.CENTER);
         box.addView(pinTitle);
@@ -1129,8 +1173,8 @@ public class KidsActivity extends Activity {
         dots.setGravity(Gravity.CENTER);
         for (int i = 0; i < 4; i++) {
             View d = new View(this);
-            LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(30, 30);
-            dl.leftMargin = dl.rightMargin = 14;
+            LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(36, 36);
+            dl.leftMargin = dl.rightMargin = 16;
             dots.addView(d, dl);
             pinDots[i] = d;
         }
@@ -1147,10 +1191,11 @@ public class KidsActivity extends Activity {
             lp.setMargins(10, 10, 10, 10);
             if (k.isEmpty()) { pad.addView(new View(this), lp); continue; }
             key.setFocusable(true);
-            key.setBackground(solid(0x1FFFFFFF, 24, 0));
+            key.setBackground(solid(0x1AFFFFFF, 28, 0x14));
             key.setOnFocusChangeListener((v, has) -> {
-                key.setBackground(solid(has ? WHITE : 0x1FFFFFFF, 24, 0));
+                key.setBackground(solid(has ? WHITE : 0x1AFFFFFF, 28, has ? 0 : 0x14));
                 key.setTextColor(has ? 0xFF161028 : WHITE);
+                key.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start();
             });
             key.setOnClickListener(v -> pinPress(k));
             pad.addView(key, lp);
@@ -1185,7 +1230,7 @@ public class KidsActivity extends Activity {
             d.setShape(GradientDrawable.OVAL);
             boolean filled = i < pinEntry.length();
             d.setColor(filledColorOverride != 0 ? filledColorOverride : filled ? WHITE : 0x00000000);
-            d.setStroke(3, filledColorOverride != 0 ? filledColorOverride : 0x99FFFFFF);
+            d.setStroke(4, filledColorOverride != 0 ? filledColorOverride : 0x99FFFFFF);
             pinDots[i].setBackground(d);
         }
     }
@@ -1240,14 +1285,16 @@ public class KidsActivity extends Activity {
         parentPanel = panel();
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(56, 44, 56, 44);
-        col.setBackground(solid(0xFF161028, 44, 0));
+        col.setPadding(56, 44, 56, 30);
+        col.setBackground(sheet(44));
         col.addView(text("Kids Corner settings", 52, fHeavy, WHITE));
         TextView hint = text("Left and right change a setting. Back closes.", 30, fMed, DIM);
         hint.setPadding(0, 0, 0, 18);
         col.addView(hint);
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
+        sv.setVerticalFadingEdgeEnabled(true); // rows fade out at the edge, so it's clear there is more below
+        sv.setFadingEdgeLength(90);
         parentList = new LinearLayout(this);
         parentList.setOrientation(LinearLayout.VERTICAL);
         sv.addView(parentList);
@@ -1257,27 +1304,28 @@ public class KidsActivity extends Activity {
 
     private void openParent() {
         parentList.removeAllViews();
+        parentList.addView(section("Screen time"));
         parentFirst = choiceRow("School days (Sun to Thu)", LIMITS, "limit_school", 90, KidsActivity::limitLabel);
         choiceRow("Weekend (Fri and Sat)", LIMITS, "limit_weekend", 120, KidsActivity::limitLabel);
         choiceRow("Bedtime (until 7 am)", BEDTIMES, "bedtime", 20 * 60 + 30, KidsActivity::bedLabel);
+        choiceRow("Bedtime wind-down", new int[]{0, 1}, "winddown", 1, v -> v == 1 ? "On" : "Off");
+        parentList.addView(section("Look"));
         int[] worlds = new int[Worlds.ALL.length + 1];
         for (int i = 0; i < worlds.length; i++) worlds[i] = i - 1;
         choiceRow("World", worlds, "world", -1, v -> v < 0 ? "A new one every day" : Worlds.ALL[v].name);
-        choiceRow("Bedtime wind-down", new int[]{0, 1}, "winddown", 1, v -> v == 1 ? "On" : "Off");
-        TextView starsTitle = text("Reward stars  (each star buys " + Rules.STAR_MINUTES + " min of extra time)", 32, fBold, WHITE);
-        starsTitle.setPadding(28, 18, 28, 4);
-        parentList.addView(starsTitle);
+        parentList.addView(section("Reward stars"));
+        TextView starsHint = text("Each star buys " + Rules.STAR_MINUTES + " minutes of extra time when time is up.", 30, fMed, DIM);
+        starsHint.setPadding(28, 0, 28, 6);
+        parentList.addView(starsHint);
         int[] counts = new int[31];
         for (int i = 0; i < counts.length; i++) counts[i] = i;
         String[] kids = Rules.kids(this);
         for (int i = 0; i < kids.length; i++)
             choiceRow("★  " + kids[i], counts, "stars_" + i, 0, v -> v + (v == 1 ? " star" : " stars"));
 
-        TextView extraTitle = text("Extra time now", 32, fBold, WHITE);
-        extraTitle.setPadding(28, 18, 0, 8);
-        parentList.addView(extraTitle);
+        parentList.addView(section("Extra time now"));
         LinearLayout extra = new LinearLayout(this);
-        extra.setPadding(28, 0, 0, 6);
+        extra.setPadding(28, 10, 0, 6);
         int[][] gifts = {{15}, {30}, {60}};
         for (int[] g : gifts) {
             TextView b = button(g[0] == 60 ? "+1 hour" : "+" + g[0] + " min", 30);
@@ -1292,13 +1340,15 @@ public class KidsActivity extends Activity {
         parentList.addView(extra);
 
         TextView watched = text("Watched today: " + minutes(Rules.used(this)), 30, fMed, DIM);
-        watched.setPadding(28, 8, 0, 12);
+        watched.setPadding(28, 14, 0, 4);
         parentList.addView(watched);
+
+        parentList.addView(section("More"));
 
         actionRow("Their apps", "Choose which apps they can open", this::openApps);
         actionRow("Change PIN", "", () -> askPin("set", this::openParent));
         setupText = text(setupSummary(), 30, fMed, DIM);
-        setupText.setPadding(0, 18, 0, 18);
+        setupText.setPadding(28, 12, 28, 12);
         parentList.addView(setupText);
         actionRow("Leave Kids Corner", "Turns kids mode off until it's opened again", this::leave);
 
@@ -1322,7 +1372,9 @@ public class KidsActivity extends Activity {
         row.setFocusable(true);
         row.setPadding(28, 14, 28, 14);
         row.addView(text(name, 32, fBold, WHITE), new LinearLayout.LayoutParams(0, -2, 1));
-        TextView value = text("", 34, fHeavy, WHITE);
+        TextView value = text("", 32, fHeavy, WHITE);
+        value.setPadding(24, 2, 24, 4);
+        value.setBackground(solid(0x1AFFFFFF, 30, 0));
         row.addView(value);
         Runnable draw = () -> value.setText("◀  " + label.of(Rules.prefs(this).getInt(key, def)) + "  ▶");
         draw.run();
@@ -1410,18 +1462,22 @@ public class KidsActivity extends Activity {
         appsPanel = panel();
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(110, 70, 110, 0);
-        col.addView(text("Their apps", 64, fHeavy, WHITE));
-        col.addView(text("OK ticks or unticks an app. YouTube, the Play Store, Settings and browsers are never allowed.", 30, fMed, DIM));
+        col.setPadding(56, 44, 56, 20);
+        col.setBackground(sheet(44));
+        col.addView(text("Their apps", 52, fHeavy, WHITE));
+        TextView hint = text("OK ticks or unticks an app. YouTube, the Play Store, Settings and browsers are never allowed.", 30, fMed, DIM);
+        col.addView(hint);
         ScrollView sv = new ScrollView(this);
-        sv.setPadding(0, 30, 0, 60);
+        sv.setPadding(0, 30, 0, 30);
         sv.setClipToPadding(false);
         sv.setVerticalScrollBarEnabled(false);
+        sv.setVerticalFadingEdgeEnabled(true);
+        sv.setFadingEdgeLength(90);
         appGrid = new GridLayout(this);
-        appGrid.setColumnCount(5);
+        appGrid.setColumnCount(4);
         sv.addView(appGrid);
-        col.addView(sv, new LinearLayout.LayoutParams(-1, -1));
-        appsPanel.addView(col, new FrameLayout.LayoutParams(-1, -1));
+        col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
+        appsPanel.addView(col, new FrameLayout.LayoutParams(1456, 900, Gravity.CENTER));
     }
 
     private void openApps() {
@@ -1434,27 +1490,36 @@ public class KidsActivity extends Activity {
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER_HORIZONTAL);
             cell.setFocusable(true);
-            cell.setPadding(14, 18, 14, 14);
+            cell.setPadding(14, 22, 14, 20);
+            FrameLayout iconBox = new FrameLayout(this);
+            iconBox.setBackground(solid(0x14FFFFFF, 30, 0));
             ImageView icon = new ImageView(this);
             try { icon.setImageDrawable(r.loadIcon(pm)); } catch (Exception ignored) { }
-            cell.addView(icon, new LinearLayout.LayoutParams(110, 110));
+            iconBox.addView(icon, new FrameLayout.LayoutParams(104, 104, Gravity.CENTER));
+            cell.addView(iconBox, new LinearLayout.LayoutParams(144, 144));
             TextView name = text(r.loadLabel(pm).toString(), 30, fBold, WHITE);
             name.setGravity(Gravity.CENTER);
-            cell.addView(name, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-1, -2);
+            nl.topMargin = 14;
+            cell.addView(name, nl);
             TextView mark = text("", 30, fBold, WHITE);
-            cell.addView(mark);
+            mark.setPadding(20, 0, 20, 2);
+            LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(-2, -2);
+            ml.topMargin = 8;
+            cell.addView(mark, ml);
             Runnable draw = () -> {
                 boolean on = Rules.apps(this).contains(pkg);
-                mark.setText(on ? "✓ allowed" : "not allowed");
-                mark.setTextColor(on ? 0xFF7CFC6A : DIM);
-                cell.setAlpha(on ? 1f : 0.7f);
+                mark.setText(on ? "✓  allowed" : "not allowed");
+                mark.setTextColor(on ? 0xFF8CFF7A : DIM);
+                mark.setBackground(solid(on ? 0x2E7CFC6A : 0x14FFFFFF, 26, 0));
+                icon.setAlpha(on ? 1f : 0.45f);
             };
             draw.run();
-            cell.setOnFocusChangeListener((v, has) -> cell.setBackground(has ? solid(0x26FFFFFF, 24, 0) : null));
+            cell.setOnFocusChangeListener((v, has) -> cell.setBackground(has ? solid(0x24FFFFFF, 30, 0x30) : null));
             cell.setOnClickListener(v -> { Rules.toggleApp(this, pkg); draw.run(); });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-            lp.width = 300; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
-            lp.setMargins(0, 0, 40, 30);
+            lp.width = 316; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+            lp.setMargins(0, 0, 20, 20);
             appGrid.addView(cell, lp);
         }
         show(appsPanel);
@@ -1476,7 +1541,7 @@ public class KidsActivity extends Activity {
 
     private FrameLayout panel() {
         FrameLayout p = new FrameLayout(this);
-        p.setBackgroundColor(0xE60B0820);
+        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xF20A0718, 0xFC070512}));
         p.setVisibility(View.GONE);
         p.setClickable(true);
         stage.addView(p, new FrameLayout.LayoutParams(1920, 1080));
@@ -1551,6 +1616,37 @@ public class KidsActivity extends Activity {
         d.setStroke(2, 0x52FFFFFF);
         d.setCornerRadius(radius);
         return d;
+    }
+
+    /** The card every grown-up panel sits on: deep violet, lit from the top left, with a fine edge. */
+    private static GradientDrawable sheet(float radius) {
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF241B45, 0xFF150F2B});
+        d.setCornerRadius(radius);
+        d.setStroke(2, 0x30FFFFFF);
+        return d;
+    }
+
+    /** A small coloured heading inside a panel: "SCREEN TIME". */
+    private TextView section(String s) {
+        TextView t = text(s.toUpperCase(Locale.ROOT), 30, fBold, world == null ? 0xFFFFD45A : world.accent);
+        t.setLetterSpacing(0.14f);
+        t.setPadding(28, 26, 28, 4);
+        return t;
+    }
+
+    /** Gold buttons for spending reward stars. */
+    private TextView goldButton(String s, float size) {
+        TextView b = text(s, size, fBold, 0xFFFFE08A);
+        b.setFocusable(true);
+        b.setPadding(36, 14, 36, 14);
+        b.setGravity(Gravity.CENTER);
+        b.setBackground(solid(0x2EFFC233, 40, 0));
+        b.setOnFocusChangeListener((v, has) -> {
+            b.setBackground(solid(has ? 0xFFFFD45A : 0x2EFFC233, 40, 0));
+            b.setTextColor(has ? 0xFF2A1A00 : 0xFFFFE08A);
+            b.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).start();
+        });
+        return b;
     }
 
     private static GradientDrawable solid(int color, float radius, int strokeAlpha) {
