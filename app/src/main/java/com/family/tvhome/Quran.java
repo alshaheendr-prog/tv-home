@@ -1,5 +1,7 @@
 package com.family.tvhome;
 
+import android.net.Uri;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -104,10 +106,42 @@ final class Quran {
         return out;
     }
 
+    /** Recitations copied to the box by the PC's "Download Quran" script: Music/Quran/English name - Arabic name/001.mp3 */
+    static List<Reciter> local(int surah) {
+        List<Reciter> out = new ArrayList<>();
+        File root = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC), "Quran");
+        File[] dirs = root.listFiles(File::isDirectory);
+        if (dirs == null) return out;
+        for (File d : dirs) {
+            if (excluded(d.getName())) continue;
+            if (!new File(d, String.format(Locale.US, "%03d.mp3", surah)).canRead()) continue;
+            // folder name: "English name (mp3quran id)"; the Arabic name comes from the cached reciter list
+            String name = d.getName(), ar = "";
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(.*)\\((\\d+)\\)\\s*$").matcher(name);
+            if (m.matches()) { name = m.group(1).trim(); String a = arabicName(Integer.parseInt(m.group(2))); if (a != null) ar = a; }
+            out.add(new Reciter(name, ar, Uri.fromFile(d).toString() + "/"));
+        }
+        return out;
+    }
+
+    private static Map<Integer, String> arNames;
+    static File cacheDir;
+
+    private static synchronized String arabicName(int id) {
+        if (arNames == null) {
+            arNames = new HashMap<>();
+            try {
+                JSONArray a = new JSONObject(new String(Files.readAllBytes(new File(cacheDir, "reciters_ar.json").toPath()), StandardCharsets.UTF_8)).getJSONArray("reciters");
+                for (int i = 0; i < a.length(); i++) arNames.put(a.getJSONObject(i).getInt("id"), a.getJSONObject(i).getString("name"));
+            } catch (Exception ignored) { }
+        }
+        return arNames.get(id);
+    }
+
     static Reciter pick(List<Reciter> all, Reciter not, Random random) {
         for (int i = 0; i < 10; i++) {
             Reciter r = all.get(random.nextInt(all.size()));
-            if (r != not) return r;
+            if (not == null || !r.server.equals(not.server)) return r;
         }
         return all.get(0);
     }

@@ -39,6 +39,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
@@ -191,7 +192,7 @@ public class MainActivity extends Activity {
             stage.setScaleX(s); stage.setScaleY(s);
             stage.setTranslationX(((r - l) - 1920 * s) / 2);
             stage.setTranslationY(((b - t) - 1080 * s) / 2);
-            Glass.setScreen(r - l, b - t, s);
+            GlassFrame.setScreen(r - l, b - t, s);
         });
         View bottomScrim = new View(this);
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000, 0x00000000}));
@@ -209,8 +210,9 @@ public class MainActivity extends Activity {
         buildApps();
         buildQuran();
         buildParent();
-        lineBox.setVisibility(prefs.getBoolean("verse", true) ? View.VISIBLE : View.GONE);
+        lineFrame.setVisibility(prefs.getBoolean("verse", true) ? View.VISIBLE : View.GONE);
         registerDriveWatcher();
+        ui.postDelayed(() -> bg.execute(() -> Quran.reciters(getCacheDir())), 20000); // warm the reciter list (names in Arabic)
 
         player = new ExoPlayer.Builder(this).build();
         player.setVideoSurfaceView(video);
@@ -315,7 +317,22 @@ public class MainActivity extends Activity {
     }
 
     /** The panel look shared by every card: frosted glass with a soft glow. */
-    private static Glass card() { return new Glass(34, 28, 0x38FFFFFF, 0x1F000000).frosted(); }
+    static final int CARD_GLOW = 28;
+
+    /** Puts content in a frosted glass card and adds it to parent. x, y and w, h describe the card itself, not its glow. */
+    private GlassFrame glassCard(ViewGroup parent, View content, int w, int h, int gravity, int x, int y,
+                                 float radius, int glow, int glowColor, int tint, boolean frosted) {
+        GlassFrame f = new GlassFrame(this, radius, glow, glowColor, tint, frosted);
+        f.addView(content, new FrameLayout.LayoutParams(w < 0 ? -2 : -1, h < 0 ? -2 : -1));
+        int fw = w < 0 ? -2 : w + 2 * glow, fh = h < 0 ? -2 : h + 2 * glow;
+        if (gravity == Gravity.CENTER) parent.addView(f, new FrameLayout.LayoutParams(fw, fh, Gravity.CENTER));
+        else parent.addView(f, at(fw, fh, gravity, x - glow, y - glow));
+        return f;
+    }
+
+    private GlassFrame card(View content, int w, int h, int gravity, int x, int y) {
+        return glassCard(stage, content, w, h, gravity, x, y, 34, CARD_GLOW, 0x38FFFFFF, 0x1F000000, true);
+    }
 
     private static GradientDrawable ring(float radius, int width, int color) {
         GradientDrawable d = new GradientDrawable();
@@ -353,7 +370,6 @@ public class MainActivity extends Activity {
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
         left.setPadding(36, 28, 36, 24);
-        left.setBackground(card());
         LinearLayout kRow = new LinearLayout(this);
         kRow.setGravity(Gravity.CENTER_VERTICAL);
         kRow.addView(kicker(text("KUWAIT CITY  ·  مدينة الكويت", 18, fSemi, DIM)), new LinearLayout.LayoutParams(0, -2, 1));
@@ -379,12 +395,12 @@ public class MainActivity extends Activity {
         hijriText.setPadding(0, 4, 0, 0);
         left.addView(dateText);
         left.addView(hijriText);
-        stage.addView(left, at(CARD_W, CARD_H, Gravity.TOP | Gravity.START, 80, 56));
+        leftCard = left;
+        View leftFrame = card(left, CARD_W, CARD_H, Gravity.TOP | Gravity.START, 80, 56);
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(36, 28, 36, 22);
-        card.setBackground(card());
         card.addView(kicker(text("NEXT ADHAN  ·  الأذان القادم", 18, fSemi, DIM)));
         LinearLayout nameRow = new LinearLayout(this);
         nameRow.setGravity(Gravity.BOTTOM);
@@ -424,12 +440,14 @@ public class MainActivity extends Activity {
             times.addView(col, cp);
         }
         card.addView(times, new LinearLayout.LayoutParams(-1, -2));
-        stage.addView(card, at(CARD_W, CARD_H, Gravity.TOP | Gravity.END, 80, 56));
+        View rightFrame = card(card, CARD_W, CARD_H, Gravity.TOP | Gravity.END, 80, 56);
 
-        topParts = new View[]{left, card};
+        topParts = new View[]{leftFrame, rightFrame};
     }
 
     private View[] topParts;
+    private LinearLayout leftCard;
+    private View lineFrame;
 
     /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
     private void buildCenter() {
@@ -456,7 +474,6 @@ public class MainActivity extends Activity {
         lineBox.setOrientation(LinearLayout.VERTICAL);
         lineBox.setGravity(Gravity.CENTER_HORIZONTAL);
         lineBox.setPadding(56, 22, 56, 24);
-        lineBox.setBackground(card());
         lineKicker = text("", 18, fSemi, DIM);
         lineKicker.setLetterSpacing(0.16f);
         lineAr = text("", 38, fQuran, WHITE);
@@ -476,13 +493,13 @@ public class MainActivity extends Activity {
         lineBox.addView(lineKicker);
         lineBox.addView(lineAr);
         lineBox.addView(lineEn);
-        stage.addView(lineBox, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 350));
+        lineFrame = card(lineBox, -1, -1, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 350);
 
         // A small message pill, used for short notices like "PIN saved".
         pillText = text("", 28, fMed, WHITE);
         pillText.setGravity(Gravity.CENTER);
         pillText.setPadding(34, 14, 34, 16);
-        pillText.setBackground(new Glass(40, 22, 0x40FFFFFF, 0x33000000));
+        pillText.setBackground(new Glass(40, 0, 0, 0x4D000000));
         pillText.setAlpha(0);
         stage.addView(pillText, at(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 60));
     }
@@ -496,7 +513,6 @@ public class MainActivity extends Activity {
         dock.setPadding(30, 0, 30, 0);
         dock.setClipChildren(false);
         dock.setClipToPadding(false);
-        dock.setBackground(new Glass(48, 34, 0x4DFFFFFF, 0x26000000).frosted());
         ViewOutlineProvider rounded = new ViewOutlineProvider() {
             @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 30); }
         };
@@ -539,12 +555,12 @@ public class MainActivity extends Activity {
             dockTiles.add(tile);
             tileFocus.add(new Drawable[]{new Glass(30, 30, 0xB3FFFFFF, 0), ring(30, 3, 0xE6FFFFFF)});
         }
-        stage.addView(dock, at(-2, DOCK_H, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, DOCK_Y));
-        bottomGroup = dock;
+        bottomGroup = glassCard(stage, dock, -1, DOCK_H, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, DOCK_Y,
+                48, 34, 0x4DFFFFFF, 0x26000000, true);
 
         dockLabel = text("", 24, fSemi, WHITE);
         dockLabel.setPadding(22, 8, 22, 10);
-        dockLabel.setBackground(new Glass(24, 18, 0x40FFFFFF, 0x33000000));
+        dockLabel.setBackground(new Glass(24, 0, 0, 0x4D000000));
         dockLabel.setAlpha(0);
         stage.addView(dockLabel, at(-2, -2, Gravity.TOP | Gravity.START, 0, 0));
     }
@@ -595,7 +611,7 @@ public class MainActivity extends Activity {
     }
 
     private void introAnimation() {
-        View[] parts = {topParts[0], topParts[1], centerGroup, lineBox, bottomGroup};
+        View[] parts = {topParts[0], topParts[1], centerGroup, lineFrame, bottomGroup};
         for (int i = 0; i < parts.length; i++) {
             View v = parts[i];
             v.setAlpha(0);
@@ -887,7 +903,7 @@ public class MainActivity extends Activity {
         v.setAlpha(0);
         v.setVisibility(View.VISIBLE);
         v.animate().alpha(1).setDuration(220).start();
-        for (View p : new View[]{centerGroup, bottomGroup, lineBox, topParts[0], topParts[1]}) p.animate().alpha(0.12f).setDuration(220).start();
+        for (View p : new View[]{centerGroup, bottomGroup, lineFrame, topParts[0], topParts[1]}) p.animate().alpha(0.12f).setDuration(220).start();
     }
 
     private void closePanels() {
@@ -899,7 +915,7 @@ public class MainActivity extends Activity {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
-        for (View p : new View[]{centerGroup, bottomGroup, lineBox, topParts[0], topParts[1]}) p.animate().alpha(1).setDuration(250).start();
+        for (View p : new View[]{centerGroup, bottomGroup, lineFrame, topParts[0], topParts[1]}) p.animate().alpha(1).setDuration(250).start();
         if (wasOpen) ui.postDelayed(back::requestFocus, 200);
     }
 
@@ -915,7 +931,6 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER_HORIZONTAL);
         box.setPadding(64, 48, 64, 44);
-        box.setBackground(new Glass(44, 40, 0x59FFFFFF, 0x4D000000));
         box.setClipChildren(false);
 
         pinIcon = new ImageView(this);
@@ -963,7 +978,10 @@ public class MainActivity extends Activity {
             off.setShape(GradientDrawable.OVAL);
             off.setColor(digit ? 0x1FFFFFFF : 0x0DFFFFFF);
             off.setStroke(2, 0x2EFFFFFF);
-            Glass on = new Glass(48, 24, 0x99FFFFFF, 0x26FFFFFF);
+            GradientDrawable on = new GradientDrawable();
+            on.setShape(GradientDrawable.OVAL);
+            on.setColor(0x4DFFFFFF);
+            on.setStroke(3, 0xE6FFFFFF);
             key.setBackground(off);
             key.setOnFocusChangeListener((v, has) -> {
                 v.setBackground(has ? on : off);
@@ -981,8 +999,7 @@ public class MainActivity extends Activity {
             if (label.equals("1")) firstPinKey = key;
         }
         box.addView(keys);
-        pinBox = box;
-        pinPanel.addView(box, new FrameLayout.LayoutParams(600, -2, Gravity.CENTER));
+        pinBox = glassCard(pinPanel, box, 600, -1, Gravity.CENTER, 0, 0, 44, 40, 0x59FFFFFF, 0x59000000, false);
     }
 
     private String savedPin() { return prefs.getString("pin", ""); }
@@ -1249,7 +1266,7 @@ public class MainActivity extends Activity {
         quranNowHome = text("", 22, fAr, 0xFFE8C97A);
         quranNowHome.setPadding(0, 16, 0, 0);
         quranNowHome.setVisibility(View.GONE);
-        ((LinearLayout) topParts[0]).addView(quranNowHome);
+        leftCard.addView(quranNowHome);
         drawQuranState();
     }
 
@@ -1281,7 +1298,10 @@ public class MainActivity extends Activity {
         final Quran.Reciter not = anotherReciter ? quranReciter : null;
         quranNow.setText("Loading · جارٍ التحميل…");
         bg.execute(() -> {
-            List<Quran.Reciter> all = Quran.reciters(getCacheDir());
+            // Recitations stored on the box play first (no internet needed); otherwise stream one.
+            Quran.cacheDir = getCacheDir();
+            List<Quran.Reciter> all = Quran.local(n);
+            if (all.isEmpty() || (all.size() == 1 && not != null && all.get(0).server.equals(not.server))) all = Quran.reciters(getCacheDir());
             Quran.Reciter r = Quran.pick(all, not, random);
             ui.post(() -> startQuran(n, r));
         });
@@ -1347,12 +1367,12 @@ public class MainActivity extends Activity {
                         if (result != PixelCopy.SUCCESS) return;
                         blurThread.execute(() -> {
                             Bitmap b = Blur.blur(frame, 5);
-                            ui.post(() -> { if (resumed) Glass.setBackdrop(b); });
+                            ui.post(() -> { if (resumed) GlassFrame.setBackdrop(b); });
                         });
                     }, ui);
                 } catch (Exception ignored) { }
             } else if (videoCover.getAlpha() >= 0.5f) {
-                Glass.setBackdrop(null);
+                GlassFrame.setBackdrop(null);
             }
             ui.postDelayed(this, 1500);
         }
@@ -1440,7 +1460,6 @@ public class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(56, 44, 56, 40);
-        box.setBackground(new Glass(44, 40, 0x59FFFFFF, 0x4D000000));
         TextView k = kicker(text("PARENTS ONLY  ·  للوالدين", 17, fSemi, DIM));
         box.addView(k);
         TextView title = text("Parent settings", 46, fSemi, WHITE);
@@ -1449,7 +1468,7 @@ public class MainActivity extends Activity {
         parentList = new LinearLayout(this);
         parentList.setOrientation(LinearLayout.VERTICAL);
         box.addView(parentList, new LinearLayout.LayoutParams(-1, -2));
-        parentPanel.addView(box, new FrameLayout.LayoutParams(900, -2, Gravity.CENTER));
+        glassCard(parentPanel, box, 900, -1, Gravity.CENTER, 0, 0, 44, 40, 0x59FFFFFF, 0x59000000, false);
     }
 
     private void openParent() {
@@ -1474,7 +1493,7 @@ public class MainActivity extends Activity {
         boolean verse = prefs.getBoolean("verse", true);
         parentRow("Verse and hadith card", verse ? "Shown" : "Hidden", () -> {
             prefs.edit().putBoolean("verse", !verse).apply();
-            lineBox.setVisibility(!verse ? View.VISIBLE : View.GONE);
+            lineFrame.setVisibility(!verse ? View.VISIBLE : View.GONE);
             drawParent(3);
         });
         boolean h24 = prefs.getBoolean("clock24", false);
@@ -1516,7 +1535,7 @@ public class MainActivity extends Activity {
     private void enterAmbient() {
         ambient = true;
         bottomGroup.animate().alpha(0).translationY(40).setDuration(1200).setInterpolator(EASE).start();
-        lineBox.animate().alpha(0).setDuration(1200).start();
+        lineFrame.animate().alpha(0).setDuration(1200).start();
         dockLabel.animate().alpha(0).setDuration(400).start();
         for (View t : topParts) t.animate().alpha(0.7f).setDuration(1500).start();
         centerGroup.animate().translationY(90).setDuration(1500).setInterpolator(EASE).start();
@@ -1526,7 +1545,7 @@ public class MainActivity extends Activity {
         ambient = false;
         lastInput = System.currentTimeMillis();
         bottomGroup.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
-        lineBox.animate().alpha(1).setDuration(450).start();
+        lineFrame.animate().alpha(1).setDuration(450).start();
         for (View t : topParts) t.animate().alpha(1).setDuration(450).start();
         centerGroup.animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
         View f = dockTiles.get(lastDock);
