@@ -272,6 +272,17 @@ public class MainActivity extends Activity {
         if (ambient) leaveAmbient();
         closePanels();
         dockTiles.get(lastDock).requestFocus();
+        // Update TV opens each panel in turn to photograph it for polishing (never the parent settings, which need the PIN).
+        String panel = intent.getStringExtra("panel");
+        if (panel != null) ui.postDelayed(() -> {
+            switch (panel) {
+                case "apps": openApps("apps"); break;
+                case "quran": openQuran(); break;
+                case "pin": openPin(false); break;
+                case "calendar": openCalendar(); break;
+                default: break;
+            }
+        }, 400);
     }
 
     @Override
