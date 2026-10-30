@@ -171,6 +171,19 @@ public class KidsActivity extends Activity {
     }
 
     @Override
+    protected void onStop() {
+        // Another app (Netflix, a cartoon) needs the video decoder: let ours go until we come back.
+        stopClip();
+        super.onStop();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        video.setVisibility(View.VISIBLE);
+    }
+
+    @Override
     protected void onDestroy() {
         stopClip();
         ui.removeCallbacksAndMessages(null);
@@ -1178,10 +1191,15 @@ public class KidsActivity extends Activity {
         stopService(new Intent(this, Guard.class));
         hide(parentPanel);
         hideRestNow();
-        try {
-            startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        } catch (Exception ignored) { }
-        finish();
+        // Free the video decoder before the family home starts its own video: two at once make the box stall.
+        stopClip();
+        video.setVisibility(View.GONE);
+        ui.postDelayed(() -> {
+            try {
+                startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception ignored) { }
+            finish();
+        }, 250);
     }
 
     private void hideRestNow() { restPanel.setVisibility(View.GONE); syncFocus(); }
