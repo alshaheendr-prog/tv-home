@@ -33,7 +33,10 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
 
@@ -82,6 +85,7 @@ public class MainActivity extends Activity {
             new Dock("shahid", "Shahid", 0xFF1FD3A5, "net.mbc.shahidTV", "net.mbc.shahid"),
             new Dock("kodi", "Movies & Shows", 0xFF17B2E7, "org.xbmc.kodi", "org.videolan.vlc"),
             new Dock("browser", "Browser", 0xFF4A8CFF, "com.phlox.tvwebbrowser", "org.mozilla.firefox", "com.android.chrome"),
+            new Dock("quran", "Quran · القرآن", 0xFFE8C97A),
             new Dock("apps", "All apps", 0xFF8A8FA8),
     };
     static final Set<String> HIDDEN_FROM_LIST = new HashSet<>(Arrays.asList("com.google.android.youtube.tv", "com.google.android.youtube"));
@@ -118,7 +122,7 @@ public class MainActivity extends Activity {
     private long lastWeather, lastLineSwitch;
     private int lineIndex = -1;
 
-    private FrameLayout pinPanel, appsPanel;
+    private FrameLayout pinPanel, appsPanel, quranPanel;
     private TextView pinTitle, pinSub;
     private final View[] pinDots = new View[4];
     private View firstPinKey;
@@ -175,6 +179,7 @@ public class MainActivity extends Activity {
         buildBottom();
         buildPin();
         buildApps();
+        buildQuran();
 
         player = new ExoPlayer.Builder(this).build();
         player.setVideoSurfaceView(video);
@@ -211,8 +216,16 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onStop() {
+        // Leaving home for another app stops the recitation so it never plays over a film.
+        if (quran != null && quran.getPlayWhenReady()) { quran.pause(); drawQuranState(); }
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
         player.release();
+        if (quran != null) quran.release();
         bg.shutdownNow();
         super.onDestroy();
     }
@@ -402,7 +415,8 @@ public class MainActivity extends Activity {
             ImageView icon = new ImageView(this);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
             tile.addView(icon, new FrameLayout.LayoutParams(80, 80, Gravity.CENTER));
-            TextView mark = text(d.id.equals("apps") ? "⋯" : d.name.substring(0, 1), 48, fBold, d.color);
+            TextView mark = d.id.equals("quran") ? text("القرآن", 30, fArSemi, d.color)
+                    : text(d.id.equals("apps") ? "⋯" : d.name.substring(0, 1), 48, fBold, d.color);
             mark.setGravity(Gravity.CENTER);
             tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
             tile.setPivotY(112);
@@ -551,6 +565,7 @@ public class MainActivity extends Activity {
         int passedMask = 0;
         for (int i = 0; i < 5; i++) if (BAR_PRAYERS[i] != next && today[BAR_PRAYERS[i]] * 60 <= nowSec) passedMask |= 1 << i;
         if (next == shownNext && passedMask == shownPassedMask) return; // only redraw the bar when it changes
+        if (shownNext != -2 && quran != null && quran.getPlayWhenReady()) { quran.pause(); drawQuranState(); toast("Paused for the adhan · توقف للأذان"); }
         shownNext = next;
         shownPassedMask = passedMask;
         for (int i = 0; i < 5; i++) {
@@ -662,6 +677,7 @@ public class MainActivity extends Activity {
         switch (d.id) {
             case "yt": openPin(false); return;
             case "apps": openApps("apps"); return;
+            case "quran": openQuran(); return;
             default:
                 if (launchAny(d.pkgs, d.id.equals("browser") ? "browser" : d.name)) return;
                 toast(d.name + " isn't installed yet. Opening the Play Store…");
@@ -713,13 +729,15 @@ public class MainActivity extends Activity {
     }
 
     private void closePanels() {
-        boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE;
-        for (View v : new View[]{pinPanel, appsPanel}) {
+        boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE
+                || quranPanel.getVisibility() == View.VISIBLE;
+        View back = quranPanel.getVisibility() == View.VISIBLE ? dockTiles.get(DOCK.length - 2) : dockTiles.get(0);
+        for (View v : new View[]{pinPanel, appsPanel, quranPanel}) {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
         for (View p : new View[]{centerGroup, bottomGroup, topParts[0], topParts[1]}) p.animate().alpha(1).setDuration(250).start();
-        if (wasOpen) ui.postDelayed(() -> dockTiles.get(0).requestFocus(), 200);
+        if (wasOpen) ui.postDelayed(back::requestFocus, 200);
     }
 
     // ================================================================== YouTube PIN
@@ -942,5 +960,160 @@ public class MainActivity extends Activity {
         Intent i = new Intent(Settings.ACTION_SETTINGS);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try { startActivity(i); } catch (Exception ignored) { }
+    }
+
+    // ================================================================== Quran player
+
+    private ExoPlayer quran;
+    private int quranSurah, quranErrors;
+    private Quran.Reciter quranReciter;
+    private TextView quranNow, quranNowHome, quranPlayBtn;
+    private LinearLayout quranControls;
+    private GridLayout surahGrid;
+
+    private void buildQuran() {
+        quranPanel = overlay();
+        TextView title = text("القرآن الكريم   ·   The Holy Quran", 46, fArSemi, WHITE);
+        quranPanel.addView(title, at(-2, -2, Gravity.TOP | Gravity.START, 110, 62));
+        TextView sub = text("Pick a surah · a different reciter every time", 22, fAr, DIM);
+        quranPanel.addView(sub, at(-2, -2, Gravity.TOP | Gravity.START, 112, 126));
+
+        quranControls = new LinearLayout(this);
+        quranControls.setGravity(Gravity.CENTER_VERTICAL);
+        quranNow = text("", 24, fAr, SOFT);
+        quranNow.setPadding(0, 0, 24, 0);
+        quranNow.setMaxLines(2);
+        quranControls.addView(quranNow, new LinearLayout.LayoutParams(440, -2));
+        quranPlayBtn = quranButton("Pause", () -> {
+            if (quran == null) return;
+            quran.setPlayWhenReady(!quran.getPlayWhenReady());
+            drawQuranState();
+        });
+        quranButton("Another reciter", () -> playSurah(quranSurah, true));
+        quranButton("Stop", this::stopQuran);
+        quranPanel.addView(quranControls, at(-2, -2, Gravity.TOP | Gravity.END, 110, 58));
+
+        ScrollView sv = new ScrollView(this);
+        sv.setVerticalScrollBarEnabled(false);
+        sv.setClipToPadding(false);
+        sv.setPadding(0, 16, 0, 60);
+        surahGrid = new GridLayout(this);
+        surahGrid.setColumnCount(6);
+        surahGrid.setClipChildren(false);
+        for (int i = 0; i < 114; i++) {
+            final int n = i + 1;
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER);
+            cell.setFocusable(true);
+            cell.setClickable(true);
+            cell.setBackground(glass(24, 0x1AFFFFFF, 0));
+            TextView ar = text(Quran.AR[i], 34, fArSemi, WHITE);
+            ar.setGravity(Gravity.CENTER);
+            TextView en = text(n + "  ·  " + Quran.EN[i], 20, fMed, DIM);
+            en.setPadding(0, 8, 0, 0);
+            cell.addView(ar);
+            cell.addView(en);
+            cell.setOnFocusChangeListener((v, has) -> {
+                v.setBackground(has ? glass(24, 0x4DFFFFFF, 0x99FFFFFF) : glass(24, 0x1AFFFFFF, 0));
+                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).setInterpolator(EASE).start();
+            });
+            cell.setOnClickListener(v -> playSurah(n, false));
+            GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
+            gp.width = 268; gp.height = 118;
+            gp.setMargins(9, 9, 9, 9);
+            surahGrid.addView(cell, gp);
+        }
+        sv.addView(surahGrid);
+        quranPanel.addView(sv, at(1920 - 200, 1080 - 190, Gravity.TOP | Gravity.START, 100, 180));
+
+        // On the home screen: what is playing, just above the dock on the left.
+        quranNowHome = text("", 22, fAr, SOFT);
+        quranNowHome.setPadding(22, 10, 22, 12);
+        quranNowHome.setBackground(glass(99, 0x33FFFFFF, GLASS_EDGE));
+        quranNowHome.setVisibility(View.GONE);
+        stage.addView(quranNowHome, at(-2, -2, Gravity.BOTTOM | Gravity.START, 96, 250));
+        drawQuranState();
+    }
+
+    private TextView quranButton(String label, Runnable onClick) {
+        TextView b = text(label, 24, fSemi, WHITE);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(28, 14, 28, 16);
+        b.setFocusable(true);
+        b.setClickable(true);
+        b.setBackground(glass(99, 0x1AFFFFFF, GLASS_EDGE));
+        b.setOnFocusChangeListener((v, has) -> v.setBackground(glass(99, has ? 0x59FFFFFF : 0x1AFFFFFF, has ? 0xB3FFFFFF : GLASS_EDGE)));
+        b.setOnClickListener(v -> onClick.run());
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
+        p.leftMargin = 14;
+        quranControls.addView(b, p);
+        return b;
+    }
+
+    private void openQuran() {
+        show(quranPanel);
+        int focus = quranSurah > 0 ? quranSurah - 1 : 0;
+        ui.post(() -> surahGrid.getChildAt(focus).requestFocus());
+    }
+
+    /** Plays a surah from a random reciter (never Mishary Alafasy). anotherReciter keeps the surah and changes the voice. */
+    private void playSurah(int n, boolean anotherReciter) {
+        if (n <= 0) return;
+        if (!anotherReciter) quranErrors = 0;
+        final Quran.Reciter not = anotherReciter ? quranReciter : null;
+        quranNow.setText("Loading · جارٍ التحميل…");
+        bg.execute(() -> {
+            List<Quran.Reciter> all = Quran.reciters(getCacheDir());
+            Quran.Reciter r = Quran.pick(all, not, random);
+            ui.post(() -> startQuran(n, r));
+        });
+    }
+
+    private void startQuran(int n, Quran.Reciter r) {
+        if (quran == null) {
+            quran = new ExoPlayer.Builder(this).build();
+            quran.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH).build(), true);
+            quran.addListener(new Player.Listener() {
+                @Override public void onIsPlayingChanged(boolean playing) { if (playing) quranErrors = 0; drawQuranState(); }
+                @Override public void onPlaybackStateChanged(int state) {
+                    if (state == Player.STATE_ENDED) { quranSurah = 0; drawQuranState(); }
+                }
+                @Override public void onPlayerError(PlaybackException e) {
+                    if (++quranErrors > 3) { toast("The Quran couldn't load. Check the internet."); stopQuran(); return; }
+                    toast("That recitation didn't load. Trying another reciter…");
+                    playSurah(quranSurah, true);
+                }
+            });
+        }
+        quranSurah = n;
+        quranReciter = r;
+        quran.setMediaItem(MediaItem.fromUri(r.url(n)));
+        quran.prepare();
+        quran.play();
+        drawQuranState();
+    }
+
+    private void stopQuran() {
+        if (quran != null) quran.stop();
+        quranSurah = 0;
+        drawQuranState();
+    }
+
+    private void drawQuranState() {
+        if (quranNow == null) return;
+        boolean active = quran != null && quranSurah > 0;
+        for (int i = 1; i < quranControls.getChildCount(); i++) quranControls.getChildAt(i).setVisibility(active ? View.VISIBLE : View.GONE);
+        if (!active) {
+            quranNow.setText("");
+            quranNowHome.setVisibility(View.GONE);
+            return;
+        }
+        String reciter = quranReciter.ar.isEmpty() ? quranReciter.en : quranReciter.ar + "  ·  " + quranReciter.en;
+        quranNow.setText("سورة " + Quran.AR[quranSurah - 1] + "  ·  " + Quran.EN[quranSurah - 1] + "\n" + reciter);
+        quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
+        quranNowHome.setText((quran.getPlayWhenReady() ? "▶  " : "❚❚  ") + "سورة " + Quran.AR[quranSurah - 1] + "  ·  " + quranReciter.en);
+        quranNowHome.setVisibility(View.VISIBLE);
     }
 }
