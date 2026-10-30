@@ -121,6 +121,7 @@ public class MainActivity extends Activity {
     private final ExecutorService blurThread = Executors.newSingleThreadExecutor();
     private ExoPlayer player;
     private String currentClip = "";
+    private int clipErrors;
 
     private View centerGroup, bottomGroup;
     private TextView dateText, hijriText, tempText, skyText, clockText, ampmText, pillText, lineKicker, lineAr, lineEn;
@@ -219,7 +220,12 @@ public class MainActivity extends Activity {
         player.setRepeatMode(Player.REPEAT_MODE_ONE);
         player.setVolume(0f);
         player.addListener(new Player.Listener() {
-            @Override public void onRenderedFirstFrame() { videoCover.animate().alpha(0).setDuration(700).start(); }
+            @Override public void onRenderedFirstFrame() { clipErrors = 0; videoCover.animate().alpha(0).setDuration(700).start(); }
+            @Override public void onPlayerError(androidx.media3.common.PlaybackException e) {
+                // a clip that can't play (an unusual format): keep the calm gradient and try another one
+                videoCover.setAlpha(1);
+                if (++clipErrors < 4) ui.postDelayed(MainActivity.this::playRandomClip, 500);
+            }
         });
 
         dockTiles.get(0).requestFocus();
@@ -359,7 +365,8 @@ public class MainActivity extends Activity {
 
     // ================================================================== layout
 
-    private TextView adhanName, adhanAr, adhanCountdown, driveText;
+    private TextView adhanName, adhanAr, adhanCountdown, driveText, dayText;
+    private volatile String hiLo = "";
 
     static final int CARD_W = 560, CARD_H = 290;
 
@@ -395,6 +402,9 @@ public class MainActivity extends Activity {
         hijriText.setPadding(0, 4, 0, 0);
         left.addView(dateText);
         left.addView(hijriText);
+        dayText = text("", 21, fMed, DIM);
+        dayText.setPadding(0, 14, 0, 0);
+        left.addView(dayText);
         leftCard = left;
         View leftFrame = card(left, CARD_W, CARD_H, Gravity.TOP | Gravity.START, 80, 56);
 
@@ -466,7 +476,7 @@ public class MainActivity extends Activity {
         clockRow.addView(ampmText);
         c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 268));
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 222));
         centerGroup = c;
 
         // The verse / hadith card, low on the screen just above the dock: Amiri for the Arabic, an italic serif for the English.
@@ -493,7 +503,7 @@ public class MainActivity extends Activity {
         lineBox.addView(lineKicker);
         lineBox.addView(lineAr);
         lineBox.addView(lineEn);
-        lineFrame = card(lineBox, -1, -1, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 350);
+        lineFrame = card(lineBox, -1, -1, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 326);
 
         // A small message pill, used for short notices like "PIN saved".
         pillText = text("", 28, fMed, WHITE);
@@ -604,10 +614,10 @@ public class MainActivity extends Activity {
         float cx = (a[0] - s[0]) / sc + tile.getWidth() * tile.getScaleX() / 2f;
         dockLabel.animate().cancel();
         dockLabel.setX(cx - dockLabel.getMeasuredWidth() / 2f);
-        dockLabel.setY(1080 - DOCK_Y - DOCK_H / 2f + TILE / 2f - TILE * 1.22f - 20 - 62);
+        float y = 1080 - DOCK_Y - DOCK_H / 2f + TILE / 2f - TILE * 1.22f - 20 - 62; // just above the magnified tile
         dockLabel.setAlpha(0);
-        dockLabel.setTranslationY(10);
-        dockLabel.animate().alpha(1).translationY(0).setDuration(220).setInterpolator(EASE).start();
+        dockLabel.setTranslationY(y + 10);
+        dockLabel.animate().alpha(1).translationY(y).setDuration(220).setInterpolator(EASE).start();
     }
 
     private void introAnimation() {
@@ -654,6 +664,7 @@ public class MainActivity extends Activity {
             tm.add(Calendar.DAY_OF_MONTH, 1);
             tomorrow = PrayerTimes.forDate(tm.get(Calendar.YEAR), tm.get(Calendar.MONTH) + 1, tm.get(Calendar.DAY_OF_MONTH));
             for (int i = 0; i < 5; i++) prayerTexts[i][2].setText(PrayerTimes.clock(today[BAR_PRAYERS[i]]));
+            drawDayLine();
             SimpleDateFormat f = new SimpleDateFormat("EEEE d MMMM", Locale.UK);
             f.setTimeZone(KUWAIT);
             dateText.setText(f.format(now.getTime()));
@@ -747,7 +758,13 @@ public class MainActivity extends Activity {
     private void fetchWeather() {
         bg.execute(() -> {
             try {
-                JSONObject cur = new JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=29.3759&longitude=47.9774&current=temperature_2m,weather_code,is_day&timezone=Asia%2FKuwait")).getJSONObject("current");
+                JSONObject all = new JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=29.3759&longitude=47.9774&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=Asia%2FKuwait"));
+                try {
+                    JSONObject daily = all.getJSONObject("daily");
+                    hiLo = "↑ " + Math.round(daily.getJSONArray("temperature_2m_max").getDouble(0)) + "°   ↓ "
+                            + Math.round(daily.getJSONArray("temperature_2m_min").getDouble(0)) + "°";
+                } catch (Exception ignored) { }
+                JSONObject cur = all.getJSONObject("current");
                 tempNow = cur.getDouble("temperature_2m");
                 int code = cur.getInt("weather_code");
                 try {
@@ -756,11 +773,18 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) { }
                 String sky = !Double.isNaN(dustNow) && dustNow > 150 ? "Dusty · غبار" : skyName(code);
                 long t = Math.round(tempNow);
-                ui.post(() -> { tempText.setText(t + "°"); skyText.setText(sky); });
+                ui.post(() -> { tempText.setText(t + "°"); skyText.setText(sky); drawDayLine(); });
             } catch (Exception e) {
                 lastWeather = System.currentTimeMillis() - 25 * 60 * 1000; // try again in 5 minutes
             }
         });
+    }
+
+    /** Bottom of the weather card: today's high and low, and sunrise (الشروق). */
+    private void drawDayLine() {
+        if (today == null) return;
+        String sun = "Sunrise " + PrayerTimes.clock(today[1]) + "  ·  الشروق";
+        dayText.setText(hiLo.isEmpty() ? sun : hiLo + "      " + sun);
     }
 
     private static String skyName(int code) {
@@ -875,7 +899,7 @@ public class MainActivity extends Activity {
             }
         } else {
             c.drawColor(0x33FFFFFF);
-            int pad = size / 10;
+            int pad = size / 24;
             icon.setBounds(pad, pad, size - pad, size - pad);
             icon.draw(c);
         }
