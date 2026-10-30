@@ -42,7 +42,7 @@ final class Mascot extends View {
     @Override
     protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight(), s = Math.min(w, h) / 300f;
-        float cx = w / 2, cy = h * 0.56f, rad = 105 * s;
+        float cx = w / 2, cy = h * 0.56f, rad = 95 * s; // leaves room for hair, caps and the sleepy Z inside the view
         // ease the eyes toward the target so they glide rather than jump
         eyeX += (lookX - eyeX) * 0.18f;
         eyeY += (lookY - eyeY) * 0.18f;

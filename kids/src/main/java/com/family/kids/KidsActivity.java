@@ -57,7 +57,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Kids Corner: his own home screen. Opening it turns kids mode on; only the parent PIN turns it off.
+ * Kids Corner: the children's own home screen. Opening it turns kids mode on; only the parent PIN turns it off.
  * Everything sits on a 1920x1080 stage that is scaled to the screen, so the numbers below are TV pixels.
  */
 public class KidsActivity extends Activity {
@@ -77,7 +77,10 @@ public class KidsActivity extends Activity {
     private Worlds.World world;
 
     private Mascot mascot;
-    private TextView hello, worldChip, ringBig, ringSmall, charName, charFrom, charFact, tileLabel;
+    private TextView hello, names, worldChip, weatherText, clockText, ampmText, ringBig, ringSmall, ringNote, charName, charFrom, charFact, tileLabel;
+    private View labelPill;
+    private volatile String weather = "";
+    private long lastWeather;
     private ImageView charPhoto;
     private Ring ring;
     private LinearLayout tileRow;
@@ -109,7 +112,7 @@ public class KidsActivity extends Activity {
         cover = new View(this);
         root.addView(cover, new FrameLayout.LayoutParams(-1, -1));
         View scrim = new View(this);
-        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0x99000000, 0x00000000, 0x33000000}));
+        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x1A000000, 0x1A000000, 0x73000000}));
         root.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
         stage = new FrameLayout(this);
         stage.setClipChildren(false);
@@ -243,10 +246,10 @@ public class KidsActivity extends Activity {
         cover.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, w.sky));
         mascot.setWorld(w);
         restMascot.setWorld(w);
-        worldChip.setText("★  " + w.name);
+        worldChip.setText("★  " + w.name.toUpperCase(Locale.ROOT));
         worldChip.setTextColor(w.accent);
-        int h = Calendar.getInstance(Rules.KUWAIT).get(Calendar.HOUR_OF_DAY);
-        hello.setText(h < 12 ? "Good morning!" : h < 17 ? "Good afternoon!" : "Good evening!");
+        names.setText(Rules.prefs(this).getString("names", "Ghanim & Noha"));
+        drawGreeting();
 
         boolean pinned = Rules.prefs(this).getInt("world", -1) >= 0;
         Worlds.Character ch = Worlds.characterOfTheDay(w, pinned);
@@ -286,14 +289,38 @@ public class KidsActivity extends Activity {
         return null;
     }
 
-    /** Movies/KidsCorner/power-up.mp4 and friends; any file starting with the world's name counts. */
+    /** Words in a wallpaper's file name that fit each world (Goku Sunset fits Power Up). */
+    static String[] clipWords(String world) {
+        switch (world) {
+            case "power": return new String[]{"goku", "gohan", "vegeta", "dragon", "dbz", "saiyan"};
+            case "mushroom": return new String[]{"mario", "yoshi", "luigi", "pinna", "sunshine", "peach"};
+            case "speed": return new String[]{"sonic", "tails", "knuckles"};
+            case "dream": return new String[]{"kirby", "dedede"};
+            default: return new String[]{"minecraft", "creeper"};
+        }
+    }
+
+    /**
+     * The same video wallpapers as the family home screen (Movies/TVWallpapers): one that fits today's world if there is one.
+     * Otherwise the world's own clip in Movies/KidsCorner, otherwise any of the home screen's videos.
+     */
     private File clipFor(Worlds.World w) {
-        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "KidsCorner");
+        File movies = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
+        List<File> home = videosIn(new File(movies, "TVWallpapers")), fits = new ArrayList<>(), own = new ArrayList<>();
+        for (File f : home) {
+            String n = f.getName().toLowerCase(Locale.ROOT);
+            for (String word : clipWords(w.id)) if (n.contains(word)) { fits.add(f); break; }
+        }
+        for (File f : videosIn(new File(movies, "KidsCorner"))) if (f.getName().toLowerCase(Locale.ROOT).startsWith(w.clip)) own.add(f);
+        List<File> pick = !fits.isEmpty() ? fits : !own.isEmpty() ? own : home;
+        return pick.isEmpty() ? null : pick.get(random.nextInt(pick.size()));
+    }
+
+    private static List<File> videosIn(File dir) {
+        List<File> out = new ArrayList<>();
         File[] files = dir.listFiles();
-        if (files == null) return null;
-        List<File> match = new ArrayList<>();
-        for (File f : files) if (f.getName().toLowerCase(Locale.ROOT).startsWith(w.clip) && isVideo(f.getName())) match.add(f);
-        return match.isEmpty() ? null : match.get(random.nextInt(match.size()));
+        if (files != null) for (File f : files) if (f.isFile() && isVideo(f.getName())) out.add(f);
+        return out;
     }
 
     private void playClip() {
@@ -323,59 +350,98 @@ public class KidsActivity extends Activity {
     // ================================================================== layout
 
     private void buildTop() {
+        // welcome card, top left
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
-        hello = text("", 76, fHeavy, WHITE);
-        hello.setShadowLayer(16, 0, 4, 0x66000000);
+        left.setPadding(48, 34, 56, 38);
+        left.setBackground(glass(48));
+        LinearLayout kick = new LinearLayout(this);
+        kick.setGravity(Gravity.CENTER_VERTICAL);
+        TextView welcome = text("WELCOME", 26, fBold, DIM);
+        welcome.setLetterSpacing(0.2f);
+        kick.addView(welcome);
+        worldChip = text("", 24, fBold, WHITE);
+        worldChip.setLetterSpacing(0.12f);
+        worldChip.setPadding(26, 0, 0, 0);
+        kick.addView(worldChip);
+        left.addView(kick);
+        names = text("", 92, fHeavy, WHITE);
+        names.setIncludeFontPadding(false);
+        names.setPadding(0, 14, 0, 4);
+        left.addView(names);
+        hello = text("", 34, fBold, SOFT);
         left.addView(hello);
-        worldChip = text("", 34, fBold, WHITE);
-        worldChip.setPadding(28, 6, 28, 6);
-        worldChip.setBackground(glass(40));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-        lp.topMargin = 4;
-        left.addView(worldChip, lp);
-        place(left, 96, 60, -2, -2);
+        weatherText = text("", 34, fBold, WHITE);
+        weatherText.setPadding(0, 2, 0, 0);
+        left.addView(weatherText);
+        place(left, 80, 56, -2, -2);
 
-        // time left: a ring and the minutes beside it
+        // clock and time left, top right
         LinearLayout card = new LinearLayout(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(26, 20, 40, 20);
-        card.setBackground(glass(36));
+        card.setPadding(34, 30, 52, 30);
+        card.setBackground(glass(48));
+        FrameLayout ringBox = new FrameLayout(this);
         ring = new Ring(this);
-        card.addView(ring, new LinearLayout.LayoutParams(120, 120));
-        LinearLayout t = new LinearLayout(this);
-        t.setOrientation(LinearLayout.VERTICAL);
-        t.setPadding(26, 0, 0, 0);
-        ringBig = text("", 58, fHeavy, WHITE);
+        ringBox.addView(ring, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout inRing = new LinearLayout(this);
+        inRing.setOrientation(LinearLayout.VERTICAL);
+        inRing.setGravity(Gravity.CENTER);
+        ringBig = text("", 40, fHeavy, WHITE);
         ringBig.setIncludeFontPadding(false);
-        ringSmall = text("", 28, fBold, DIM);
+        ringBig.setGravity(Gravity.CENTER);
+        ringSmall = text("", 22, fBold, DIM);
         ringSmall.setIncludeFontPadding(false);
-        t.addView(ringBig);
-        t.addView(ringSmall);
-        card.addView(t);
+        ringSmall.setGravity(Gravity.CENTER);
+        inRing.addView(ringBig);
+        inRing.addView(ringSmall);
+        ringBox.addView(inRing, new FrameLayout.LayoutParams(-1, -1));
+        card.addView(ringBox, new LinearLayout.LayoutParams(184, 184));
+        LinearLayout right = new LinearLayout(this);
+        right.setOrientation(LinearLayout.VERTICAL);
+        right.setPadding(40, 0, 0, 0);
+        LinearLayout clockRow = new LinearLayout(this);
+        clockRow.setGravity(Gravity.BOTTOM);
+        clockText = text("", 112, fHeavy, WHITE);
+        clockText.setIncludeFontPadding(false);
+        clockRow.addView(clockText);
+        ampmText = text("", 38, fHeavy, DIM);
+        ampmText.setPadding(12, 0, 0, 14);
+        clockRow.addView(ampmText);
+        right.addView(clockRow);
+        ringNote = text("", 30, fBold, SOFT);
+        right.addView(ringNote);
+        card.addView(right);
         FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
-        fl.topMargin = 60; fl.rightMargin = 96;
+        fl.topMargin = 56; fl.rightMargin = 80;
         stage.addView(card, fl);
     }
 
     private void buildMiddle() {
         mascot = new Mascot(this, fHeavy);
-        place(mascot, 90, 250, 380, 380);
+        place(mascot, 210, 390, 360, 360);
         bob(mascot);
 
         LinearLayout card = new LinearLayout(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(48, 36, 48, 40);
-        card.setBackground(glass(44));
+        card.setPadding(52, 36, 52, 40);
+        card.setBackground(glass(48));
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
-        t.addView(text("CHARACTER OF THE DAY", 26, fBold, DIM));
-        charName = text("", 72, fHeavy, WHITE);
+        TextView kick = text("CHARACTER OF THE DAY", 24, fBold, DIM);
+        kick.setLetterSpacing(0.2f);
+        t.addView(kick);
+        LinearLayout nameRow = new LinearLayout(this);
+        nameRow.setGravity(Gravity.BOTTOM);
+        charName = text("", 68, fHeavy, WHITE);
         charName.setIncludeFontPadding(false);
-        charName.setPadding(0, 6, 0, 0);
-        t.addView(charName);
-        charFrom = text("", 32, fBold, WHITE);
-        t.addView(charFrom);
+        nameRow.addView(charName);
+        charFrom = text("", 30, fBold, WHITE);
+        charFrom.setPadding(22, 0, 0, 8);
+        nameRow.addView(charFrom);
+        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-2, -2);
+        nl.topMargin = 10;
+        t.addView(nameRow, nl);
         charFact = text("", 34, fMed, SOFT);
         charFact.setMaxLines(3);
         charFact.setLineSpacing(0, 1.05f);
@@ -384,29 +450,88 @@ public class KidsActivity extends Activity {
         card.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
         charPhoto = new ImageView(this);
         charPhoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        charPhoto.setOutlineProvider(rounded(36));
+        charPhoto.setOutlineProvider(rounded(32));
         charPhoto.setClipToOutline(true);
         charPhoto.setVisibility(View.GONE);
-        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(250, 250);
+        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(220, 220);
         pl.leftMargin = 36;
         card.addView(charPhoto, pl);
-        place(card, 500, 280, 1320, -2);
+        place(card, 610, 420, 1110, -2);
     }
 
     private void buildTiles() {
-        tileLabel = text("", 40, fHeavy, WHITE);
-        tileLabel.setGravity(Gravity.CENTER);
-        tileLabel.setShadowLayer(14, 0, 3, 0x99000000);
-        place(tileLabel, 0, 666, 1920, -2);
+        // the glass dock along the bottom, like the family home screen
+        View dock = new View(this);
+        dock.setBackground(glass(60));
+        place(dock, 80, 866, 1760, 178);
 
         tileRow = new LinearLayout(this);
         tileRow.setGravity(Gravity.CENTER);
         tileRow.setClipChildren(false);
         tileRow.setClipToPadding(false);
-        place(tileRow, 0, 740, 1920, 300);
+        place(tileRow, 80, 866, 1760, 178);
+
+        tileLabel = text("", 32, fHeavy, WHITE);
+        tileLabel.setGravity(Gravity.CENTER);
+        tileLabel.setPadding(30, 4, 30, 6);
+        tileLabel.setBackground(glass(40));
+        labelPill = tileLabel;
+        place(tileLabel, 0, 776, -2, -2);
     }
 
-    /** His tiles: My cartoons, then each allowed app that is installed, then the small parent lock. */
+    private void drawGreeting() {
+        Calendar now = Calendar.getInstance(Rules.KUWAIT);
+        int h = now.get(Calendar.HOUR_OF_DAY);
+        java.text.SimpleDateFormat day = new java.text.SimpleDateFormat("EEEE d MMMM", Locale.ENGLISH);
+        day.setTimeZone(Rules.KUWAIT);
+        hello.setText((h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening") + "  ·  " + day.format(now.getTime()));
+        weatherText.setText(weather);
+        weatherText.setVisibility(weather.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    /** Puts the name pill just above the focused tile. */
+    private void moveLabel(View tile, String label) {
+        tileLabel.setText(label);
+        tileLabel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        float cx = 80 + tile.getLeft() + tile.getWidth() / 2f; // the dock starts 80 px in
+        float x = Math.max(80, Math.min(1840 - tileLabel.getMeasuredWidth(), cx - tileLabel.getMeasuredWidth() / 2f));
+        tileLabel.animate().translationX(x).alpha(1).setDuration(260).setInterpolator(EASE).start();
+    }
+    private static final DecelerateInterpolator EASE = new DecelerateInterpolator(1.8f);
+
+    /** Kuwait City weather from Open-Meteo, every half hour. */
+    private void fetchWeather() {
+        if (System.currentTimeMillis() - lastWeather < 30 * 60_000L) return;
+        lastWeather = System.currentTimeMillis();
+        bg.execute(() -> {
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(
+                        "https://api.open-meteo.com/v1/forecast?latitude=29.3759&longitude=47.9774&current=temperature_2m,weather_code,is_day&timezone=Asia%2FKuwait").openConnection();
+                c.setConnectTimeout(8000);
+                c.setReadTimeout(8000);
+                StringBuilder sb = new StringBuilder();
+                try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(c.getInputStream()))) {
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                }
+                org.json.JSONObject cur = new org.json.JSONObject(sb.toString()).getJSONObject("current");
+                long temp = Math.round(cur.getDouble("temperature_2m"));
+                weather = sky(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1) + "  " + temp + "°  in Kuwait";
+                ui.post(this::drawGreeting);
+            } catch (Exception e) { lastWeather -= 25 * 60_000L; } // try again in five minutes
+        });
+    }
+
+    static String sky(int code, boolean day) {
+        if (code == 0) return day ? "☀️ Sunny" : "🌙 Clear night";
+        if (code <= 3) return day ? "⛅ A few clouds" : "☁️ Cloudy night";
+        if (code <= 48) return "🌫️ Foggy";
+        if (code <= 67 || (code >= 80 && code <= 82)) return "🌧️ Rainy";
+        if (code <= 77 || code == 85 || code == 86) return "❄️ Snowy";
+        return "⛈️ Stormy";
+    }
+
+    /** Their tiles: My cartoons, then each allowed app that is installed, then the small parent lock. */
     private void refreshTiles() {
         View focused = getCurrentFocus();
         boolean hadFocus = focused != null && tiles.contains(focused);
@@ -421,18 +546,20 @@ public class KidsActivity extends Activity {
             if (allowed.contains(p) && !Rules.NEVER.contains(p)) items.add(new String[]{p, r.loadLabel(pm).toString()});
         }
         int n = items.size();
-        int w = Math.min(330, (1640 - 40 * n) / n), h = Math.round(w * 9 / 16f);
+        int h = 136, w = Math.min(242, (1560 - 28 * n) / n);
         for (int i = 0; i < n; i++) {
             String pkg = items.get(i)[0], label = items.get(i)[1];
             FrameLayout tile = new FrameLayout(this);
             tile.setFocusable(true);
             tile.setClipToOutline(true);
-            tile.setOutlineProvider(rounded(30));
+            tile.setOutlineProvider(rounded(26));
+            tile.setOutlineAmbientShadowColor(0);
+            tile.setOutlineSpotShadowColor(0);
             ImageView img = new ImageView(this);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             if (pkg.isEmpty()) {
                 tile.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{world.body, world.bodyDark}));
-                TextView t = text("▶  My cartoons", Math.max(30, w / 9f), fHeavy, WHITE);
+                TextView t = text("▶  Cartoons", Math.max(26, w / 8.5f), fHeavy, WHITE);
                 t.setGravity(Gravity.CENTER);
                 tile.addView(t, new FrameLayout.LayoutParams(-1, -1));
             } else {
@@ -449,26 +576,24 @@ public class KidsActivity extends Activity {
             }
             View ringView = new View(this);
             GradientDrawable edge = new GradientDrawable();
-            edge.setCornerRadius(30);
-            edge.setStroke(7, WHITE);
+            edge.setCornerRadius(26);
+            edge.setStroke(6, WHITE);
             ringView.setBackground(edge);
             ringView.setAlpha(0);
             tile.addView(ringView, new FrameLayout.LayoutParams(-1, -1));
 
             final int index = i;
             tile.setOnFocusChangeListener((v, has) -> {
-                v.animate().scaleX(has ? 1.14f : 1f).scaleY(has ? 1.14f : 1f).translationY(has ? -18 : 0)
+                v.animate().scaleX(has ? 1.16f : 1f).scaleY(has ? 1.16f : 1f).translationY(has ? -14 : 0)
                         .setDuration(has ? 420 : 220).setInterpolator(has ? new OvershootInterpolator(2.2f) : new DecelerateInterpolator(1.6f)).start();
-                v.setElevation(has ? 30 : 0);
+                v.setTranslationZ(has ? 10 : 0); // on top of its neighbours, with no shadow drawn outside the tile
                 ringView.animate().alpha(has ? 1 : 0).setDuration(200).start();
                 if (has) {
                     lastTile = index;
-                    tileLabel.setText(label);
-                    tileLabel.setAlpha(0);
-                    tileLabel.animate().alpha(1).setDuration(250).start();
                     v.post(() -> {
-                        float cx = v.getLeft() + v.getWidth() / 2f;
-                        mascot.lookAt((cx - 280) / 900f, 0.9f);
+                        moveLabel(v, label);
+                        float cx = 80 + v.getLeft() + v.getWidth() / 2f;
+                        mascot.lookAt((cx - 390) / 900f, 0.9f);
                     });
                     hop(mascot);
                 }
@@ -477,7 +602,7 @@ public class KidsActivity extends Activity {
                 if (pkg.isEmpty()) openCartoons(); else launch(pkg);
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
-            lp.leftMargin = lp.rightMargin = 20;
+            lp.leftMargin = lp.rightMargin = 14;
             tileRow.addView(tile, lp);
             tiles.add(tile);
         }
@@ -500,11 +625,11 @@ public class KidsActivity extends Activity {
         setupDot.setVisibility(setupComplete() ? View.GONE : View.VISIBLE);
         lock.setOnFocusChangeListener((v, has) -> {
             v.animate().scaleX(has ? 1.15f : 1f).scaleY(has ? 1.15f : 1f).setDuration(200).start();
-            if (has) { tileLabel.setText("Grown-ups"); mascot.lookAt(1, 0.9f); }
+            if (has) { moveLabel(v, "Grown-ups"); mascot.lookAt(1, 0.9f); }
         });
         lock.setOnClickListener(v -> askPin("check", this::openParent));
-        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(96, 96);
-        ll.leftMargin = 36;
+        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(88, 88);
+        ll.leftMargin = 30;
         tileRow.addView(lock, ll);
         lockTile = lock;
 
@@ -560,18 +685,34 @@ public class KidsActivity extends Activity {
         int limit = Rules.limitToday(this);
         if (extra > 0) {
             ring.set(1, 0xFF7CFC6A);
-            ringBig.setText(minutes(extra / 1000));
-            ringSmall.setText("bonus time");
+            ringBig.setText(shortMinutes(extra / 1000));
+            ringSmall.setText("bonus");
+            ringNote.setText("Bonus time from a grown-up");
         } else if (left == Long.MAX_VALUE) {
             ring.set(1, world == null ? WHITE : world.accent);
-            ringBig.setText("Free play");
-            ringSmall.setText("no limit today");
+            ringBig.setText("∞");
+            ringSmall.setText("free play");
+            ringNote.setText("No time limit today");
         } else {
             float f = limit <= 0 ? 0 : left / (limit * 60f);
             ring.set(f, f > 0.25f ? (world == null ? WHITE : world.accent) : 0xFFFF6B5B);
-            ringBig.setText(minutes(left));
+            ringBig.setText(shortMinutes(left));
             ringSmall.setText("left today");
+            int bed = Rules.bedtime(this);
+            ringNote.setText(bed < 0 ? "Enjoy your shows!" : "Bedtime " + bedLabel(bed));
         }
+        Calendar now = Calendar.getInstance(Rules.KUWAIT);
+        int hr = now.get(Calendar.HOUR), min = now.get(Calendar.MINUTE);
+        clockText.setText((hr == 0 ? 12 : hr) + ":" + (min < 10 ? "0" : "") + min);
+        ampmText.setText(now.get(Calendar.AM_PM) == Calendar.AM ? "AM" : "PM");
+        if (min == 0 && now.get(Calendar.SECOND) < 2) drawGreeting();
+        fetchWeather();
+    }
+
+    /** "1:20" or "45m" for inside the ring. */
+    static String shortMinutes(long sec) {
+        long m = (sec + 59) / 60;
+        return m >= 60 ? (m / 60) + ":" + (m % 60 < 10 ? "0" : "") + (m % 60) : m + "m";
     }
 
     static String minutes(long sec) {
@@ -729,7 +870,6 @@ public class KidsActivity extends Activity {
             card.addView(t, tl);
             card.setOnFocusChangeListener((v, has) -> {
                 v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
-                v.setElevation(has ? 20 : 0);
                 v.setBackground(has ? solid(WHITE, 26, 0x33) : glass(26));
                 t.setTextColor(has ? 0xFF1A1033 : WHITE);
             });
@@ -945,7 +1085,7 @@ public class KidsActivity extends Activity {
         watched.setPadding(330, 0, 0, 12);
         parentList.addView(watched);
 
-        actionRow("His apps", "Choose which apps he can open", this::openApps);
+        actionRow("Their apps", "Choose which apps they can open", this::openApps);
         actionRow("Change PIN", "", () -> askPin("set", this::openParent));
         setupText = text(setupSummary(), 28, fMed, DIM);
         setupText.setPadding(0, 18, 0, 18);
@@ -1046,7 +1186,7 @@ public class KidsActivity extends Activity {
 
     private void hideRestNow() { restPanel.setVisibility(View.GONE); syncFocus(); }
 
-    // ---------------------------------------------------------------- his apps
+    // ---------------------------------------------------------------- their apps
 
     private GridLayout appGrid;
 
@@ -1055,7 +1195,7 @@ public class KidsActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setPadding(110, 70, 110, 0);
-        col.addView(text("His apps", 64, fHeavy, WHITE));
+        col.addView(text("Their apps", 64, fHeavy, WHITE));
         col.addView(text("OK ticks or unticks an app. YouTube, the Play Store, Settings and browsers are never allowed.", 28, fMed, DIM));
         ScrollView sv = new ScrollView(this);
         sv.setPadding(0, 30, 0, 60);
@@ -1183,9 +1323,9 @@ public class KidsActivity extends Activity {
     }
 
     private static GradientDrawable glass(float radius) {
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(0x38FFFFFF);
-        d.setStroke(3, 0x59FFFFFF);
+        // light at the top, clearer below, with a fine bright edge: the video shows through
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x40FFFFFF, 0x1FFFFFFF});
+        d.setStroke(2, 0x52FFFFFF);
         d.setCornerRadius(radius);
         return d;
     }
