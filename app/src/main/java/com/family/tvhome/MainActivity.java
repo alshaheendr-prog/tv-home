@@ -476,11 +476,34 @@ public class MainActivity extends Activity {
         card.addView(times, new LinearLayout.LayoutParams(-1, -2));
         View rightFrame = card(card, CARD_W, CARD_H, Gravity.TOP | Gravity.END, 80, 56);
 
+        // The sun card, mirroring the event chip on the left: where the sun is now, with sunrise and sunset.
+        LinearLayout sunRow = new LinearLayout(this);
+        sunRow.setGravity(Gravity.CENTER_VERTICAL);
+        sunRow.setPadding(24, 12, 30, 12);
+        sunArc = new SunArc(this);
+        sunRow.addView(sunArc, new LinearLayout.LayoutParams(150, 64));
+        sunText = text("", 22, fMed, SOFT);
+        sunText.setIncludeFontPadding(true);
+        sunText.setPadding(18, 0, 0, 0);
+        sunRow.addView(sunText);
+        sunCard = glassCard(stage, sunRow, -1, -1, Gravity.TOP | Gravity.END, 80, 56 + CARD_H + 16, 26, 18, 0x33FFFFFF, CARD_TINT, false);
+
         topParts = new View[]{leftFrame, rightFrame};
     }
 
     private View[] topParts;
-    private TextView eventText;
+    private TextView eventText, sunText;
+    private SunArc sunArc;
+    private View sunCard;
+
+    private void drawSun() {
+        if (today == null || sunText == null) return;
+        Calendar now = Calendar.getInstance(KUWAIT);
+        int min = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+        sunArc.set(today[1], today[4], min);
+        sunText.setText("Sunrise " + PrayerTimes.clock(today[1]) + "  ·  Sunset " + PrayerTimes.clock(today[4])
+                + "\nالشروق " + PrayerTimes.clock(today[1]) + "  ·  الغروب " + PrayerTimes.clock(today[4]));
+    }
     private View eventChip;
 
     private void drawEventChip(Calendar now) {
@@ -778,6 +801,7 @@ public class MainActivity extends Activity {
         String clock = (h24 ? (h < 10 ? "0" + h : "" + h) : "" + ((h + 11) % 12 + 1)) + ":" + (mi < 10 ? "0" : "") + mi;
         if (!clock.equals(shownClock)) {
             shownClock = clock;
+            drawSun();
             clockText.setText(clock);
             ampmText.setText(h24 ? "" : h < 12 ? "AM" : "PM");
         }
@@ -827,10 +851,15 @@ public class MainActivity extends Activity {
         adhanCountdown.setTextColor(left <= 15 * 60 ? 0xFFF1D58A : WHITE); // gold in the last 15 minutes
         if (!ambient && resumed && !anyPanelOpen() && System.currentTimeMillis() - lastInput > AMBIENT_AFTER) enterAmbient();
         if (ambient && !nightDim && System.currentTimeMillis() - lastInput > DIM_AFTER) enterNightDim();
-        boolean ramadan = Events.isRamadan(now);
+        boolean ramadan = Events.isRamadan(now), friday = now.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
         if (ramadan && next == 4) { adhanName.setText("Iftar"); adhanAr.setText("الإفطار · المغرب"); }
         else if (ramadan && next == 0) { adhanName.setText("Suhoor ends"); adhanAr.setText("الإمساك · الفجر"); }
+        else if (friday && next == 2) { adhanName.setText("Jumu'ah"); adhanAr.setText("صلاة الجمعة"); }
         else { adhanName.setText(PrayerTimes.EN[next]); adhanAr.setText(PrayerTimes.AR[next]); }
+        if (friday && next == 2 && left <= 3600 && left > 3590 && remindedFor != -target) {
+            remindedFor = -target;
+            toast("Jumu'ah in 1 hour: ghusl and go early · الجمعة بعد ساعة");
+        }
         if (pillTextOverride != null) {
             pillText.setText(pillTextOverride);
             pillText.animate().alpha(1).setDuration(200).start();
@@ -893,11 +922,15 @@ public class MainActivity extends Activity {
     private void fetchWeather() {
         bg.execute(() -> {
             try {
-                JSONObject all = new JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=29.3759&longitude=47.9774&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=Asia%2FKuwait"));
+                JSONObject all = new JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=29.3759&longitude=47.9774&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=2&timezone=Asia%2FKuwait"));
                 try {
                     JSONObject daily = all.getJSONObject("daily");
-                    hiLo = "↑ " + Math.round(daily.getJSONArray("temperature_2m_max").getDouble(0)) + "°   ↓ "
-                            + Math.round(daily.getJSONArray("temperature_2m_min").getDouble(0)) + "°";
+                    org.json.JSONArray mx = daily.getJSONArray("temperature_2m_max"), mn = daily.getJSONArray("temperature_2m_min");
+                    org.json.JSONArray wc = daily.optJSONArray("weather_code");
+                    hiLo = "Today  ↑" + Math.round(mx.getDouble(0)) + "° ↓" + Math.round(mn.getDouble(0)) + "°";
+                    if (mx.length() > 1)
+                        hiLo += "     Tomorrow  " + (wc != null && wc.length() > 1 ? skyIcon(wc.getInt(1)) + " " : "")
+                                + "↑" + Math.round(mx.getDouble(1)) + "° ↓" + Math.round(mn.getDouble(1)) + "°";
                 } catch (Exception ignored) { }
                 JSONObject cur = all.getJSONObject("current");
                 tempNow = cur.getDouble("temperature_2m");
@@ -916,10 +949,19 @@ public class MainActivity extends Activity {
     }
 
     /** Bottom of the weather card: today's high and low, and sunrise (الشروق). */
+    /** Bottom of the weather card: today's and tomorrow's high and low (sunrise and sunset live in the sun card). */
     private void drawDayLine() {
-        if (today == null) return;
-        String sun = "Sunrise " + PrayerTimes.clock(today[1]) + "  ·  الشروق";
-        dayText.setText(hiLo.isEmpty() ? sun : hiLo + "      " + sun);
+        dayText.setText(hiLo.isEmpty() ? "Forecast loading…" : hiLo);
+        drawSun();
+    }
+
+    private static String skyIcon(int code) {
+        if (code == 0) return "☀";
+        if (code <= 3) return "⛅";
+        if (code <= 48) return "🌫";
+        if (code <= 67 || (code >= 80 && code <= 82)) return "🌧";
+        if (code >= 95) return "⛈";
+        return "☁";
     }
 
     private static String skyName(int code) {
@@ -1095,10 +1137,11 @@ public class MainActivity extends Activity {
 
     private void closePanels() {
         boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE
-                || quranPanel.getVisibility() == View.VISIBLE || parentPanel.getVisibility() == View.VISIBLE;
+                || quranPanel.getVisibility() == View.VISIBLE || parentPanel.getVisibility() == View.VISIBLE
+                || calendarPanel.getVisibility() == View.VISIBLE;
         View back = dockTiles.get(dockIndex(quranPanel.getVisibility() == View.VISIBLE ? "quran"
                 : pinPanel.getVisibility() == View.VISIBLE ? "yt" : appsPanel.getVisibility() == View.VISIBLE ? "apps" : DOCK[lastDock].id));
-        for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel}) {
+        for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel, calendarPanel}) {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
@@ -1280,6 +1323,7 @@ public class MainActivity extends Activity {
 
     private void buildApps() {
         appsPanel = overlay();
+        calendarPanel = overlay();
         appsTitle = text("All apps", 48, fSemi, WHITE);
         appsPanel.addView(appsTitle, at(-2, -2, Gravity.TOP | Gravity.START, 110, 70));
         ScrollView sv = new ScrollView(this);
@@ -1316,6 +1360,11 @@ public class MainActivity extends Activity {
             settings.label = "Settings";
             try { settings.icon = pm.getApplicationIcon("com.android.tv.settings"); } catch (Exception e) { settings.icon = null; }
             out.add(0, settings);
+            AppEntry cal = new AppEntry();
+            cal.pkg = CALENDAR;
+            cal.label = "Islamic calendar";
+            cal.icon = getDrawable(R.drawable.ic_calendar);
+            out.add(0, cal);
             appCache = out;
         });
     }
@@ -1353,8 +1402,12 @@ public class MainActivity extends Activity {
                 v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(180)
                         .setInterpolator(new DecelerateInterpolator()).start();
             });
-            item.setOnClickListener(v -> { if (a.pkg.equals(SETTINGS)) openSettings(); else if (!launch(a.pkg)) toast("Couldn't open " + a.label); });
-            if (!a.pkg.equals(SETTINGS)) item.setOnLongClickListener(v -> { toggleKid(a.pkg); return true; });
+            item.setOnClickListener(v -> {
+                if (a.pkg.equals(SETTINGS)) openSettings();
+                else if (a.pkg.equals(CALENDAR)) openCalendar();
+                else if (!launch(a.pkg)) toast("Couldn't open " + a.label);
+            });
+            if (!a.pkg.equals(SETTINGS) && !a.pkg.equals(CALENDAR)) item.setOnLongClickListener(v -> { toggleKid(a.pkg); return true; });
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
             p.width = 196; p.height = 196;
             p.setMargins(8, 8, 8, 8);
@@ -1374,7 +1427,7 @@ public class MainActivity extends Activity {
         ui.postDelayed(() -> openApps(appsMode), 700);
     }
 
-    static final String SETTINGS = "__settings";
+    static final String SETTINGS = "__settings", CALENDAR = "__calendar";
 
     private void openSettings() {
         Intent i = new Intent(Settings.ACTION_SETTINGS);
@@ -1484,10 +1537,21 @@ public class MainActivity extends Activity {
     private void backgroundQuran() {
         if (!resumed || quietStopped || !prefs.getBoolean("quiet_quran", true)) return;
         if (quran != null && quranSurah > 0) {
-            if (quranQuiet && !quran.getPlayWhenReady()) quran.play(); // carry on where it paused
+            if (quranQuiet && !quran.getPlayWhenReady()) { fadeInQuiet(); quran.play(); } // carry on where it paused
             return;
         }
         quranQuiet = true;
+        Calendar fr = Calendar.getInstance(KUWAIT);
+        int frMin = fr.get(Calendar.HOUR_OF_DAY) * 60 + fr.get(Calendar.MINUTE);
+        String frDay = fr.get(Calendar.YEAR) + "-" + fr.get(Calendar.DAY_OF_YEAR);
+        if (today != null && fr.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY && frMin >= today[0] && frMin < today[2]
+                && !frDay.equals(prefs.getString("kahf_day", ""))) {
+            // Jumu'ah morning: Surat Al-Kahf once, softly
+            prefs.edit().putString("kahf_day", frDay).apply();
+            taraweeh = false;
+            playSurah(18, false);
+            return;
+        }
         if (taraweehTime()) {
             // Ramadan nights: the Quran in order, carrying on each night where it stopped, from the imams of the Haramain when stored
             int n = prefs.getInt("khatma_next", 1);
@@ -1501,6 +1565,19 @@ public class MainActivity extends Activity {
     }
 
     private boolean taraweeh;
+    private ValueAnimator quietFade;
+    static final long QUIET_FADE_MS = 45_000;
+
+    /** The soft Quran starts silent and rises very slowly to its low volume. */
+    private void fadeInQuiet() {
+        if (quietFade != null) quietFade.cancel();
+        quran.setVolume(0f);
+        quietFade = ValueAnimator.ofFloat(0f, QUIET_VOLUME);
+        quietFade.setDuration(QUIET_FADE_MS);
+        quietFade.setInterpolator(new android.view.animation.AccelerateInterpolator(1.4f)); // gentlest at the start
+        quietFade.addUpdateListener(v -> { if (quran != null && quranQuiet) quran.setVolume((float) v.getAnimatedValue()); });
+        quietFade.start();
+    }
     static final java.util.regex.Pattern IMAMS = java.util.regex.Pattern.compile("(?i)suda[iy]?s|sudaes|shura[iy]m|maher|qatami|سديس|شريم|المعيقلي|القطامي");
 
     /** Ramadan, between Isha and Fajr. */
@@ -1555,7 +1632,7 @@ public class MainActivity extends Activity {
         quranSurah = n;
         quranReciter = r;
         Stats.surahPlayed(this, n, r.en.isEmpty() ? r.ar : r.en);
-        quran.setVolume(quranQuiet ? QUIET_VOLUME : 1f);
+        if (quranQuiet) fadeInQuiet(); else { if (quietFade != null) quietFade.cancel(); quran.setVolume(1f); }
         quran.setMediaItem(MediaItem.fromUri(r.url(n)));
         quran.prepare();
         quran.play();
@@ -1735,7 +1812,7 @@ public class MainActivity extends Activity {
     private final long[] lastTimes = new long[4];
 
     private boolean anyPanelOpen() {
-        for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel}) if (v != null && v.getVisibility() == View.VISIBLE) return true;
+        for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel, calendarPanel}) if (v != null && v.getVisibility() == View.VISIBLE) return true;
         return false;
     }
 
@@ -1854,6 +1931,52 @@ public class MainActivity extends Activity {
         parentRow("Back", "‹", () -> drawParent(0));
         View b = parentList.getChildAt(parentList.getChildCount() - 1);
         b.post(b::requestFocus);
+    }
+
+    // ================================================================== Islamic calendar
+
+    private FrameLayout calendarPanel;
+
+    /** A page of the coming Islamic dates with how many days are left, opened from All apps. */
+    private void openCalendar() {
+        appsPanel.setVisibility(View.GONE);
+        calendarPanel.removeAllViews();
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(56, 44, 56, 40);
+        box.addView(kicker(text("ISLAMIC CALENDAR  ·  التقويم الهجري", 20, fSemi, DIM)));
+        TextView title = text("Coming up", 46, fSemi, WHITE);
+        title.setPadding(0, 10, 0, 18);
+        box.addView(title);
+        Calendar now = Calendar.getInstance(KUWAIT);
+        SimpleDateFormat g = new SimpleDateFormat("EEE d MMM yyyy", Locale.UK);
+        g.setTimeZone(KUWAIT);
+        View first = null;
+        for (Object[] e : Events.upcoming(now)) {
+            int days = (int) e[2];
+            LinearLayout r = new LinearLayout(this);
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            r.setPadding(26, 10, 26, 10);
+            r.setFocusable(true);
+            r.setOnFocusChangeListener((v, has) -> v.setBackground(has ? glass(18, 0x26FFFFFF, 0x66FFFFFF) : null));
+            LinearLayout names = new LinearLayout(this);
+            names.setOrientation(LinearLayout.VERTICAL);
+            names.addView(text((String) e[0], 28, fMed, WHITE));
+            TextView ar = text((String) e[1] + "   ·   " + g.format(new java.util.Date((long) e[3])), 22, fAr, DIM);
+            ar.setIncludeFontPadding(true);
+            names.addView(ar);
+            r.addView(names, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView left = text(days == 0 ? "Today" : days == 1 ? "Tomorrow" : "in " + days + " days", 28, fSemi, days <= 7 ? 0xFFF1D58A : SOFT);
+            r.addView(left);
+            box.addView(r, new LinearLayout.LayoutParams(-1, -2));
+            if (first == null) first = r;
+        }
+        ScrollView sv = new ScrollView(this);
+        sv.setVerticalScrollBarEnabled(false);
+        sv.addView(box);
+        glassCard(calendarPanel, sv, 1000, 900, Gravity.CENTER, 0, 0, 44, 40, 0x59FFFFFF, 0x59000000, false);
+        show(calendarPanel);
+        if (first != null) { View f = first; f.post(f::requestFocus); }
     }
 
     private void statHeading(String s) {

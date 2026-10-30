@@ -72,4 +72,31 @@ final class Events {
         if (d >= 13 && d <= 15) return new String[]{"White Days fast", "صيام الأيام البيض"};
         return null;
     }
+
+    /** The next year of Islamic dates: {English, Arabic, days from today, Gregorian millis}, soonest first. White Days only the next time. */
+    static java.util.List<Object[]> upcoming(Calendar now) {
+        java.util.List<Object[]> out = new java.util.ArrayList<>();
+        try {
+            IslamicCalendar ic = new IslamicCalendar(android.icu.util.TimeZone.getTimeZone("Asia/Kuwait"));
+            ic.setCalculationType(IslamicCalendar.CalculationType.ISLAMIC_UMALQURA);
+            ic.setTimeInMillis(now.getTimeInMillis());
+            boolean white = false;
+            for (int i = 0; i <= 360; i++) {
+                if (i > 0) ic.add(IslamicCalendar.DAY_OF_MONTH, 1);
+                int m = ic.get(IslamicCalendar.MONTH), d = ic.get(IslamicCalendar.DAY_OF_MONTH);
+                String[] e = null;
+                if (m == IslamicCalendar.MUHARRAM && d == 1) e = new String[]{"Islamic New Year", "رأس السنة الهجرية"};
+                else if (m == IslamicCalendar.MUHARRAM && d == 10) e = new String[]{"Ashura (fast the 9th and 10th)", "عاشوراء"};
+                else if (m == IslamicCalendar.RAMADAN && d == 1) e = new String[]{"Ramadan begins", "بداية رمضان"};
+                else if (m == IslamicCalendar.RAMADAN && d == 21) e = new String[]{"Last ten nights of Ramadan", "العشر الأواخر"};
+                else if (m == IslamicCalendar.SHAWWAL && d == 1) e = new String[]{"Eid al-Fitr", "عيد الفطر"};
+                else if (m == IslamicCalendar.DHU_AL_HIJJAH && d == 1) e = new String[]{"First ten days of Dhul Hijjah", "العشر من ذي الحجة"};
+                else if (m == IslamicCalendar.DHU_AL_HIJJAH && d == 9) e = new String[]{"Day of Arafah", "يوم عرفة"};
+                else if (m == IslamicCalendar.DHU_AL_HIJJAH && d == 10) e = new String[]{"Eid al-Adha", "عيد الأضحى"};
+                else if (!white && d == 13 && m != IslamicCalendar.DHU_AL_HIJJAH) { white = true; e = new String[]{"White Days fast (13th to 15th)", "الأيام البيض"}; }
+                if (e != null) out.add(new Object[]{e[0], e[1], i, ic.getTimeInMillis()});
+            }
+        } catch (Exception ignored) { }
+        return out;
+    }
 }

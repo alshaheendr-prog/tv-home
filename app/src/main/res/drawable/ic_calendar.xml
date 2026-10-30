@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Islamic calendar tile: a gold crescent over a calendar page on deep green -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp" android:height="96dp" android:viewportWidth="96" android:viewportHeight="96">
+    <path android:fillColor="#FF0E3B2E" android:pathData="M18,0h60a18,18 0 0 1 18,18v60a18,18 0 0 1 -18,18h-60a18,18 0 0 1 -18,-18v-60a18,18 0 0 1 18,-18z" />
+    <path android:fillColor="#33FFFFFF" android:pathData="M22,30h52a4,4 0 0 1 4,4v40a4,4 0 0 1 -4,4h-52a4,4 0 0 1 -4,-4v-40a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#FFF1D58A" android:pathData="M22,30h52a4,4 0 0 1 4,4v8h-60v-8a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#FFF1D58A" android:pathData="M30,22h6v12h-6zM60,22h6v12h-6z" />
+    <path android:fillColor="#FFF1D58A" android:pathData="M54,50a12,12 0 1 0 0,22a14,14 0 1 1 0,-22z" />
+    <path android:fillColor="#CCFFFFFF" android:pathData="M28,50h8v6h-8zM28,62h8v6h-8zM40,50h8v6h-8zM40,62h8v6h-8z" />
+</vector>

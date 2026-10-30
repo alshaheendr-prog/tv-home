@@ -31,6 +31,9 @@ final class Widgets {
         int dow = now.get(Calendar.DAY_OF_WEEK);
         if (t != null && ((dow == Calendar.FRIDAY && min < t[4]) || (dow == Calendar.THURSDAY && min >= t[4]))) {
             out.add(new String[]{"FRIDAY · الجمعة", "لا تنسَ قراءة سورة الكهف", "Don't forget to read Surat Al-Kahf.", ""});
+            if (dow == Calendar.FRIDAY && min < t[2])
+                out.add(new String[]{"JUMU'AH SUNNAHS · سنن الجمعة", "الغسل والطيب والتبكير إلى الصلاة والإكثار من الصلاة على النبي ﷺ",
+                        "Ghusl, perfume, going early to the prayer, and many salawat on the Prophet ﷺ.", "Al-Bukhari, Abu Dawud"});
             if (dow == Calendar.FRIDAY && min < t[2] + 60)
                 out.add(new String[]{"JUMU'AH · صلاة الجمعة", "صلاة الجمعة " + PrayerTimes.clock(t[2]), "Jumu'ah prayer at " + PrayerTimes.clock(t[2]) + ".", ""});
         }
