@@ -2,7 +2,7 @@ name: Build TV app
 
 on:
   push:
-    branches: [main]
+    branches: [main, "claude/**"]
   workflow_dispatch:
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" > /dev/null
       - name: Build
-        run: gradle :app:assembleRelease :adhan:assembleRelease --stacktrace 2>&1 | tee build.log; test ${PIPESTATUS[0]} -eq 0
+        run: gradle :app:assembleRelease :adhan:assembleRelease :kids:assembleRelease --stacktrace 2>&1 | tee build.log; test ${PIPESTATUS[0]} -eq 0
       - name: Report failure on the commit
         if: failure()
         env:
@@ -38,15 +38,18 @@ jobs:
         run: |
           cp app/build/outputs/apk/release/app-release.apk tv-home.apk
           cp adhan/build/outputs/apk/release/adhan-release.apk family-adhan.apk
+          cp kids/build/outputs/apk/release/kids-release.apk kids-corner.apk
       - uses: actions/upload-artifact@v4
         with:
           name: tv-home-apk
           path: |
             tv-home.apk
             family-adhan.apk
+            kids-corner.apk
       - name: Publish as a release
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest tv-home.apk family-adhan.apk --title "Latest build #${{ github.run_number }}" --notes "Built from ${{ github.sha }}"
+          gh release create latest tv-home.apk family-adhan.apk kids-corner.apk --title "Latest build #${{ github.run_number }}" --notes "Built from ${{ github.sha }}"

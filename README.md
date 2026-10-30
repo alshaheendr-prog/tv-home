@@ -28,3 +28,23 @@ adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
 - Movies and TV Shows open Kodi (or VLC if Kodi isn't installed).
 - A tile for an app that isn't installed opens its Play Store page. Once installed, the tile shows the app's own artwork.
 - Browser opens TV Bro (best with a remote); handy for hotel Wi-Fi login pages.
+
+## Kids Corner (`kids/`, `kids-corner.apk`)
+A separate home screen for the kids, in its own app (`com.family.kids`).
+- Opening **Kids Corner** turns kids mode on. Only the parent PIN (the 🔒 at the end of the row, or **Grown-ups** on the rest screen) turns it off again. The first time it opens, it asks the parent to choose the PIN.
+- Only the apps the parent ticks show up (Netflix, Crunchyroll, Prime Video, Shahid and Kodi to start with). YouTube, the Play Store, Settings, browsers and Stremio are never allowed.
+- While kids mode is on, a small service brings Kids Corner back whenever anything else comes to the front (the Home button, the YouTube button on the remote, Settings), and keeps going after a restart.
+- Daily screen time: 1 h 30 min on school days and 2 h on Fridays and Saturdays to start with, plus a bedtime (8:30 pm to 7 am). A note floats over his show 5 minutes and 1 minute before the end; then a sleepy rest screen stays up until tomorrow or until a parent adds time.
+- A different world each day (Power Up, Mushroom Hills, Speed Loop, Dream Sky, Block World) with its own colours, Pip the buddy whose eyes follow the remote, and a character of the day with a fun fact.
+- **My cartoons** plays videos from `Movies/Kids` on the box, or a `Kids` or `Cartoons` folder on a USB drive, and remembers where each episode stopped.
+- Optional extras on the box: world clips in `Movies/KidsCorner/` (`power-up.mp4`, `mushroom-hills.mp4`, …) and character pictures in `Pictures/KidsCorner/` named after the character (`Goku.png`).
+
+One-time setup over ADB (the PC script "Kids Corner setup" does all of this):
+```
+adb install -r kids-corner.apk
+adb shell appops set com.family.kids GET_USAGE_STATS allow
+adb shell appops set com.family.kids SYSTEM_ALERT_WINDOW allow
+adb shell pm grant com.family.kids android.permission.READ_MEDIA_VIDEO
+adb shell pm grant com.family.kids android.permission.READ_MEDIA_IMAGES
+```
+Forgot the PIN? `adb shell pm clear com.family.kids` resets Kids Corner (the PIN, the settings and today's time).
