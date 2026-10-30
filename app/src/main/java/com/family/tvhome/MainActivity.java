@@ -379,7 +379,7 @@ public class MainActivity extends Activity {
     private TextView adhanName, adhanAr, adhanCountdown, driveText, dayText;
     private volatile String hiLo = "";
 
-    static final int CARD_W = 560, CARD_H = 300;
+    static final int CARD_W = 560, CARD_H = 330;
     // Light dark wash behind the glass so text stays readable on busy wallpapers
     static final int CARD_TINT = 0x3A000000;
 
@@ -392,8 +392,8 @@ public class MainActivity extends Activity {
         left.setPadding(36, 28, 36, 24);
         LinearLayout kRow = new LinearLayout(this);
         kRow.setGravity(Gravity.CENTER_VERTICAL);
-        kRow.addView(kicker(text("KUWAIT CITY  ·  مدينة الكويت", 18, fSemi, DIM)), new LinearLayout.LayoutParams(0, -2, 1));
-        driveText = text("", 17, fSemi, DIM);
+        kRow.addView(kicker(text("KUWAIT  ·  الكويت", 20, fSemi, DIM)), new LinearLayout.LayoutParams(0, -2, 1));
+        driveText = text("", 20, fSemi, DIM);
         driveText.setVisibility(View.GONE);
         kRow.addView(driveText);
         left.addView(kRow, new LinearLayout.LayoutParams(-1, -2));
@@ -403,8 +403,6 @@ public class MainActivity extends Activity {
         tempText = text("--°", 60, fSemi, WHITE);
         skyText = text("", 24, fMed, SOFT);
         skyText.setPadding(18, 0, 0, 10);
-        skyText.setMaxLines(1);
-        skyText.setEllipsize(TextUtils.TruncateAt.END);
         wx.addView(tempText);
         wx.addView(skyText, new LinearLayout.LayoutParams(0, -2, 1));
         left.addView(wx);
@@ -415,7 +413,7 @@ public class MainActivity extends Activity {
         hijriText.setPadding(0, 4, 0, 0);
         left.addView(dateText);
         left.addView(hijriText);
-        dayText = text("", 21, fMed, DIM);
+        dayText = text("", 24, fMed, DIM);
         dayText.setPadding(0, 8, 0, 0);
         left.addView(dayText);
         leftCard = left;
@@ -424,7 +422,7 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(36, 28, 36, 22);
-        card.addView(kicker(text("NEXT ADHAN  ·  الأذان القادم", 18, fSemi, DIM)));
+        card.addView(kicker(text("NEXT ADHAN  ·  الأذان القادم", 20, fSemi, DIM)));
         LinearLayout nameRow = new LinearLayout(this);
         nameRow.setGravity(Gravity.BOTTOM);
         nameRow.setPadding(0, 10, 0, 0);
@@ -455,8 +453,8 @@ public class MainActivity extends Activity {
             col.setOrientation(LinearLayout.VERTICAL);
             col.setGravity(Gravity.CENTER_HORIZONTAL);
             col.setPadding(0, 8, 0, 8);
-            TextView en = text(PrayerTimes.EN[k], 18, fMed, SOFT);
-            TextView ar = text(PrayerTimes.AR[k], 16, fAr, DIM);
+            TextView en = text(PrayerTimes.EN[k], 22, fMed, SOFT);
+            TextView ar = text(PrayerTimes.AR[k], 20, fAr, DIM);
             TextView tm = text("", 24, fSemi, WHITE);
             tm.setFontFeatureSettings("tnum");
             tm.setPadding(0, 4, 0, 0);
@@ -505,19 +503,15 @@ public class MainActivity extends Activity {
         lineBox.setOrientation(LinearLayout.VERTICAL);
         lineBox.setGravity(Gravity.CENTER_HORIZONTAL);
         lineBox.setPadding(56, 22, 56, 24);
-        lineKicker = text("", 18, fSemi, DIM);
+        lineKicker = text("", 20, fSemi, DIM);
         lineKicker.setLetterSpacing(0.16f);
         lineAr = text("", 38, fQuran, WHITE);
         lineAr.setIncludeFontPadding(true);
         lineAr.setGravity(Gravity.CENTER);
-        lineAr.setMaxLines(2);
-        lineAr.setEllipsize(TextUtils.TruncateAt.END);
         lineAr.setMaxWidth(1360);
         lineAr.setPadding(0, 6, 0, 0);
         lineEn = text("", 32, fSerif, SOFT);
         lineEn.setGravity(Gravity.CENTER);
-        lineEn.setMaxLines(2);
-        lineEn.setEllipsize(TextUtils.TruncateAt.END);
         lineEn.setMaxWidth(1360);
         lineEn.setLineSpacing(0, 1.05f);
         lineEn.setPadding(0, 2, 0, 0);
@@ -826,6 +820,8 @@ public class MainActivity extends Activity {
         lineBox.animate().alpha(0).translationY(8).setDuration(400).withEndAction(() -> {
             lineKicker.setText(it[0] + (it[3].isEmpty() ? "" : "   ·   " + it[3]));
             lineAr.setText(it[1]);
+            lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[1].length() > 110 ? 32 : 38);
+            lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[2].length() > 150 ? 28 : 32);
             lineAr.setVisibility(it[1].isEmpty() ? View.GONE : View.VISIBLE);
             lineEn.setText(it[2]);
             lineBox.setTranslationY(-8);
@@ -1089,7 +1085,7 @@ public class MainActivity extends Activity {
         });
         pinIcon.setClipToOutline(true);
         box.addView(pinIcon, new LinearLayout.LayoutParams(96, 96));
-        TextView k = kicker(text("PARENT LOCK  ·  قفل الوالدين", 17, fSemi, DIM));
+        TextView k = kicker(text("PARENT LOCK  ·  قفل الوالدين", 20, fSemi, DIM));
         k.setPadding(0, 22, 0, 0);
         box.addView(k);
         pinTitle = text("", 44, fSemi, WHITE);
@@ -1309,8 +1305,6 @@ public class MainActivity extends Activity {
             item.addView(icon, new LinearLayout.LayoutParams(96, 96));
             TextView label = text((kids.contains(a.pkg) ? "⭐ " : "") + a.label, 22, fMed, WHITE);
             label.setGravity(Gravity.CENTER);
-            label.setMaxLines(2);
-            label.setEllipsize(TextUtils.TruncateAt.END);
             label.setPadding(0, 12, 0, 0);
             item.addView(label, new LinearLayout.LayoutParams(-1, -2));
             item.setOnFocusChangeListener((v, has) -> {
@@ -1370,7 +1364,6 @@ public class MainActivity extends Activity {
         quranControls.setGravity(Gravity.CENTER_VERTICAL);
         quranNow = text("", 24, fAr, SOFT);
         quranNow.setPadding(0, 0, 24, 0);
-        quranNow.setMaxLines(2);
         quranControls.addView(quranNow, new LinearLayout.LayoutParams(440, -2));
         quranPlayBtn = quranButton("Pause", () -> {
             if (quran == null) return;
@@ -1398,7 +1391,7 @@ public class MainActivity extends Activity {
             cell.setBackground(glass(24, 0x1AFFFFFF, 0));
             TextView ar = text(Quran.AR[i], 34, fArSemi, WHITE);
             ar.setGravity(Gravity.CENTER);
-            TextView en = text(n + "  ·  " + Quran.EN[i], 20, fMed, DIM);
+            TextView en = text(n + "  ·  " + Quran.EN[i], 22, fMed, DIM);
             en.setPadding(0, 8, 0, 0);
             cell.addView(ar);
             cell.addView(en);
@@ -1548,15 +1541,12 @@ public class MainActivity extends Activity {
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(20, 0, 0, 0);
-        TextView k = kicker(text("NOW RECITING  ·  يُتلى الآن", 15, fSemi, DIM));
+        TextView k = kicker(text("NOW RECITING  ·  يُتلى الآن", 20, fSemi, DIM));
         nowSurah = text("", 26, fQuran, WHITE);
         nowSurah.setIncludeFontPadding(true);
-        nowSurah.setMaxLines(1);
-        nowReciter = text("", 19, fAr, SOFT);
+        nowReciter = text("", 24, fAr, SOFT);
         nowReciter.setIncludeFontPadding(true);
-        nowReciter.setMaxLines(1);
-        nowReciter.setEllipsize(TextUtils.TruncateAt.END);
-        nowReciter.setMaxWidth(470);
+        nowReciter.setMaxWidth(620); // long names wrap onto a second line instead of being cut
         texts.addView(k);
         texts.addView(nowSurah);
         texts.addView(nowReciter);
@@ -1706,7 +1696,7 @@ public class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(56, 44, 56, 40);
-        TextView k = kicker(text("PARENTS ONLY  ·  للوالدين", 17, fSemi, DIM));
+        TextView k = kicker(text("PARENTS ONLY  ·  للوالدين", 20, fSemi, DIM));
         box.addView(k);
         TextView title = text("Parent settings", 46, fSemi, WHITE);
         title.setPadding(0, 10, 0, 24);
