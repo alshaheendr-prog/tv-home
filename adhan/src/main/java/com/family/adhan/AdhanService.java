@@ -367,7 +367,8 @@ public class AdhanService extends Service {
         }
 
         updateForeground();
-        boolean home = homePackages.contains(foreground);
+        // Our own launcher already shows the times, so the floating panels stay hidden over it.
+        boolean home = homePackages.contains(foreground) && !foreground.equals("com.family.tvhome");
         maybeSwapWallpaper(home);
         setPanel(home);
         setCard(home);
