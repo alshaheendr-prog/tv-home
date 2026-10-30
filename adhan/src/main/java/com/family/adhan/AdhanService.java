@@ -79,6 +79,16 @@ public class AdhanService extends Service {
     private long lastWeather;
     private MediaPlayer player;
 
+    // widget card
+    private FrameLayout card;
+    private boolean cardShown;
+    private TextView cardKicker, cardAr, cardEn, cardRef;
+    private int cardIndex = -1;
+    private long cardSwitched;
+    private String[] ayahToday; // {ar, en, ref}
+    private String ayahDay = "";
+    private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
+
     static void start(Context c) {
         Intent i = new Intent(c, AdhanService.class);
         try { c.startForegroundService(i); } catch (Exception ignored) { }
@@ -112,13 +122,14 @@ public class AdhanService extends Service {
         findHomePackages();
         buildPanel();
         buildAlert();
+        buildCard();
         tick();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && "test".equals(intent.getAction())) fireAdhan(3);
-        if (intent != null && "refresh".equals(intent.getAction())) { applyPosition(); setPanel(false); }
+        if (intent != null && "refresh".equals(intent.getAction())) { setPanel(false); setCard(false); }
         return START_STICKY;
     }
 
@@ -127,6 +138,7 @@ public class AdhanService extends Service {
         ui.removeCallbacksAndMessages(null);
         stopSound();
         try { if (panelShown) wm.removeView(panel); } catch (Exception ignored) { }
+        try { if (cardShown) wm.removeView(card); } catch (Exception ignored) { }
         try { if (alertShown) wm.removeView(alert); } catch (Exception ignored) { }
         super.onDestroy();
     }
@@ -194,22 +206,33 @@ public class AdhanService extends Service {
         countdown.setPadding(0, (int) px(2), 0, (int) px(10));
         box.addView(countdown);
 
+        // The six times as a compact 3 x 2 grid.
+        LinearLayout line = null;
         for (int i = 0; i < 6; i++) {
-            LinearLayout r = new LinearLayout(this);
-            r.setGravity(Gravity.CENTER_VERTICAL);
-            r.setPadding((int) px(12), (int) px(2), (int) px(12), (int) px(2));
-            TextView en = text(PrayerTimes.EN[i], 24, fMedium, TEXT);
-            TextView ar = text(PrayerTimes.AR[i], 24, fMedium, MUTED);
-            TextView tm = text("", 24, fMono, TEXT);
-            tm.setGravity(Gravity.END);
-            r.addView(en, new LinearLayout.LayoutParams(0, -2, 1));
-            r.addView(ar);
-            r.addView(tm, new LinearLayout.LayoutParams((int) px(110), -2));
+            if (i % 3 == 0) {
+                line = new LinearLayout(this);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+                lp.topMargin = (int) px(6);
+                box.addView(line, lp);
+            }
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            cell.setPadding(0, (int) px(6), 0, (int) px(8));
+            TextView en = text(PrayerTimes.EN[i], 20, fBold, TEXT);
+            TextView ar = text(PrayerTimes.AR[i], 20, fMedium, MUTED);
+            TextView tm = text("", 26, fMono, TEXT);
+            tm.setPadding(0, (int) px(4), 0, 0);
+            cell.addView(en);
+            cell.addView(ar);
+            cell.addView(tm);
             rows[i][0] = en; rows[i][1] = ar; rows[i][2] = tm;
-            rowViews[i] = r;
-            box.addView(r, new LinearLayout.LayoutParams(-1, (int) px(40)));
+            rowViews[i] = cell;
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1);
+            cp.leftMargin = (int) px(3); cp.rightMargin = (int) px(3);
+            line.addView(cell, cp);
         }
-        panel.addView(box, new FrameLayout.LayoutParams((int) px(420), -2));
+        panel.addView(box, new FrameLayout.LayoutParams((int) px(440), -2));
         panel.setAlpha(0);
     }
 
@@ -340,7 +363,11 @@ public class AdhanService extends Service {
         }
 
         updateForeground();
-        setPanel(homePackages.contains(foreground));
+        boolean home = homePackages.contains(foreground);
+        setPanel(home);
+        setCard(home);
+        if (cardShown && System.currentTimeMillis() - cardSwitched > 15000) nextCard(now);
+        if (!key.equals(ayahDay)) { ayahDay = key; fetchAyah(now.get(Calendar.DAY_OF_YEAR) + y * 400); }
         if (System.currentTimeMillis() - lastWeather > 30 * 60 * 1000) { lastWeather = System.currentTimeMillis(); fetchWeather(); }
         ui.postDelayed(this::tick, 1000 - (System.currentTimeMillis() % 1000));
     }
@@ -434,21 +461,137 @@ public class AdhanService extends Service {
     private void fetchWeather() {
         new Thread(() -> {
             try {
-                URL u = new URL("https://api.open-meteo.com/v1/forecast?latitude=29.3759&longitude=47.9774&current=temperature_2m,weather_code,is_day&timezone=Asia%2FKuwait");
-                HttpURLConnection c = (HttpURLConnection) u.openConnection();
-                c.setConnectTimeout(8000);
-                c.setReadTimeout(8000);
-                StringBuilder sb = new StringBuilder();
-                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()))) {
-                    String line;
-                    while ((line = r.readLine()) != null) sb.append(line);
-                }
-                JSONObject cur = new JSONObject(sb.toString()).getJSONObject("current");
+                JSONObject cur = new JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=29.3759&longitude=47.9774&current=temperature_2m,weather_code,is_day&timezone=Asia%2FKuwait")).getJSONObject("current");
                 long temp = Math.round(cur.getDouble("temperature_2m"));
                 String icon = weatherIcon(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1);
-                ui.post(() -> weather.setText(icon + " " + temp + "°"));
+                tempNow = cur.getDouble("temperature_2m");
+                try { dustNow = new JSONObject(get("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=29.3759&longitude=47.9774&current=dust"))
+                        .getJSONObject("current").getDouble("dust"); } catch (Exception ignored) { }
+                ui.post(() -> weather.setText((dustNow > 150 ? "🌫️" : icon) + " " + temp + "°"));
             } catch (Exception e) {
                 lastWeather = System.currentTimeMillis() - 25 * 60 * 1000; // try again in 5 minutes
+            }
+        }).start();
+    }
+
+    static String get(String url) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(8000);
+        c.setReadTimeout(8000);
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+            String line;
+            while ((line = r.readLine()) != null) sb.append(line);
+        } finally {
+            c.disconnect();
+        }
+        return sb.toString();
+    }
+
+    // ------------------------------------------------------------------ widget card
+
+    private void buildCard() {
+        card = new FrameLayout(this);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding((int) px(30), (int) px(22), (int) px(30), (int) px(24));
+        GradientDrawable bg = rounded(0xE00A0C16, px(28));
+        bg.setStroke(Math.max(1, (int) px(2)), 0x33FFFFFF);
+        box.setBackground(bg);
+        cardKicker = text("", 20, fBold, GOLD);
+        cardKicker.setLetterSpacing(.08f);
+        box.addView(cardKicker);
+        cardAr = text("", 34, fBold, TEXT);
+        cardAr.setTextDirection(View.TEXT_DIRECTION_RTL);
+        cardAr.setGravity(Gravity.END);
+        cardAr.setLineSpacing(0, 1.15f);
+        cardAr.setMaxLines(4);
+        cardAr.setPadding(0, (int) px(12), 0, 0);
+        box.addView(cardAr, new LinearLayout.LayoutParams(-1, -2));
+        cardEn = text("", 26, fMedium, TEXT);
+        cardEn.setLineSpacing(0, 1.1f);
+        cardEn.setMaxLines(4);
+        cardEn.setPadding(0, (int) px(10), 0, 0);
+        box.addView(cardEn);
+        cardRef = text("", 20, fMedium, MUTED);
+        cardRef.setPadding(0, (int) px(10), 0, 0);
+        box.addView(cardRef);
+        card.addView(box, new FrameLayout.LayoutParams((int) px(560), -2));
+        card.setAlpha(0);
+    }
+
+    private WindowManager.LayoutParams cardParams() {
+        int g;
+        switch (prefs.getString("card_position", "tr")) {
+            case "tl": g = Gravity.TOP | Gravity.START; break;
+            case "bl": g = Gravity.BOTTOM | Gravity.START; break;
+            case "br": g = Gravity.BOTTOM | Gravity.END; break;
+            default: g = Gravity.TOP | Gravity.END;
+        }
+        WindowManager.LayoutParams p = overlayParams(g);
+        p.x = (int) px(56);
+        p.y = (int) px(44);
+        return p;
+    }
+
+    private void setCard(boolean show) {
+        if (!canOverlay(this)) return;
+        if (show && !prefs.getBoolean("card", true)) show = false;
+        if (show == cardShown) return;
+        if (show) {
+            nextCard(Calendar.getInstance(KUWAIT));
+            try { wm.addView(card, cardParams()); cardShown = true; } catch (Exception e) { return; }
+            card.animate().alpha(1).setDuration(250).start();
+        } else {
+            cardShown = false;
+            card.animate().alpha(0).setDuration(150).withEndAction(() -> {
+                try { wm.removeView(card); } catch (Exception ignored) { }
+            }).start();
+        }
+    }
+
+    private void nextCard(Calendar now) {
+        java.util.List<String[]> items = Widgets.items(this, now, today, ayahToday, tempNow, dustNow);
+        if (items.isEmpty()) return;
+        cardIndex = (cardIndex + 1) % items.size();
+        String[] it = items.get(cardIndex); // {kicker, ar, en, ref}
+        cardSwitched = System.currentTimeMillis();
+        Runnable fill = () -> {
+            cardKicker.setText(it[0]);
+            cardAr.setText(it[1]);
+            cardAr.setVisibility(it[1].isEmpty() ? View.GONE : View.VISIBLE);
+            cardEn.setText(it[2]);
+            cardRef.setText(it[3]);
+            cardRef.setVisibility(it[3].isEmpty() ? View.GONE : View.VISIBLE);
+        };
+        if (!cardShown) { fill.run(); return; }
+        View box = card.getChildAt(0);
+        box.animate().alpha(0).setDuration(250).withEndAction(() -> {
+            fill.run();
+            box.animate().alpha(1).setDuration(350).start();
+        }).start();
+    }
+
+    /** Verse of the day from the Qur'an service (Uthmani text with Sahih International), a short one if possible. */
+    private void fetchAyah(int seed) {
+        new Thread(() -> {
+            for (int attempt = 0; attempt < 12; attempt++) {
+                int n = (int) (((long) (seed + attempt) * 7919L) % 6236) + 1;
+                try {
+                    JSONObject d = new JSONObject(get("https://api.alquran.cloud/v1/ayah/" + n + "/editions/quran-uthmani,en.sahih"));
+                    org.json.JSONArray arr = d.getJSONArray("data");
+                    JSONObject ar = arr.getJSONObject(0), en = arr.getJSONObject(1);
+                    String text = ar.getString("text");
+                    if (text.length() > 170 && attempt < 11) continue;
+                    JSONObject surah = ar.getJSONObject("surah");
+                    String ref = surah.getString("englishName") + " " + surah.getInt("number") + ":" + ar.getInt("numberInSurah")
+                            + "  ·  " + surah.getString("name");
+                    String[] a = {text, en.getString("text"), ref};
+                    ui.post(() -> ayahToday = a);
+                    return;
+                } catch (Exception e) {
+                    break; // offline: Widgets falls back to the built-in verses
+                }
             }
         }).start();
     }

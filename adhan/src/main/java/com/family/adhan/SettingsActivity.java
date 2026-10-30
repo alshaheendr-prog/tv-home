@@ -131,6 +131,17 @@ public class SettingsActivity extends Activity {
         final int next = (ci + 1) % 4;
         row("Panel position", names[ci], () -> { prefs.edit().putString("position", pos[next]).apply(); refreshService(); });
 
+        header("WIDGET CARD");
+        row("Show the widget card (verse, hadith, reminders, character)", prefs.getBoolean("card", true) ? "On" : "Off", () -> {
+            prefs.edit().putBoolean("card", !prefs.getBoolean("card", true)).apply();
+            refreshService();
+        });
+        String ccur = prefs.getString("card_position", "tr");
+        int cci = 1;
+        for (int i = 0; i < 4; i++) if (pos[i].equals(ccur)) cci = i;
+        final int cnext = (cci + 1) % 4;
+        row("Card position", names[cci], () -> { prefs.edit().putString("card_position", pos[cnext]).apply(); refreshService(); });
+
         header("ADHAN SOUND");
         for (int i = 0; i < 6; i++) {
             if (i == 1) continue;
