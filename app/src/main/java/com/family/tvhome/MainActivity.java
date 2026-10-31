@@ -216,6 +216,7 @@ public class MainActivity extends Activity {
         buildApps();
         buildQuran();
         buildParent();
+        buildPlayer();
         lineFrame.setVisibility(prefs.getBoolean("verse", true) ? View.VISIBLE : View.GONE);
         registerDriveWatcher();
         ui.postDelayed(() -> bg.execute(() -> Quran.reciters(getCacheDir())), 20000); // warm the reciter list (names in Arabic)
@@ -354,10 +355,12 @@ public class MainActivity extends Activity {
         lastInput = System.currentTimeMillis();
         if (splash != null) { if (e.getAction() == KeyEvent.ACTION_UP) hideSplash(); return true; } // a press skips the intro
         if (stress && e.getAction() == KeyEvent.ACTION_UP) endStress();
+        if (playerOpen() && e.getAction() == KeyEvent.ACTION_DOWN) showPlayerControls();
         if (ambient) { if (e.getAction() == KeyEvent.ACTION_UP) leaveAmbient(); return true; } // the first press only wakes the screen
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) {
                 if (reciterPanel != null && reciterPanel.getVisibility() == View.VISIBLE) closeReciters();
+                else if (playerOpen()) closePlayer();
                 else closePanels();
             }
             return true; // the home screen never closes itself
@@ -368,6 +371,170 @@ public class MainActivity extends Activity {
             if (code == KeyEvent.KEYCODE_DEL) { pinPress("⌫"); return true; }
         }
         return super.dispatchKeyEvent(e);
+    }
+
+    // ================================================================== Quran player
+
+    /** The full-screen player: the surah's name large and soft in the middle, the reciter under it, Arabic only,
+     *  with quiet controls at the bottom that fade away when the remote is left alone. */
+    private FrameLayout playerPanel, playerBgBox;
+    private LinearLayout playerControls;
+    private TextView playerSurah, playerReciter, playerPlay, playerShuffle, playerRepeat;
+    private ThinBar playerBar;
+    private boolean loopFadeIn;
+    private ValueAnimator loopFade;
+    static final long LOOP_FADE_MS = 4000;
+
+    private boolean playerOpen() { return playerPanel != null && playerPanel.getVisibility() == View.VISIBLE; }
+
+    /** 0 off, 1 all (carry on to the next surah), 2 one (the same surah again). */
+    private int repeatMode() { return prefs.getInt("q_repeat", 0); }
+
+    private int nextSurah(int n, int step) {
+        if (prefs.getBoolean("q_shuffle", false)) { int k; do { k = 1 + random.nextInt(114); } while (k == n); return k; }
+        return ((n - 1 + step) % 114 + 114) % 114 + 1;
+    }
+
+    private void buildPlayer() {
+        playerPanel = new FrameLayout(this);
+        playerPanel.setElevation(35);
+        playerPanel.setClipChildren(false);
+        playerPanel.setVisibility(View.GONE);
+        // Backgrounds come later; until then the slow gold star pattern stands in.
+        playerBgBox = new FrameLayout(this);
+        playerBgBox.setTag("bg");
+        playerBgBox.addView(new StarField(this), new FrameLayout.LayoutParams(-1, -1));
+        playerPanel.addView(playerBgBox, bleed());
+
+        LinearLayout mid = new LinearLayout(this);
+        mid.setOrientation(LinearLayout.VERTICAL);
+        mid.setGravity(Gravity.CENTER_HORIZONTAL);
+        playerSurah = text("", 168, fAr, 0xD9FFFFFF);
+        playerSurah.setIncludeFontPadding(true);
+        playerSurah.setGravity(Gravity.CENTER);
+        playerSurah.setShadowLayer(40, 0, 6, 0x80000000);
+        playerReciter = text("", 44, fAr, 0xB3FFFFFF);
+        playerReciter.setIncludeFontPadding(true);
+        playerReciter.setGravity(Gravity.CENTER);
+        playerReciter.setShadowLayer(18, 0, 3, 0x80000000);
+        mid.addView(playerSurah, new LinearLayout.LayoutParams(-2, -2));
+        mid.addView(playerReciter, new LinearLayout.LayoutParams(-2, -2));
+        playerPanel.addView(mid, new FrameLayout.LayoutParams(1920, -2, Gravity.CENTER));
+
+        playerControls = new LinearLayout(this);
+        playerControls.setOrientation(LinearLayout.VERTICAL);
+        playerControls.setGravity(Gravity.CENTER_HORIZONTAL);
+        playerBar = new ThinBar(this);
+        playerBar.setColor(0xB3F1D58A);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(720, 3);
+        bp.bottomMargin = 34;
+        playerControls.addView(playerBar, bp);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        playerButton(row, "⏮", () -> { quranQuiet = false; playSurah(nextSurah(quranSurah > 0 ? quranSurah : 1, -1), false); });
+        playerPlay = playerButton(row, "⏸", () -> {
+            if (quran == null) return;
+            if (quranSurah == 0 && playerLast > 0) { quranQuiet = false; playSurah(playerLast, false); return; }
+            quran.setPlayWhenReady(!quran.getPlayWhenReady());
+            drawQuranState();
+        });
+        playerButton(row, "⏭", () -> { quranQuiet = false; playSurah(nextSurah(quranSurah > 0 ? quranSurah : 1, 1), false); });
+        playerShuffle = playerButton(row, "", () -> { prefs.edit().putBoolean("q_shuffle", !prefs.getBoolean("q_shuffle", false)).apply(); drawPlayer(); });
+        playerRepeat = playerButton(row, "", () -> { prefs.edit().putInt("q_repeat", (repeatMode() + 1) % 3).apply(); drawPlayer(); });
+        playerControls.addView(row, new LinearLayout.LayoutParams(-2, -2));
+        playerPanel.addView(playerControls, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 90));
+        stage.addView(playerPanel, new FrameLayout.LayoutParams(1920, 1080));
+    }
+
+    private TextView playerButton(LinearLayout row, String label, Runnable onClick) {
+        boolean icon = label.length() == 1;
+        TextView b = text(label, icon ? 34 : 24, fSemi, WHITE);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(icon ? 0 : 30, 0, icon ? 0 : 30, 2);
+        b.setFocusable(true);
+        b.setClickable(true);
+        b.setBackground(glass(99, 0x1AFFFFFF, GLASS_EDGE));
+        b.setOnFocusChangeListener((v, has) -> {
+            v.setBackground(has ? focusGlass(99) : glass(99, 0x1AFFFFFF, GLASS_EDGE));
+            v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).setInterpolator(new DecelerateInterpolator(2f)).start();
+        });
+        b.setOnClickListener(v -> onClick.run());
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(icon ? 84 : -2, 84);
+        p.leftMargin = 12; p.rightMargin = 12;
+        row.addView(b, p);
+        return b;
+    }
+
+    private int playerLast;
+
+    private void openPlayer() {
+        if (playerPanel == null) return;
+        playerPanel.setAlpha(0);
+        playerPanel.setVisibility(View.VISIBLE);
+        playerPanel.animate().alpha(1).setDuration(500).setInterpolator(new DecelerateInterpolator(2f)).start();
+        drawPlayer();
+        showPlayerControls();
+        ui.post(() -> playerPlay.requestFocus());
+        ui.removeCallbacks(playerTick);
+        ui.post(playerTick);
+    }
+
+    private void closePlayer() {
+        playerPanel.animate().alpha(0).setDuration(300).withEndAction(() -> playerPanel.setVisibility(View.GONE)).start();
+        if (quranPanel.getVisibility() == View.VISIBLE) {
+            int focus = (quranSurah > 0 ? quranSurah : Math.max(1, playerLast)) - 1;
+            ui.postDelayed(() -> surahGrid.getChildAt(focus).requestFocus(), 120);
+        }
+    }
+
+    private final Runnable hideControls = () -> {
+        if (playerControls != null) playerControls.animate().alpha(0).translationY(20).setDuration(800).start();
+    };
+
+    private void showPlayerControls() {
+        playerControls.animate().alpha(1).translationY(0).setDuration(250).start();
+        ui.removeCallbacks(hideControls);
+        ui.postDelayed(hideControls, 6000);
+    }
+
+    private void drawPlayer() {
+        if (playerPanel == null) return;
+        if (quranSurah > 0) playerLast = quranSurah;
+        int n = playerLast;
+        if (n > 0) playerSurah.setText("سورة " + Quran.AR[n - 1]);
+        if (quranReciter != null) playerReciter.setText(quranReciter.ar.isEmpty() ? quranReciter.en : quranReciter.ar);
+        playerPlay.setText(quran != null && quranSurah > 0 && quran.getPlayWhenReady() ? "⏸" : "▶");
+        boolean sh = prefs.getBoolean("q_shuffle", false);
+        playerShuffle.setText(sh ? "Shuffle: On" : "Shuffle: Off");
+        playerShuffle.setTextColor(sh ? GOLD : WHITE);
+        int rp = repeatMode();
+        playerRepeat.setText(rp == 0 ? "Repeat: Off" : rp == 1 ? "Repeat: All" : "Repeat: This surah");
+        playerRepeat.setTextColor(rp == 0 ? WHITE : GOLD);
+    }
+
+    /** Four times a second while the player is open: the progress line, and the soft fade out before a repeat. */
+    private final Runnable playerTick = new Runnable() {
+        @Override public void run() {
+            boolean manual = quran != null && quranSurah > 0 && !quranQuiet;
+            if (!playerOpen() && !manual) return; // nothing to show or fade: stop ticking
+            if (quran != null && quranSurah > 0) {
+                long d = quran.getDuration(), pos = quran.getCurrentPosition();
+                if (d > 0) {
+                    playerBar.setProgress(pos / (float) d);
+                    if (repeatMode() != 0 && !quranQuiet && (loopFade == null || !loopFade.isRunning()) && d - pos < LOOP_FADE_MS)
+                        quran.setVolume(Math.max(0f, (d - pos) / (float) LOOP_FADE_MS));
+                }
+            }
+            ui.postDelayed(this, 250);
+        }
+    };
+
+    private void fadeLoopIn() {
+        if (loopFade != null) loopFade.cancel();
+        loopFade = ValueAnimator.ofFloat(0f, 1f);
+        loopFade.setDuration(3000);
+        loopFade.addUpdateListener(v -> { if (quran != null && !quranQuiet) quran.setVolume((float) v.getAnimatedValue()); });
+        loopFade.start();
     }
 
     // ================================================================== smoothness
@@ -1347,6 +1514,7 @@ public class MainActivity extends Activity {
     }
 
     private void closePanels() {
+        if (playerPanel != null) playerPanel.setVisibility(View.GONE);
         if (reciterPanel != null) reciterPanel.setVisibility(View.GONE);
         boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE
                 || quranPanel.getVisibility() == View.VISIBLE || parentPanel.getVisibility() == View.VISIBLE
@@ -1774,7 +1942,7 @@ public class MainActivity extends Activity {
                 v.animate().scaleX(has ? 1.07f : 1f).scaleY(has ? 1.07f : 1f).setDuration(200).setInterpolator(EASE).start();
                 goldLift(v, has, 18);
             });
-            cell.setOnClickListener(v -> { quranQuiet = false; playSurah(n, false); });
+            cell.setOnClickListener(v -> { quranQuiet = false; playSurah(n, false); openPlayer(); });
             GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
             gp.width = 268; gp.height = 150;
             gp.setMargins(9, 9, 9, 9);
@@ -1999,6 +2167,16 @@ public class MainActivity extends Activity {
             quran.addListener(new Player.Listener() {
                 @Override public void onIsPlayingChanged(boolean playing) { if (playing) quranErrors = 0; drawQuranState(); }
                 @Override public void onPlaybackStateChanged(int state) {
+                    if (state == Player.STATE_ENDED && !quranQuiet && quranSurah > 0 && repeatMode() != 0) {
+                        // repeat: a 3 second pause after the fade, then the same surah (or the next one) fades back in
+                        final int again = repeatMode() == 2 ? quranSurah : nextSurah(quranSurah, 1);
+                        ui.postDelayed(() -> {
+                            if (quran == null || quranQuiet) return;
+                            if (again == quranSurah) { quran.seekTo(0); quran.setVolume(0f); quran.play(); fadeLoopIn(); }
+                            else { loopFadeIn = true; playSurah(again, false); }
+                        }, 3000);
+                        return;
+                    }
                     if (state == Player.STATE_ENDED) {
                         quranSurah = 0;
                         drawQuranState();
@@ -2015,7 +2193,11 @@ public class MainActivity extends Activity {
         quranSurah = n;
         quranReciter = r;
         Stats.surahPlayed(this, n, r.en.isEmpty() ? r.ar : r.en);
-        if (quranQuiet) fadeInQuiet(); else { if (quietFade != null) quietFade.cancel(); quran.setVolume(1f); }
+        if (quranQuiet) fadeInQuiet();
+        else if (loopFadeIn) { loopFadeIn = false; quran.setVolume(0f); ui.post(this::fadeLoopIn); }
+        else { if (quietFade != null) quietFade.cancel(); quran.setVolume(1f); }
+        ui.removeCallbacks(playerTick);
+        ui.post(playerTick); // keeps the progress line and the repeat fade going
         quran.setMediaItem(MediaItem.fromUri(r.url(n)));
         quran.prepare();
         quran.play();
@@ -2037,12 +2219,14 @@ public class MainActivity extends Activity {
         if (!active) {
             quranNow.setText("");
             showNowReciting(false);
+            drawPlayer();
             return;
         }
         String reciter = quranReciter.ar.isEmpty() ? quranReciter.en : quranReciter.ar + "  ·  " + quranReciter.en;
         quranNow.setText("سورة " + Quran.AR[quranSurah - 1] + "  ·  " + Quran.EN[quranSurah - 1] + "\n" + reciter);
         quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
         nowSurah.setText("سورة " + Quran.AR[quranSurah - 1] + "   ·   " + Quran.EN[quranSurah - 1]);
+        drawPlayer();
         nowReciter.setText(reciter);
         showNowReciting(true);
         animateBars(quran.getPlayWhenReady());
@@ -2171,7 +2355,7 @@ public class MainActivity extends Activity {
     private final long[] lastTimes = new long[4];
 
     private boolean anyPanelOpen() {
-        for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel, calendarPanel}) if (v != null && v.getVisibility() == View.VISIBLE) return true;
+        for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel, calendarPanel, playerPanel}) if (v != null && v.getVisibility() == View.VISIBLE) return true;
         return false;
     }
 
