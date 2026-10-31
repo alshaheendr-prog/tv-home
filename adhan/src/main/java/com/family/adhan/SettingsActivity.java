@@ -42,10 +42,20 @@ public class SettingsActivity extends Activity {
         sv.addView(list);
         setContentView(sv);
         AdhanService.start(this);
-        if (getIntent().getBooleanExtra("test", false)) { // Update TV shows the banner once to check it
-            startForegroundService(new Intent(this, AdhanService.class).setAction("test"));
-            finish();
-        }
+        maybeTest(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        maybeTest(i);
+    }
+
+    /** Update TV shows the banner once to check it, then steps out of the way. */
+    private void maybeTest(Intent i) {
+        if (i == null || !i.getBooleanExtra("test", false)) return;
+        startForegroundService(new Intent(this, AdhanService.class).setAction("test"));
+        finish();
     }
 
     @Override

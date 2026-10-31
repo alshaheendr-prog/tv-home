@@ -303,25 +303,41 @@ public class MainActivity extends Activity {
     /** Update TV photographs the home screen with the longest text each card can get, to prove nothing overlaps or is cut. */
     private boolean stress;
 
+    // widths that keep the top row's pieces apart: sky text beside the temperature, the event chip
+    // under the left card, and the now-reciting card in the gap between the two top cards
+    static final int SKY_W = 330, CHIP_W = 470, NOW_W = 440;
+
+    /** "a · b" on one line when it fits in max pixels, otherwise a above b, so nothing is cut or crowded. */
+    private static void fitPair(TextView t, String a, String b, int max) {
+        String one = a + "  ·  " + b;
+        t.setText(t.getPaint().measureText(one) <= max ? one : a + "\n" + b);
+    }
+
+    private static void fitPair(TextView t, String pair, int max) {
+        int i = pair.indexOf(" · ");
+        if (i < 0) { t.setText(pair); return; }
+        fitPair(t, pair.substring(0, i).trim(), pair.substring(i + 3).trim(), max);
+    }
+
     private void stressTest() {
         stress = true;
         boolean h24 = prefs.getBoolean("clock24", false);
         clockText.setText(h24 ? "23:58" : "12:58");
         ampmText.setText(h24 ? "" : "PM");
         tempText.setText("48°");
-        skyText.setText("Thunderstorm with hail  ·  عاصفة رعدية مع برد");
+        fitPair(skyText, "Thunderstorm with hail · عاصفة رعدية مع برد", SKY_W);
         dateText.setText("Wednesday 28 September");
         hijriText.setText("٢٩ ذو الحجة ١٤٤٨ هـ");
         dayText.setText("Today  48° / 36°     Tomorrow ⛈ 47° / 35°");
         driveText.setText("●  Drive unplugged");
         driveText.setVisibility(View.VISIBLE);
-        eventText.setText("●  First ten days of Dhul Hijjah  ·  العشر الأوائل من ذي الحجة");
+        fitPair(eventText, "●  First ten days of Dhul Hijjah", "العشر الأوائل من ذي الحجة", CHIP_W);
         eventChip.setVisibility(View.VISIBLE);
         adhanName.setText("Suhoor ends");
         adhanAr.setText("الإمساك · الفجر");
         adhanCountdown.setText("10:59:59");
         nowSurah.setText("سورة الشعراء   ·   Ash-Shu'ara");
-        nowReciter.setText("عبدالرحمن السديس  ·  Abdul Rahman Al-Sudais");
+        fitPair(nowReciter, "عبدالرحمن السديس", "Abdul Rahman Al-Sudais", NOW_W);
         showNowReciting(true);
         lineFrame.setVisibility(View.VISIBLE);
         lineKicker.setText("VERSE OF THE DAY  ·  آية اليوم   ·   Al-Baqarah 2:286");
@@ -749,11 +765,12 @@ public class MainActivity extends Activity {
         kRow.addView(driveText);
         left.addView(kRow, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout wx = new LinearLayout(this);
-        wx.setGravity(Gravity.BOTTOM);
+        wx.setGravity(Gravity.CENTER_VERTICAL);
         wx.setPadding(0, 12, 0, 0);
         tempText = text("--°", 66, fLight, WHITE);
         skyText = text("", 24, fMed, SOFT);
-        skyText.setPadding(18, 0, 0, 10);
+        skyText.setIncludeFontPadding(true);
+        skyText.setPadding(18, 0, 0, 0);
         wx.addView(tempText);
         wx.addView(skyText, new LinearLayout.LayoutParams(0, -2, 1));
         left.addView(wx);
@@ -788,6 +805,8 @@ public class MainActivity extends Activity {
         LinearLayout names = new LinearLayout(this);
         names.setOrientation(LinearLayout.VERTICAL);
         adhanName = text("", 38, fSemi, WHITE);
+        adhanName.setMaxLines(1); // a long name ("Suhoor ends") shrinks a little to stay on one line beside the countdown
+        adhanName.setAutoSizeTextTypeUniformWithConfiguration(30, 38, 1, TypedValue.COMPLEX_UNIT_PX);
         adhanAr = text("", 26, fArSemi, SOFT);
         adhanAr.setIncludeFontPadding(true);
         names.addView(adhanName, new LinearLayout.LayoutParams(-2, -2));
@@ -859,7 +878,7 @@ public class MainActivity extends Activity {
     private void drawEventChip(Calendar now) {
         String[] b = Events.badge(now);
         if (b == null) { eventChip.setVisibility(View.GONE); return; }
-        eventText.setText("●  " + b[0] + "  ·  " + b[1]);
+        fitPair(eventText, "●  " + b[0], b[1], CHIP_W);
         eventChip.setVisibility(View.VISIBLE);
     }
     private ThinBar adhanBar, lineBar, nowBar;
@@ -1325,7 +1344,7 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) { }
                 String sky = !Double.isNaN(dustNow) && dustNow > 150 ? "Dusty · غبار" : skyName(code);
                 long t = Math.round(tempNow);
-                ui.post(() -> { tempText.setText(t + "°"); skyText.setText(sky); drawDayLine(); });
+                ui.post(() -> { tempText.setText(t + "°"); fitPair(skyText, sky, SKY_W); drawDayLine(); });
             } catch (Exception e) {
                 lastWeather = System.currentTimeMillis() - 25 * 60 * 1000; // try again in 5 minutes
             }
@@ -1502,6 +1521,12 @@ public class MainActivity extends Activity {
     }
 
     // ================================================================== overlays (shared look)
+
+    /** Keep a view's drawing inside its own box even when its parent lets children overflow. */
+    private static void clipToBounds(View v) {
+        v.setOutlineProvider(android.view.ViewOutlineProvider.BOUNDS);
+        v.setClipToOutline(true);
+    }
 
     private FrameLayout overlay() {
         FrameLayout o = new FrameLayout(this);
@@ -1815,6 +1840,7 @@ public class MainActivity extends Activity {
         panelHeader(appsPanel, "ALL APPS  ·  كل التطبيقات", "Apps");
         appsTitle = panelHint(appsPanel, "Hold OK to add an app to Kids ⭐");
         ScrollView sv = new ScrollView(this);
+        clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setClipToPadding(false);
         sv.setPadding(0, 20, 0, 60);
@@ -1984,6 +2010,7 @@ public class MainActivity extends Activity {
         quranPanel.addView(quranControls, at(-2, -2, Gravity.TOP | Gravity.END, 110, 80));
 
         ScrollView sv = new ScrollView(this);
+        clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setClipToPadding(false);
         sv.setPadding(0, 16, 0, 60);
@@ -2102,6 +2129,7 @@ public class MainActivity extends Activity {
             if (r.en.equals(chosen)) focus = row;
         }
         ScrollView sv = new ScrollView(this);
+        clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setVerticalFadingEdgeEnabled(true);
         sv.setFadingEdgeLength(80);
@@ -2309,7 +2337,7 @@ public class MainActivity extends Activity {
         quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
         nowSurah.setText("سورة " + Quran.AR[quranSurah - 1] + "   ·   " + Quran.EN[quranSurah - 1]);
         drawPlayer();
-        nowReciter.setText(reciter);
+        if (quranReciter.ar.isEmpty()) nowReciter.setText(quranReciter.en); else fitPair(nowReciter, quranReciter.ar, quranReciter.en, NOW_W);
         showNowReciting(true);
         animateBars(quran.getPlayWhenReady());
     }
@@ -2339,7 +2367,8 @@ public class MainActivity extends Activity {
         nowSurah.setIncludeFontPadding(true);
         nowReciter = text("", 24, fAr, SOFT);
         nowReciter.setIncludeFontPadding(true);
-        nowReciter.setMaxWidth(620); // long names wrap onto a second line instead of being cut
+        nowReciter.setMaxWidth(NOW_W); // the card must stay inside the gap between the two top cards
+        nowSurah.setMaxWidth(NOW_W);
         texts.addView(k);
         texts.addView(nowSurah);
         texts.addView(nowReciter);
@@ -2475,6 +2504,7 @@ public class MainActivity extends Activity {
         parentList.setOrientation(LinearLayout.VERTICAL);
         // the list scrolls (focus leads it) so every row fits on screen, fading softly under the title
         ScrollView scroll = new ScrollView(this);
+        clipToBounds(scroll); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setVerticalFadingEdgeEnabled(true);
         scroll.setFadingEdgeLength(40);
@@ -2639,6 +2669,7 @@ public class MainActivity extends Activity {
             if (first == null) first = r;
         }
         ScrollView sv = new ScrollView(this);
+        clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setVerticalFadingEdgeEnabled(true);
         sv.setFadingEdgeLength(80);
