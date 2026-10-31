@@ -428,6 +428,12 @@ public class MainActivity extends Activity {
         mid.addView(playerSurah, new LinearLayout.LayoutParams(-2, -2));
         mid.addView(playerReciter, new LinearLayout.LayoutParams(-2, -2));
         playerPanel.addView(mid, new FrameLayout.LayoutParams(1920, -2, Gravity.CENTER));
+        // Sleep dimming: a black veil over the background and the words, under the controls so they stay usable.
+        playerDim = new View(this);
+        playerDim.setTag("bg");
+        playerDim.setBackgroundColor(Color.BLACK);
+        playerDim.setAlpha(0);
+        playerPanel.addView(playerDim, bleed());
 
         playerControls = new LinearLayout(this);
         playerControls.setOrientation(LinearLayout.VERTICAL);
@@ -449,6 +455,10 @@ public class MainActivity extends Activity {
         playerButton(row, "⏭", () -> { quranQuiet = false; playSurah(nextSurah(quranSurah > 0 ? quranSurah : 1, 1), false); });
         playerShuffle = playerButton(row, "", () -> { prefs.edit().putBoolean("q_shuffle", !prefs.getBoolean("q_shuffle", false)).apply(); drawPlayer(); });
         playerRepeat = playerButton(row, "", () -> { prefs.edit().putInt("q_repeat", (repeatMode() + 1) % 3).apply(); drawPlayer(); });
+        playerSleep = playerButton(row, "", () -> {
+            prefs.edit().putInt("q_dim", (prefs.getInt("q_dim", 0) + 1) % SLEEP_DIM.length).apply();
+            drawPlayer();
+        });
         playerControls.addView(row, new LinearLayout.LayoutParams(-2, -2));
         playerPanel.addView(playerControls, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 90));
         stage.addView(playerPanel, new FrameLayout.LayoutParams(1920, 1080));
@@ -474,6 +484,11 @@ public class MainActivity extends Activity {
     }
 
     private int playerLast;
+    private View playerDim;
+    private TextView playerSleep;
+    /** Bedtime dimming for the player, chosen with its Sleep button and remembered. */
+    static final float[] SLEEP_DIM = {0f, 0.5f, 0.72f, 0.88f};
+    static final String[] SLEEP_NAMES = {"Sleep: Off", "Sleep: Dim", "Sleep: Darker", "Sleep: Darkest"};
     private View playerShade;
     private boolean playerVideo; // the wallpaper player is showing a Quran background while the player is open
 
@@ -547,6 +562,10 @@ public class MainActivity extends Activity {
         int rp = repeatMode();
         playerRepeat.setText(rp == 0 ? "Repeat: Off" : rp == 1 ? "Repeat: All" : "Repeat: This surah");
         playerRepeat.setTextColor(rp == 0 ? WHITE : GOLD);
+        int dim = prefs.getInt("q_dim", 0) % SLEEP_DIM.length;
+        playerSleep.setText(SLEEP_NAMES[dim]);
+        playerSleep.setTextColor(dim == 0 ? WHITE : GOLD);
+        playerDim.animate().alpha(SLEEP_DIM[dim]).setDuration(1200).start();
     }
 
     /** Four times a second while the player is open: the progress line, and the soft fade out before a repeat. */
