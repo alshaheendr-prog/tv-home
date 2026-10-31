@@ -2,7 +2,6 @@ package com.family.tvhome;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.view.PixelCopy;
 import android.text.format.Formatter;
 import android.os.storage.StorageVolume;
 import android.os.storage.StorageManager;
@@ -39,7 +38,7 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.ViewGroup;
@@ -119,7 +118,7 @@ public class MainActivity extends Activity {
     private Typeface fMed, fSemi, fBold, fAr, fArSemi, fQuran, fSerif, fLight, fThin;
 
     private FrameLayout root, stage;
-    private SurfaceView video;
+    private TextureView video;
     private View videoCover, dimView;
     private boolean resumed;
     private int lastDock;
@@ -183,7 +182,8 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
-        video = new SurfaceView(this);
+        // The video draws inside the app's own window (not a hole behind it), so redrawn text never leaves light patches over it.
+        video = new TextureView(this);
         root.addView(video, new FrameLayout.LayoutParams(-1, -1));
         videoCover = new View(this);
         videoCover.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF1B2A4A, 0xFF0E1426, 0xFF241A3A}));
@@ -225,7 +225,7 @@ public class MainActivity extends Activity {
         ui.postDelayed(() -> bg.execute(() -> Quran.reciters(getCacheDir())), 20000); // warm the reciter list (names in Arabic)
 
         player = new ExoPlayer.Builder(this).build();
-        player.setVideoSurfaceView(video);
+        player.setVideoTextureView(video);
         player.setRepeatMode(Player.REPEAT_MODE_ONE);
         player.setVolume(0f);
         player.addListener(new Player.Listener() {
@@ -1999,17 +1999,12 @@ public class MainActivity extends Activity {
     private final Runnable grabBackdrop = new Runnable() {
         @Override public void run() {
             if (!resumed) return;
-            if (videoCover.getAlpha() < 0.5f && player.isPlaying() && video.getHolder().getSurface().isValid()) {
-                final Bitmap frame = Bitmap.createBitmap(192, 108, Bitmap.Config.ARGB_8888);
-                try {
-                    PixelCopy.request(video, frame, result -> {
-                        if (result != PixelCopy.SUCCESS) return;
-                        blurThread.execute(() -> {
-                            Bitmap b = Blur.blur(frame, 5);
-                            ui.post(() -> { if (resumed) GlassFrame.setBackdrop(b); });
-                        });
-                    }, ui);
-                } catch (Exception ignored) { }
+            if (videoCover.getAlpha() < 0.5f && player.isPlaying() && video.isAvailable()) {
+                final Bitmap frame = video.getBitmap(192, 108);
+                if (frame != null) blurThread.execute(() -> {
+                    Bitmap b = Blur.blur(frame, 5);
+                    ui.post(() -> { if (resumed) GlassFrame.setBackdrop(b); });
+                });
             } else if (videoCover.getAlpha() >= 0.5f) {
                 GlassFrame.setBackdrop(null);
             }
@@ -2291,7 +2286,9 @@ public class MainActivity extends Activity {
         bottomGroup.animate().alpha(0).translationY(40).setDuration(1200).setInterpolator(EASE).start();
         dockLabel.animate().alpha(0).setDuration(400).start();
         for (View t : topParts) t.animate().alpha(0.7f).setDuration(1500).start();
-        centerGroup.animate().translationY(90).setDuration(1500).setInterpolator(EASE).start();
+        // the clock and the verse card settle lower together, into the dock's space, keeping their gap
+        centerGroup.animate().translationY(70).setDuration(1500).setInterpolator(EASE).start();
+        lineFrame.animate().translationY(190).setDuration(1500).setInterpolator(EASE).start();
     }
 
     /** After fifteen quiet minutes the whole screen dims; the video and the soft Quran keep playing. */
@@ -2313,7 +2310,7 @@ public class MainActivity extends Activity {
         }
         lastInput = System.currentTimeMillis();
         bottomGroup.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
-        lineFrame.animate().alpha(1).setDuration(450).start();
+        lineFrame.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
         for (View t : topParts) t.animate().alpha(1).setDuration(450).start();
         centerGroup.animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
         View f = dockTiles.get(lastDock);
