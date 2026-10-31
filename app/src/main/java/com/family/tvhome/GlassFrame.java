@@ -86,7 +86,7 @@ final class GlassFrame extends FrameLayout {
         private final float radius;
         private final int reach, color;
 
-        Glow(float radius, int reach, int color) { this.radius = radius; this.reach = reach; this.color = color; }
+        Glow(float radius, int reach, int color) { this.radius = radius; this.reach = reach; this.color = color; Accent.register(this); }
 
         private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF r = new RectF();
@@ -100,9 +100,12 @@ final class GlassFrame extends FrameLayout {
             float step = reach / (float) RINGS;
             ring.setStrokeWidth(step + 0.5f);
             int a = color >>> 24;
+            // the glow leans towards the wallpaper's colour (and a little stronger, so the colour reads)
+            int rgb = Accent.mix(color, Accent.color, 0.7f * Accent.strength) & 0xFFFFFF;
+            a = Math.min(255, Math.round(a * (1 + 0.35f * Accent.strength)));
             for (int i = 0; i < RINGS; i++) {
                 float out = (i + 0.5f) * step, k = 1 - (i + 0.5f) / RINGS;
-                ring.setColor((Math.round(a * k * k * 0.6f) << 24) | (color & 0xFFFFFF));
+                ring.setColor((Math.round(a * k * k * 0.6f) << 24) | rgb);
                 r.set(b.left + reach - out, b.top + reach - out, b.right - reach + out, b.bottom - reach + out);
                 canvas.drawRoundRect(r, radius + out, radius + out, ring);
             }
