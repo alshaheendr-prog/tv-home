@@ -116,7 +116,7 @@ public class MainActivity extends Activity {
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
     private final Random random = new Random();
     private SharedPreferences prefs;
-    private Typeface fMed, fSemi, fBold, fAr, fArSemi, fQuran, fSerif;
+    private Typeface fMed, fSemi, fBold, fAr, fArSemi, fQuran, fSerif, fLight, fThin;
 
     private FrameLayout root, stage;
     private SurfaceView video;
@@ -171,6 +171,8 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences("home", MODE_PRIVATE);
         fMed = getResources().getFont(R.font.inter_medium);
         fSemi = getResources().getFont(R.font.inter_semibold);
+        fLight = getResources().getFont(R.font.inter_light);
+        fThin = getResources().getFont(R.font.inter_extralight); // big numbers read finer and more premium in a light weight
         fBold = getResources().getFont(R.font.inter_bold);
         fAr = getResources().getFont(R.font.plex_arabic_medium);
         fArSemi = getResources().getFont(R.font.plex_arabic_semibold);
@@ -313,7 +315,10 @@ public class MainActivity extends Activity {
         if (splash != null) { if (e.getAction() == KeyEvent.ACTION_UP) hideSplash(); return true; } // a press skips the intro
         if (ambient) { if (e.getAction() == KeyEvent.ACTION_UP) leaveAmbient(); return true; } // the first press only wakes the screen
         if (code == KeyEvent.KEYCODE_BACK) {
-            if (e.getAction() == KeyEvent.ACTION_UP) closePanels();
+            if (e.getAction() == KeyEvent.ACTION_UP) {
+                if (reciterPanel != null && reciterPanel.getVisibility() == View.VISIBLE) closeReciters();
+                else closePanels();
+            }
             return true; // the home screen never closes itself
         }
         if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0 && !anyPanelOpen()) secretKey(code);
@@ -395,7 +400,8 @@ public class MainActivity extends Activity {
     // Light dark wash behind the glass so text stays readable on busy wallpapers
     static final int CARD_TINT = 0x3A000000;
 
-    private static TextView kicker(TextView t) { t.setLetterSpacing(0.16f); return t; }
+    /** Small spaced capitals over each block, in a soft gold so every card shares one accent. */
+    private static TextView kicker(TextView t) { t.setLetterSpacing(0.18f); t.setTextColor(0xD9E8CB86); return t; }
 
     /** Two matching cards, mirrored: weather and dates top left, the next adhan top right. */
     private void buildTop() {
@@ -412,7 +418,7 @@ public class MainActivity extends Activity {
         LinearLayout wx = new LinearLayout(this);
         wx.setGravity(Gravity.BOTTOM);
         wx.setPadding(0, 12, 0, 0);
-        tempText = text("--°", 60, fSemi, WHITE);
+        tempText = text("--°", 66, fLight, WHITE);
         skyText = text("", 24, fMed, SOFT);
         skyText.setPadding(18, 0, 0, 10);
         wx.addView(tempText);
@@ -453,7 +459,7 @@ public class MainActivity extends Activity {
         adhanAr.setIncludeFontPadding(true);
         names.addView(adhanName, new LinearLayout.LayoutParams(-2, -2));
         names.addView(adhanAr, new LinearLayout.LayoutParams(-2, -2));
-        adhanCountdown = text("--:--:--", 56, fSemi, WHITE);
+        adhanCountdown = text("--:--:--", 60, fLight, WHITE);
         adhanCountdown.setFontFeatureSettings("tnum");
         adhanCountdown.setGravity(Gravity.END);
         nameRow.addView(names, new LinearLayout.LayoutParams(0, -2, 1));
@@ -536,11 +542,11 @@ public class MainActivity extends Activity {
         c.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout clockRow = new LinearLayout(this);
         clockRow.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        clockText = text("--:--", 210, fSemi, 0xD9FFFFFF);
+        clockText = text("--:--", 230, fThin, 0xF2FFFFFF);
         clockText.setFontFeatureSettings("tnum");
         clockText.setLetterSpacing(-0.03f);
         clockText.setShadowLayer(40, 0, 4, 0x40000000);
-        ampmText = text("", 46, fSemi, 0xA6FFFFFF);
+        ampmText = text("", 44, fLight, 0xB3FFFFFF);
         ampmText.setPadding(14, 0, 0, 38);
         clockRow.addView(clockText);
         clockRow.addView(ampmText);
@@ -1148,6 +1154,7 @@ public class MainActivity extends Activity {
         ViewGroup g = (ViewGroup) v;
         for (int i = 0; i < g.getChildCount(); i++) {
             View c = g.getChildAt(i);
+            if ("bg".equals(c.getTag())) continue; // backdrops stay put
             c.setTranslationY(28);
             c.animate().translationY(0).setStartDelay(i * 40L).setDuration(420).setInterpolator(new DecelerateInterpolator(2.2f)).start();
         }
@@ -1216,6 +1223,7 @@ public class MainActivity extends Activity {
     }
 
     private void closePanels() {
+        if (reciterPanel != null) reciterPanel.setVisibility(View.GONE);
         boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE
                 || quranPanel.getVisibility() == View.VISIBLE || parentPanel.getVisibility() == View.VISIBLE
                 || calendarPanel.getVisibility() == View.VISIBLE;
@@ -1572,6 +1580,9 @@ public class MainActivity extends Activity {
 
     private void buildQuran() {
         quranPanel = overlay();
+        StarField field = new StarField(this);
+        field.setTag("bg");
+        quranPanel.addView(field, new FrameLayout.LayoutParams(1920, 1080));
         TextView title = panelHeader(quranPanel, "THE HOLY QURAN  ·  A NEW RECITER EVERY TIME", "القرآن الكريم");
         title.setTypeface(fQuran);
         title.setIncludeFontPadding(true);
@@ -1587,6 +1598,8 @@ public class MainActivity extends Activity {
             quran.setPlayWhenReady(!quran.getPlayWhenReady());
             drawQuranState();
         });
+        reciterBtn = quranButton("", this::openReciters);
+        drawReciterBtn();
         quranButton("Another reciter", () -> playSurah(quranSurah, true));
         quranButton("Stop", this::stopQuran);
         quranPanel.addView(quranControls, at(-2, -2, Gravity.TOP | Gravity.END, 110, 80));
@@ -1665,6 +1678,95 @@ public class MainActivity extends Activity {
         p.leftMargin = 14;
         quranControls.addView(b, p);
         return b;
+    }
+
+    // ------------------------------------------------------------------ choosing a reciter
+
+    private TextView reciterBtn;
+    private FrameLayout reciterPanel;
+
+    private void drawReciterBtn() {
+        String c = prefs.getString("reciter", "");
+        reciterBtn.setText(c.isEmpty() ? "Reciter: Any" : "Reciter: " + c);
+    }
+
+    /** A list of every reciter: "Any" (a new voice every time) first, then the ones stored on the box, then the rest. */
+    private void openReciters() {
+        bg.execute(() -> {
+            List<Quran.Reciter> onBox = Quran.local(1), all = new ArrayList<>();
+            Set<String> seen = new HashSet<>();
+            for (Quran.Reciter r : onBox) if (seen.add(r.en)) all.add(r);
+            for (Quran.Reciter r : Quran.reciters(getCacheDir())) if (seen.add(r.en)) all.add(r);
+            Set<String> local = new HashSet<>();
+            for (Quran.Reciter r : onBox) local.add(r.en);
+            ui.post(() -> showReciters(all, local));
+        });
+    }
+
+    private void showReciters(List<Quran.Reciter> all, Set<String> local) {
+        if (reciterPanel == null) { reciterPanel = new FrameLayout(this); reciterPanel.setElevation(40); stage.addView(reciterPanel, new FrameLayout.LayoutParams(1920, 1080)); }
+        reciterPanel.removeAllViews();
+        reciterPanel.setBackgroundColor(0x99050810);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(56, 44, 56, 40);
+        box.addView(kicker(text("RECITER  ·  القارئ", 20, fSemi, DIM)), new LinearLayout.LayoutParams(-2, -2));
+        TextView title = text("Choose a reciter", 46, fSemi, WHITE);
+        title.setPadding(0, 10, 0, 18);
+        box.addView(title, new LinearLayout.LayoutParams(-2, -2));
+        String chosen = prefs.getString("reciter", "");
+        View focus = null;
+        View any = reciterRow(box, "Any reciter", "A new voice every time  ·  قارئ مختلف كل مرة", "");
+        if (chosen.isEmpty()) focus = any;
+        for (Quran.Reciter r : all) {
+            View row = reciterRow(box, r.en, (r.ar.isEmpty() ? "" : r.ar) + (local.contains(r.en) ? (r.ar.isEmpty() ? "" : "  ·  ") + "saved on the box" : ""), r.en);
+            if (r.en.equals(chosen)) focus = row;
+        }
+        ScrollView sv = new ScrollView(this);
+        sv.setVerticalScrollBarEnabled(false);
+        sv.setVerticalFadingEdgeEnabled(true);
+        sv.setFadingEdgeLength(80);
+        sv.addView(box);
+        panelCard(reciterPanel, sv, 1000, 940);
+        reciterPanel.setVisibility(View.VISIBLE);
+        reciterPanel.setAlpha(0);
+        reciterPanel.animate().alpha(1).setDuration(240).start();
+        View f = focus != null ? focus : any;
+        f.post(f::requestFocus);
+    }
+
+    private View reciterRow(LinearLayout box, String name, String sub, String value) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.VERTICAL);
+        r.setPadding(26, 14, 26, 14);
+        r.setFocusable(true);
+        r.setClickable(true);
+        boolean on = value.equals(prefs.getString("reciter", ""));
+        TextView n = text((on ? "✓  " : "") + name, 28, fMed, on ? GOLD : WHITE);
+        r.addView(n, new LinearLayout.LayoutParams(-2, -2));
+        if (!sub.isEmpty()) {
+            TextView s2 = text(sub, 22, fAr, DIM);
+            s2.setIncludeFontPadding(true);
+            s2.setTextDirection(View.TEXT_DIRECTION_LTR);
+            r.addView(s2, new LinearLayout.LayoutParams(-2, -2));
+        }
+        r.setOnFocusChangeListener((v, has) -> {
+            v.setBackground(has ? focusGlass(20) : null);
+            v.animate().scaleX(has ? 1.02f : 1f).scaleY(has ? 1.02f : 1f).setDuration(180).setInterpolator(EASE).start();
+        });
+        r.setOnClickListener(v -> {
+            prefs.edit().putString("reciter", value).apply();
+            drawReciterBtn();
+            closeReciters();
+            if (quranSurah > 0 && !quranQuiet) playSurah(quranSurah, false); // hear the new voice straight away
+        });
+        box.addView(r, new LinearLayout.LayoutParams(-1, -2));
+        return r;
+    }
+
+    private void closeReciters() {
+        reciterPanel.animate().alpha(0).setDuration(180).withEndAction(() -> reciterPanel.setVisibility(View.GONE)).start();
+        ui.postDelayed(reciterBtn::requestFocus, 200);
     }
 
     private void openQuran() {
@@ -1748,8 +1850,15 @@ public class MainActivity extends Activity {
                 for (Quran.Reciter x : all) if (IMAMS.matcher(x.en + " " + x.ar).find() && x.has(n)) imams.add(x);
                 if (!imams.isEmpty() && (not == null || imams.size() > 1)) all = imams;
             }
-            Quran.Reciter r = Quran.pick(all, n, not, random);
-            ui.post(() -> startQuran(n, r));
+            Quran.Reciter r = null;
+            String chosen = prefs.getString("reciter", "");
+            if (!quranQuiet && not == null && !chosen.isEmpty()) {
+                for (Quran.Reciter x : Quran.local(n)) if (x.en.equals(chosen)) r = x; // stored on the box first
+                if (r == null) for (Quran.Reciter x : Quran.reciters(getCacheDir())) if (x.en.equals(chosen) && x.has(n)) r = x;
+            }
+            if (r == null) r = Quran.pick(all, n, not, random);
+            final Quran.Reciter use = r;
+            ui.post(() -> startQuran(n, use));
         });
     }
 
