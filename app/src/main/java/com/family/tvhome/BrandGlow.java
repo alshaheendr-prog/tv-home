@@ -28,6 +28,7 @@ final class BrandGlow extends Drawable {
         if (anim != null) anim.cancel();
         final float fromX = cx < 0 ? x : cx, toX = x < 0 ? cx : x, fromS = strength, toS = x < 0 ? 0 : 1;
         final int fromC = color;
+        final int toC = Accent.mix(c | 0xFF000000, Accent.color, 0.3f * Accent.strength); // a touch of the wallpaper's colour
         final ArgbEvaluator argb = new ArgbEvaluator();
         anim = ValueAnimator.ofFloat(0, 1);
         anim.setDuration(420);
@@ -36,7 +37,7 @@ final class BrandGlow extends Drawable {
             float f = (float) a.getAnimatedValue();
             cx = fromX + (toX - fromX) * f;
             strength = fromS + (toS - fromS) * f;
-            color = (int) argb.evaluate(f, fromC, c);
+            color = (int) argb.evaluate(f, fromC, toC);
             invalidateSelf();
         });
         anim.start();

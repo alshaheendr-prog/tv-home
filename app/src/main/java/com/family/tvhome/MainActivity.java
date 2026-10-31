@@ -27,6 +27,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.icu.text.DateFormat;
+import android.media.MediaMetadataRetriever;
 import android.icu.util.ULocale;
 import android.net.Uri;
 import android.os.Bundle;
@@ -38,6 +39,7 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.PixelCopy;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
@@ -128,6 +130,8 @@ public class MainActivity extends Activity {
     private int clipErrors;
 
     private View centerGroup, bottomGroup;
+    private View skyTint;
+    private Uri playingUri;
     private TextView dateText, hijriText, tempText, skyText, clockText, ampmText, pillText, lineKicker, lineAr, lineEn;
     private LinearLayout lineBox;
     private final LinearLayout[] prayerCells = new LinearLayout[5];
@@ -168,6 +172,7 @@ public class MainActivity extends Activity {
         super.onCreate(saved);
         prefs = getSharedPreferences("home", MODE_PRIVATE);
         preferSixtyHz();
+        fullLengthAnimations();
         fMed = getResources().getFont(R.font.inter_medium);
         fSemi = getResources().getFont(R.font.inter_semibold);
         fLight = getResources().getFont(R.font.inter_light);
@@ -188,6 +193,10 @@ public class MainActivity extends Activity {
         videoCover = new View(this);
         videoCover.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF1B2A4A, 0xFF0E1426, 0xFF241A3A}));
         root.addView(videoCover, new FrameLayout.LayoutParams(-1, -1));
+        // the light of the day: cool at Fajr, warm after Maghrib (see drawSky)
+        skyTint = new View(this);
+        skyTint.setAlpha(0);
+        root.addView(skyTint, new FrameLayout.LayoutParams(-1, -1));
         dimView = new View(this);
         dimView.setBackgroundColor(Color.BLACK);
         dimView.setAlpha(1 - prefs.getInt("brightness", 100) / 100f);
@@ -226,7 +235,11 @@ public class MainActivity extends Activity {
         player.setRepeatMode(Player.REPEAT_MODE_ONE);
         player.setVolume(0f);
         player.addListener(new Player.Listener() {
-            @Override public void onRenderedFirstFrame() { clipErrors = 0; videoCover.animate().alpha(0).setDuration(700).start(); splashReady(); }
+            @Override public void onRenderedFirstFrame() {
+                clipErrors = 0; videoCover.animate().alpha(0).setDuration(700).start(); splashReady();
+                ui.removeCallbacks(sampleAccent);
+                ui.postDelayed(sampleAccent, 1200); // once the clip is on screen, learn its colour
+            }
             @Override public void onPlayerError(androidx.media3.common.PlaybackException e) {
                 // a clip that can't play (an unusual format): keep the calm gradient and try another one
                 videoCover.setAlpha(1);
@@ -243,6 +256,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        fullLengthAnimations();
         resumed = true;
         lastInput = System.currentTimeMillis();
         if (ambient) leaveAmbient();
@@ -511,6 +525,7 @@ public class MainActivity extends Activity {
             // the wallpaper's own video layer plays the background, so it costs nothing extra; the grid steps out of the way
             quranPanel.animate().alpha(0).setDuration(400).start();
             videoCover.animate().alpha(1).setDuration(300).withEndAction(() -> {
+                playingUri = bgVideo;
                 player.setMediaItem(MediaItem.fromUri(bgVideo));
                 player.prepare();
                 player.play();
@@ -628,6 +643,14 @@ public class MainActivity extends Activity {
         stage.setTranslationX((w - 1920 * s) / 2);
         stage.setTranslationY((h - 1080 * s) / 2);
         GlassFrame.setScreen(w, h, s);
+        // the video is a little larger than the screen, so it can drift with focus without showing an edge
+        int px = Math.round(w * DRIFT_ROOM), py = Math.round(h * DRIFT_ROOM);
+        FrameLayout.LayoutParams vp = (FrameLayout.LayoutParams) video.getLayoutParams();
+        if (vp.leftMargin != -px || vp.topMargin != -py) {
+            vp.setMargins(-px, -py, -px, -py);
+            video.setLayoutParams(vp);
+        }
+        driftRange = px * 0.8f;
     }
 
     /** Full-screen layers inside the stage reach past its edges, so a shrunk layout leaves no hard border. */
@@ -1011,6 +1034,7 @@ public class MainActivity extends Activity {
             // focus is only a slight grow and lift with a soft slow-down, plus the app's own colour glowing behind it
             t.animate().scaleX(s).scaleY(s).translationX(side).translationY(lift).setDuration(240).setInterpolator(new DecelerateInterpolator(2f)).start();
         }
+        drift(focused);
         if (focused < 0) brandGlow.moveTo(-1, 0);
         else {
             View f = dockTiles.get(focused);
@@ -1121,6 +1145,7 @@ public class MainActivity extends Activity {
         currentClip = pick.toString();
         final Uri chosen = pick;
         videoCover.animate().alpha(1).setDuration(player.isPlaying() ? 300 : 0).withEndAction(() -> {
+            playingUri = chosen;
             player.setMediaItem(MediaItem.fromUri(chosen));
             player.prepare();
             player.play();
@@ -1160,6 +1185,7 @@ public class MainActivity extends Activity {
         if (!clock.equals(shownClock)) {
             shownClock = clock;
             drawSun();
+            drawSky(h * 60 + mi);
             clockText.setText(clock);
             ampmText.setText(h24 ? "" : h < 12 ? "AM" : "PM");
         }
@@ -2447,7 +2473,15 @@ public class MainActivity extends Activity {
         box.addView(title);
         parentList = new LinearLayout(this);
         parentList.setOrientation(LinearLayout.VERTICAL);
-        box.addView(parentList, new LinearLayout.LayoutParams(-1, -2));
+        // the list scrolls (focus leads it) so every row fits on screen, fading softly under the title
+        ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setVerticalFadingEdgeEnabled(true);
+        scroll.setFadingEdgeLength(40);
+        scroll.setClipToPadding(false);
+        scroll.setPadding(0, 6, 0, 6);
+        scroll.addView(parentList, new FrameLayout.LayoutParams(-1, -2));
+        box.addView(scroll, new LinearLayout.LayoutParams(-1, 760));
         panelCard(parentPanel, box, 900, -1);
     }
 
@@ -2502,6 +2536,18 @@ public class MainActivity extends Activity {
             prefs.edit().putInt("clock_font", (cf + 1) % CLOCK_FONTS.length).apply();
             applyClockFont();
             drawParent(8);
+        });
+        boolean sky = prefs.getBoolean("sky_tint", true);
+        parentRow("Light of the day", sky ? "On" : "Off", () -> {
+            prefs.edit().putBoolean("sky_tint", !sky).apply();
+            drawSky(-1);
+            drawParent(9);
+        });
+        boolean acc = prefs.getBoolean("accent", true);
+        parentRow("Wallpaper colour on glass", acc ? "On" : "Off", () -> {
+            prefs.edit().putBoolean("accent", !acc).apply();
+            if (acc) Accent.glideTo(Accent.color, 0, null); else ui.post(sampleAccent);
+            drawParent(10);
         });
         parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
         View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
@@ -2631,6 +2677,122 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, 76);
         p.topMargin = 6;
         parentList.addView(r, p);
+    }
+
+    // ================================================================== polish: animation speed, wallpaper colour, drift, light of the day
+
+    /**
+     * The box runs its animations at 0.5x (snappier menus elsewhere), which would also halve every fade and glide
+     * on this screen. The home screen keeps its own animations at their designed length; if animations are turned
+     * off altogether (0), that choice is respected.
+     */
+    private void fullLengthAnimations() {
+        float scale = Settings.Global.getFloat(getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
+        if (scale <= 0f || scale == 1f) return;
+        try {
+            ValueAnimator.class.getMethod("setDurationScale", float.class).invoke(null, 1f);
+        } catch (Throwable e) {
+            try {
+                java.lang.reflect.Field f = ValueAnimator.class.getDeclaredField("sDurationScale");
+                f.setAccessible(true);
+                f.setFloat(null, 1f);
+            } catch (Throwable ignored) { } // not allowed on this system: the animations simply stay at the box's speed
+        }
+    }
+
+    /** Copies a small frame of the playing video and lets the glass lean towards its colour. */
+    private final Runnable sampleAccent = new Runnable() {
+        @Override public void run() {
+            if (!prefs.getBoolean("accent", true)) return;
+            final Uri uri = playingUri;
+            if (uri == null) return;
+            if (video.getHolder().getSurface() == null || !video.getHolder().getSurface().isValid()) { accentFromFile(uri); return; }
+            final Bitmap small = Bitmap.createBitmap(64, 36, Bitmap.Config.ARGB_8888);
+            try {
+                PixelCopy.request(video, small, result -> {
+                    int[] c = result == PixelCopy.SUCCESS ? Accent.pick(small) : null;
+                    if (c == null) accentFromFile(uri); // the copy came back black on this box: read a frame from the file instead
+                    else applyAccent(uri, c);
+                }, ui);
+            } catch (Throwable e) { accentFromFile(uri); }
+        }
+    };
+
+    /** Reads one frame from the clip itself, once per clip; the answer is remembered. */
+    private void accentFromFile(Uri uri) {
+        final String key = "accent:" + uri;
+        String known = prefs.getString(key, null);
+        if (known != null) {
+            String[] p = known.split(",");
+            applyAccent(uri, new int[]{(int) Long.parseLong(p[0]), Integer.parseInt(p[1])});
+            return;
+        }
+        bg.execute(() -> {
+            int[] c = null;
+            MediaMetadataRetriever r = new MediaMetadataRetriever();
+            try {
+                r.setDataSource(this, uri);
+                for (long t : new long[]{1_500_000L, 6_000_000L}) {
+                    Bitmap f = r.getScaledFrameAtTime(t, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 64, 36);
+                    if (f == null) continue;
+                    c = Accent.pick(f);
+                    f.recycle();
+                    if (c != null) break;
+                }
+            } catch (Throwable ignored) {
+            } finally {
+                try { r.release(); } catch (Throwable ignored) { }
+            }
+            if (c == null) c = new int[]{0, 0};
+            prefs.edit().putString(key, (c[0] & 0xFFFFFFFFL) + "," + c[1]).apply();
+            final int[] fc = c;
+            ui.post(() -> applyAccent(uri, fc));
+        });
+    }
+
+    private void applyAccent(Uri uri, int[] c) {
+        if (!uri.equals(playingUri) || !prefs.getBoolean("accent", true)) return; // another clip has started since
+        Accent.glideTo(c[0] | 0xFF000000, c[1] / 1000f, () -> { if (anyDockFocused()) magnify(lastDock); });
+    }
+
+    /** How much larger than the screen the video is on each side, as a share of the screen, and how far it may drift. */
+    static final float DRIFT_ROOM = 0.022f;
+    private float driftRange;
+
+    /** The wallpaper drifts gently the other way as focus moves along the dock, as if the screen had depth. */
+    private void drift(int focused) {
+        int n = dockTiles.size();
+        float x = focused < 0 || n < 2 ? 0 : -(focused - (n - 1) / 2f) / ((n - 1) / 2f) * driftRange;
+        video.animate().cancel();
+        video.animate().translationX(x).setDuration(1400).setInterpolator(new DecelerateInterpolator(1.6f)).start();
+    }
+
+    static final int SKY_COOL = 0xFF5B86E5, SKY_WARM = 0xFFFF8C42;
+
+    /** A gentle wash over the video: cool blue from Fajr to a little after sunrise, warm amber from just before
+     *  Maghrib, softening through the night. min is minutes since midnight (-1 = now). */
+    private void drawSky(int min) {
+        if (skyTint == null) return;
+        if (min < 0) { Calendar c = Calendar.getInstance(KUWAIT); min = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE); }
+        float cool = 0, warm = 0;
+        if (today != null && prefs.getBoolean("sky_tint", true)) {
+            int fajr = today[0], sunrise = today[1], maghrib = today[4], isha = today[5];
+            cool = ramp(min, fajr - 25, fajr) * (1 - ramp(min, sunrise, sunrise + 50)) * 0.11f;
+            float evening = ramp(min, maghrib - 40, maghrib) * 0.13f;                     // rises into sunset
+            evening -= ramp(min, maghrib + 30, isha + 60) * 0.07f;                       // settles after Isha
+            float night = min < fajr ? 0.06f * (1 - ramp(min, fajr - 70, fajr - 25)) : 0; // after midnight, until Fajr nears
+            warm = Math.max(night, min >= maghrib - 40 ? evening : 0);
+        }
+        int color = cool >= warm ? SKY_COOL : SKY_WARM;
+        float a = Math.max(cool, warm);
+        skyTint.setBackgroundColor(color);
+        skyTint.animate().alpha(a).setDuration(2000).start();
+    }
+
+    private static float ramp(int x, int from, int to) {
+        if (x <= from) return 0;
+        if (x >= to) return 1;
+        return (x - from) / (float) (to - from);
     }
 
     // ================================================================== ambient mode

@@ -29,12 +29,15 @@ final class Glass extends Drawable {
         this.glow = glow;
         this.glowColor = glowColor;
         this.tint = tint;
+        Accent.register(this);
     }
 
     // Without a glow the glass is drawn straight onto the canvas each frame: on this box a cached bitmap
     // under changing text left light grey patches, so the cards use no bitmaps at all.
     private final Paint tintP = new Paint(Paint.ANTI_ALIAS_FLAG), frostP = new Paint(Paint.ANTI_ALIAS_FLAG),
-            sheenP = new Paint(Paint.ANTI_ALIAS_FLAG), edgeP = new Paint(Paint.ANTI_ALIAS_FLAG);
+            sheenP = new Paint(Paint.ANTI_ALIAS_FLAG), edgeP = new Paint(Paint.ANTI_ALIAS_FLAG),
+            accentP = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private int alpha = 255;
     private final RectF box = new RectF(), edgeBox = new RectF();
 
     private void prepareDirect(Rect b) {
@@ -85,6 +88,11 @@ final class Glass extends Drawable {
         if (glow <= 0) {
             if (box.isEmpty()) return;
             canvas.drawRoundRect(box, radius, radius, tintP);
+            if (Accent.strength > 0.01f) {
+                // a faint wash of the wallpaper's own colour inside the glass
+                accentP.setColor((Math.round(0x24 * Accent.strength * alpha / 255f) << 24) | (Accent.color & 0xFFFFFF));
+                canvas.drawRoundRect(box, radius, radius, accentP);
+            }
             canvas.drawRoundRect(box, radius, radius, frostP);
             canvas.drawRoundRect(box, radius, radius, sheenP);
             canvas.drawRoundRect(edgeBox, radius - 1, radius - 1, edgeP);
@@ -96,6 +104,7 @@ final class Glass extends Drawable {
     }
 
     @Override public void setAlpha(int alpha) {
+        this.alpha = alpha;
         blit.setAlpha(alpha);
         for (Paint p : new Paint[]{tintP, frostP, sheenP, edgeP}) p.setAlpha(alpha);
         invalidateSelf();
