@@ -137,7 +137,6 @@ public class MainActivity extends Activity {
     private TextView dockLabel;
     private static final DecelerateInterpolator EASE = new DecelerateInterpolator(1.6f);
     /** The focused dock app gets a bright glow behind it and a light ring on top (one pair per tile). */
-    private final List<Drawable[]> tileFocus = new ArrayList<>();
     private int shownNext = -2, shownPassedMask = -1;
     private String shownClock = "";
 
@@ -195,11 +194,13 @@ public class MainActivity extends Activity {
         // Soft dark gradients at the top and bottom keep the text readable on any video.
         View topScrim = new View(this);
         topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x00000000, 0x00000000}));
+        topScrim.getBackground().setDither(true); // smooth dark gradients, no stripes on the TV
         root.addView(topScrim, new FrameLayout.LayoutParams(-1, -1));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitStage());
         View bottomScrim = new View(this);
 
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000, 0x00000000}));
+        bottomScrim.getBackground().setDither(true);
         root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, -1));
 
         stage = new FrameLayout(this);
@@ -683,6 +684,7 @@ public class MainActivity extends Activity {
         dock.setGravity(Gravity.CENTER_VERTICAL);
         dock.setPadding(48, 0, 48, 0); // room for the end tiles to grow and slide
         dock.setClipChildren(false);
+        dock.setBackground(brandGlow);
         dock.setClipToPadding(false);
         ViewOutlineProvider rounded = new ViewOutlineProvider() {
             @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 30); }
@@ -724,14 +726,14 @@ public class MainActivity extends Activity {
             tp.leftMargin = 11; tp.rightMargin = 11;
             dock.addView(tile, tp);
             dockTiles.add(tile);
-            tileFocus.add(new Drawable[]{new Glass(30, 30, 0xB3FFFFFF, 0), ring(30, 3, 0xE6FFFFFF)});
         }
         bottomGroup = glassCard(stage, dock, -1, DOCK_H, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, DOCK_Y,
                 48, 34, 0x40FFFFFF, CARD_TINT, false);
 
-        dockLabel = text("", 24, fSemi, WHITE);
-        dockLabel.setPadding(22, 8, 22, 10);
-        dockLabel.setBackground(new Glass(24, 0, 0, 0x4D000000));
+        // the focused app's name, small and quiet, just under its icon
+        dockLabel = text("", 22, fMed, 0xF2FFFFFF);
+        dockLabel.setLetterSpacing(0.02f);
+        dockLabel.setShadowLayer(10, 0, 2, 0x99000000);
         dockLabel.setAlpha(0);
         stage.addView(dockLabel, at(-2, -2, Gravity.TOP | Gravity.START, 0, 0));
     }
@@ -746,6 +748,8 @@ public class MainActivity extends Activity {
         return Color.rgb(Color.red(c) * 6 / 10, Color.green(c) * 6 / 10, Color.blue(c) * 6 / 10);
     }
 
+    private final BrandGlow brandGlow = new BrandGlow();
+
     private boolean anyDockFocused() {
         for (View t : dockTiles) if (t.hasFocus() || t.isFocused()) return true;
         return false;
@@ -756,13 +760,20 @@ public class MainActivity extends Activity {
         for (int i = 0; i < dockTiles.size(); i++) {
             View t = dockTiles.get(i);
             int dist = focused < 0 ? 9 : Math.abs(i - focused);
-            float s = dist == 0 ? 1.22f : dist == 1 ? 1.07f : 1f;
+            float s = dist == 0 ? 1.2f : dist == 1 ? 1.06f : 1f;
             float lift = dist == 0 ? -20 : dist == 1 ? -5 : 0;
             // the others slide aside so the enlarged tiles never cover their neighbours
             float side = focused < 0 || dist == 0 ? 0 : Math.signum(i - focused) * (dist == 1 ? 22 : 26);
-            t.animate().scaleX(s).scaleY(s).translationX(side).translationY(lift).setDuration(240).setInterpolator(EASE).withLayer().start();
-            t.setBackground(dist == 0 ? tileFocus.get(i)[0] : null);
-            t.setForeground(dist == 0 ? tileFocus.get(i)[1] : null);
+            // focus is only a slight grow and lift with a soft slow-down, plus the app's own colour glowing behind it
+            t.animate().scaleX(s).scaleY(s).translationX(side).translationY(lift).setDuration(240).setInterpolator(new DecelerateInterpolator(2f)).start();
+        }
+        if (focused < 0) brandGlow.moveTo(-1, 0);
+        else {
+            View f = dockTiles.get(focused);
+            Dock d = (Dock) f.getTag();
+            int c = d.id.equals("quran") ? 0xFF2FA58C : d.id.equals("apps") ? 0xFFDDE6FF : d.color;
+            if (f.getWidth() == 0) f.post(() -> brandGlow.moveTo(f.getLeft() + f.getWidth() / 2f, c));
+            else brandGlow.moveTo(f.getLeft() + f.getWidth() / 2f, c);
         }
     }
 
@@ -777,7 +788,7 @@ public class MainActivity extends Activity {
         float cx = (a[0] - s[0]) / sc + tile.getWidth() * tile.getScaleX() / 2f;
         dockLabel.animate().cancel();
         dockLabel.setX(cx - dockLabel.getMeasuredWidth() / 2f);
-        float y = 1080 - DOCK_Y - DOCK_H / 2f + TILE / 2f - TILE * 1.22f - 20 - 62; // just above the magnified tile
+        float y = 1080 - DOCK_Y - (DOCK_H - TILE) / 2f - 20 + 4; // just under the lifted icon, inside the dock
         dockLabel.setAlpha(0);
         dockLabel.setTranslationY(y + 10);
         dockLabel.animate().alpha(1).translationY(y).setDuration(220).setInterpolator(EASE).start();
@@ -1231,6 +1242,7 @@ public class MainActivity extends Activity {
         View scrim = new View(this);
         scrim.setTag("bg");
         scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xCC050810, 0x8C050810, 0xD9050810}));
+        scrim.getBackground().setDither(true);
         o.addView(scrim, bleed());
         o.setVisibility(View.GONE);
         o.setElevation(30);

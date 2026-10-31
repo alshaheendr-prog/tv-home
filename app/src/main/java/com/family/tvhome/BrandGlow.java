@@ -1,0 +1,58 @@
+package com.family.tvhome;
+
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.PixelFormat;
+import android.graphics.RadialGradient;
+import android.graphics.Rect;
+import android.graphics.Shader;
+import android.graphics.drawable.Drawable;
+import android.view.animation.DecelerateInterpolator;
+
+/** A soft oval of light in the focused app's own colour, drawn behind the dock's icons, that glides to follow focus. */
+final class BrandGlow extends Drawable {
+    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+    private float cx = -1, strength;
+    private int color = 0xFFFFFFFF;
+    private ValueAnimator anim;
+
+    /** Glide to x (in the dock's coordinates) and color; a negative x fades the glow away. */
+    void moveTo(float x, int c) {
+        if (anim != null) anim.cancel();
+        final float fromX = cx < 0 ? x : cx, toX = x < 0 ? cx : x, fromS = strength, toS = x < 0 ? 0 : 1;
+        final int fromC = color;
+        final ArgbEvaluator argb = new ArgbEvaluator();
+        anim = ValueAnimator.ofFloat(0, 1);
+        anim.setDuration(420);
+        anim.setInterpolator(new DecelerateInterpolator(2f));
+        anim.addUpdateListener(a -> {
+            float f = (float) a.getAnimatedValue();
+            cx = fromX + (toX - fromX) * f;
+            strength = fromS + (toS - fromS) * f;
+            color = (int) argb.evaluate(f, fromC, c);
+            invalidateSelf();
+        });
+        anim.start();
+    }
+
+    @Override public void draw(Canvas c) {
+        if (strength <= 0.01f || cx < 0) return;
+        Rect b = getBounds();
+        float cy = b.top + b.height() * 0.62f, r = b.height() * 1.1f;
+        int a = Math.round(0x66 * strength);
+        paint.setShader(new RadialGradient(0, 0, r, new int[]{(a << 24) | (color & 0xFFFFFF), ((a / 3) << 24) | (color & 0xFFFFFF), color & 0xFFFFFF},
+                new float[]{0, 0.45f, 1}, Shader.TileMode.CLAMP));
+        c.save();
+        c.translate(b.left + cx, cy);
+        c.scale(1.8f, 1f); // a wide, low oval
+        c.drawCircle(0, 0, r, paint);
+        c.restore();
+    }
+
+    @Override public void setAlpha(int alpha) { }
+    @Override public void setColorFilter(ColorFilter cf) { }
+    @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+}
