@@ -1133,7 +1133,7 @@ public class MainActivity extends Activity {
     private FrameLayout overlay() {
         FrameLayout o = new FrameLayout(this);
         // a soft scrim: darker at the top and bottom where the headers and last rows sit, lighter in the middle
-        o.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xD9060912, 0xA6060912, 0xD9060912}));
+        o.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xCC050810, 0x8C050810, 0xD9050810}));
         o.setVisibility(View.GONE);
         o.setElevation(30);
         stage.addView(o, new FrameLayout.LayoutParams(1920, 1080));
@@ -1167,17 +1167,36 @@ public class MainActivity extends Activity {
         TextView t = text(titleText, 52, fSemi, WHITE);
         t.setPadding(0, 8, 0, 0);
         h.addView(t);
+        View bar = new View(this);
+        bar.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xFFF1D58A, 0x00F1D58A}));
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(140, 3);
+        bp.topMargin = 12;
+        h.addView(bar, bp);
         panel.addView(h, at(-2, -2, Gravity.TOP | Gravity.START, 110, 56));
         return t;
+    }
+
+    static final int GOLD = 0xFFF1D58A;
+
+    /** The focused look everywhere: brighter glass with a gold edge. */
+    private static GradientDrawable focusGlass(float radius) {
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x47FFFFFF, 0x1FFFFFFF});
+        d.setCornerRadius(radius);
+        d.setStroke(3, 0xE6F1D58A);
+        return d;
+    }
+
+    /** Lifts a focused item with a warm gold shadow (drawn by the system, so it stays smooth). */
+    private static void goldLift(View v, boolean has, float z) {
+        v.setOutlineAmbientShadowColor(GOLD);
+        v.setOutlineSpotShadowColor(GOLD);
+        v.animate().translationZ(has ? z : 0).setDuration(200).start();
     }
 
     /** A solid glass card in the middle of a panel. Plain gradient and edge only, clipped to its rounded shape. */
     private FrameLayout panelCard(FrameLayout panel, View content, int w, int h) {
         FrameLayout f = new FrameLayout(this);
-        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xF21A2036, 0xF20C1020});
-        bg.setCornerRadius(44);
-        bg.setStroke(2, 0x47FFFFFF);
-        f.setBackground(bg);
+        f.setBackground(new PanelBg(44));
         f.setOutlineProvider(new ViewOutlineProvider() {
             @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 44); }
         });
@@ -1271,12 +1290,13 @@ public class MainActivity extends Activity {
             off.setStroke(2, 0x2EFFFFFF);
             GradientDrawable on = new GradientDrawable();
             on.setShape(GradientDrawable.OVAL);
-            on.setColor(0x4DFFFFFF);
-            on.setStroke(3, 0xE6FFFFFF);
+            on.setColors(new int[]{0x59FFFFFF, 0x26FFFFFF});
+            on.setStroke(3, 0xE6F1D58A);
             key.setBackground(off);
             key.setOnFocusChangeListener((v, has) -> {
                 v.setBackground(has ? on : off);
-                v.animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(200).setInterpolator(EASE).withLayer().start();
+                v.animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(200).setInterpolator(EASE).start();
+                goldLift(v, has, 16);
             });
             key.setOnClickListener(v -> {
                 v.animate().scaleX(0.94f).scaleY(0.94f).setDuration(70).withEndAction(() ->
@@ -1341,7 +1361,7 @@ public class MainActivity extends Activity {
         drawDots();
     }
 
-    private int dotColor = WHITE;
+    private int dotColor = GOLD;
 
     private void drawDots() {
         for (int i = 0; i < 4; i++) {
@@ -1366,7 +1386,7 @@ public class MainActivity extends Activity {
     private void flashDots(int color, Runnable after) {
         dotColor = color;
         drawDots();
-        ui.postDelayed(() -> { dotColor = WHITE; if (after != null) after.run(); }, 380);
+        ui.postDelayed(() -> { dotColor = GOLD; if (after != null) after.run(); }, 380);
     }
 
     private void pinPress(String k) {
@@ -1493,10 +1513,10 @@ public class MainActivity extends Activity {
             label.setPadding(0, 14, 0, 0);
             item.addView(label, new LinearLayout.LayoutParams(-1, -2));
             item.setOnFocusChangeListener((v, has) -> {
-                v.setBackground(has ? glass(30, 0x33FFFFFF, 0xB3FFFFFF) : null);
+                v.setBackground(has ? focusGlass(30) : null);
                 label.setTextColor(has ? WHITE : SOFT);
-                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).translationZ(has ? 12 : 0).setDuration(200)
-                        .setInterpolator(EASE).start();
+                v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(220).setInterpolator(EASE).start();
+                goldLift(v, has, 22);
             });
             // the grid fades in row by row
             item.setAlpha(0);
@@ -1605,9 +1625,10 @@ public class MainActivity extends Activity {
             cell.addView(top);
             cell.addView(en);
             cell.setOnFocusChangeListener((v, has) -> {
-                v.setBackground(has ? glass(24, 0x40FFFFFF, 0xB3FFFFFF) : glass(24, 0x14FFFFFF, 0x1FFFFFFF));
+                v.setBackground(has ? focusGlass(24) : glass(24, 0x14FFFFFF, 0x1FFFFFFF));
                 en.setTextColor(has ? SOFT : DIM);
-                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).translationZ(has ? 10 : 0).setDuration(180).setInterpolator(EASE).start();
+                v.animate().scaleX(has ? 1.07f : 1f).scaleY(has ? 1.07f : 1f).setDuration(200).setInterpolator(EASE).start();
+                goldLift(v, has, 18);
             });
             cell.setOnClickListener(v -> { quranQuiet = false; playSurah(n, false); });
             GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
@@ -1630,7 +1651,11 @@ public class MainActivity extends Activity {
         b.setFocusable(true);
         b.setClickable(true);
         b.setBackground(glass(99, 0x1AFFFFFF, GLASS_EDGE));
-        b.setOnFocusChangeListener((v, has) -> v.setBackground(glass(99, has ? 0x59FFFFFF : 0x1AFFFFFF, has ? 0xB3FFFFFF : GLASS_EDGE)));
+        b.setOnFocusChangeListener((v, has) -> {
+            v.setBackground(has ? focusGlass(99) : glass(99, 0x1AFFFFFF, GLASS_EDGE));
+            v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).setInterpolator(EASE).start();
+            goldLift(v, has, 14);
+        });
         b.setOnClickListener(v -> onClick.run());
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
         p.leftMargin = 14;
@@ -2075,7 +2100,10 @@ public class MainActivity extends Activity {
             r.setGravity(Gravity.CENTER_VERTICAL);
             r.setPadding(26, 14, 30, 14);
             r.setFocusable(true);
-            r.setOnFocusChangeListener((v, has) -> v.setBackground(has ? glass(18, 0x26FFFFFF, 0x66FFFFFF) : null));
+            r.setOnFocusChangeListener((v, has) -> {
+                v.setBackground(has ? focusGlass(20) : null);
+                v.animate().scaleX(has ? 1.02f : 1f).scaleY(has ? 1.02f : 1f).setDuration(180).setInterpolator(EASE).start();
+            });
             LinearLayout names = new LinearLayout(this);
             names.setOrientation(LinearLayout.VERTICAL);
             names.addView(text((String) e[0], 28, fMed, WHITE));
@@ -2122,8 +2150,8 @@ public class MainActivity extends Activity {
         r.addView(text(label, 28, fMed, WHITE), new LinearLayout.LayoutParams(0, -2, 1));
         r.addView(text(value, 26, fSemi, DIM));
         r.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(has ? glass(22, 0x33FFFFFF, 0x80FFFFFF) : null);
-            v.animate().scaleX(has ? 1.02f : 1f).scaleY(has ? 1.02f : 1f).setDuration(160).setInterpolator(EASE).start();
+            v.setBackground(has ? focusGlass(22) : null);
+            v.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start();
         });
         r.setOnClickListener(v -> onClick.run());
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, 76);
