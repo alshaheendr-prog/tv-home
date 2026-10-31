@@ -1075,6 +1075,7 @@ public class MainActivity extends Activity {
             }
             mark.setGravity(Gravity.CENTER);
             tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
+            tile.setPivotX(TILE / 2f); // grow from the middle: setting only pivotY left pivotX at 0, so the icon grew off to the right of its name
             tile.setPivotY(TILE);
             tile.setForeground(ring(30, 2, 0x4DFFFFFF)); // a fine light edge so every icon reads as one set
             if (d.id.equals("yt")) tile.setOnLongClickListener(v -> { openPin(true); return true; });
