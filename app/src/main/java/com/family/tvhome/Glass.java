@@ -31,9 +31,28 @@ final class Glass extends Drawable {
         this.tint = tint;
     }
 
+    // Without a glow the glass is drawn straight onto the canvas each frame: on this box a cached bitmap
+    // under changing text left light grey patches, so the cards use no bitmaps at all.
+    private final Paint tintP = new Paint(Paint.ANTI_ALIAS_FLAG), frostP = new Paint(Paint.ANTI_ALIAS_FLAG),
+            sheenP = new Paint(Paint.ANTI_ALIAS_FLAG), edgeP = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF box = new RectF(), edgeBox = new RectF();
+
+    private void prepareDirect(Rect b) {
+        int w = b.width(), h = b.height();
+        box.set(b);
+        edgeBox.set(b.left + 1, b.top + 1, b.right - 1, b.bottom - 1);
+        tintP.setColor(tint);
+        frostP.setShader(new LinearGradient(0, b.top, 0, b.bottom, 0x29FFFFFF, 0x0DFFFFFF, Shader.TileMode.CLAMP));
+        sheenP.setShader(new LinearGradient(0, b.top, 0, b.top + Math.min(h * 0.5f, 140), 0x1CFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        edgeP.setStyle(Paint.Style.STROKE);
+        edgeP.setStrokeWidth(2f);
+        edgeP.setShader(new LinearGradient(0, b.top, 0, b.bottom, new int[]{0xB3FFFFFF, 0x26FFFFFF, 0x40FFFFFF}, new float[]{0, .55f, 1}, Shader.TileMode.CLAMP));
+    }
+
     @Override
     protected void onBoundsChange(Rect b) {
         if (b.width() <= 0 || b.height() <= 0) return;
+        if (glow <= 0) { cache = null; prepareDirect(b); return; }
         if (cache != null && cache.getWidth() == b.width() + 2 * (int) glow && cache.getHeight() == b.height() + 2 * (int) glow) return;
         int g = (int) glow, w = b.width(), h = b.height();
         cache = Bitmap.createBitmap(w + 2 * g, h + 2 * g, Bitmap.Config.ARGB_8888);
@@ -63,12 +82,24 @@ final class Glass extends Drawable {
 
     @Override
     public void draw(Canvas canvas) {
+        if (glow <= 0) {
+            if (box.isEmpty()) return;
+            canvas.drawRoundRect(box, radius, radius, tintP);
+            canvas.drawRoundRect(box, radius, radius, frostP);
+            canvas.drawRoundRect(box, radius, radius, sheenP);
+            canvas.drawRoundRect(edgeBox, radius - 1, radius - 1, edgeP);
+            return;
+        }
         if (cache == null) return;
         Rect b = getBounds();
         canvas.drawBitmap(cache, b.left - (int) glow, b.top - (int) glow, blit);
     }
 
-    @Override public void setAlpha(int alpha) { blit.setAlpha(alpha); invalidateSelf(); }
+    @Override public void setAlpha(int alpha) {
+        blit.setAlpha(alpha);
+        for (Paint p : new Paint[]{tintP, frostP, sheenP, edgeP}) p.setAlpha(alpha);
+        invalidateSelf();
+    }
     @Override public void setColorFilter(ColorFilter cf) { blit.setColorFilter(cf); invalidateSelf(); }
     @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
 }

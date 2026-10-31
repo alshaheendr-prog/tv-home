@@ -85,21 +85,28 @@ final class GlassFrame extends FrameLayout {
     static final class Glow extends Drawable {
         private final float radius;
         private final int reach, color;
-        private Bitmap cache;
 
         Glow(float radius, int reach, int color) { this.radius = radius; this.reach = reach; this.color = color; }
 
-        @Override protected void onBoundsChange(Rect b) {
-            if (b.width() <= 2 * reach || b.height() <= 2 * reach) { cache = null; return; }
-            if (cache != null && cache.getWidth() == b.width() && cache.getHeight() == b.height()) return;
-            cache = Bitmap.createBitmap(b.width(), b.height(), Bitmap.Config.ARGB_8888);
-            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-            p.setColor(color);
-            p.setMaskFilter(new BlurMaskFilter(reach * 0.7f, BlurMaskFilter.Blur.OUTER));
-            new Canvas(cache).drawRoundRect(new RectF(reach, reach, b.width() - reach, b.height() - reach), radius, radius, p);
-        }
+        private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF r = new RectF();
+        private static final int RINGS = 7;
 
-        @Override public void draw(Canvas canvas) { if (cache != null) canvas.drawBitmap(cache, getBounds().left, getBounds().top, null); }
+        // Drawn directly (a few fading outlines), never through a bitmap: cached bitmaps left grey patches on this box.
+        @Override public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            if (b.width() <= 2 * reach || b.height() <= 2 * reach) return;
+            ring.setStyle(Paint.Style.STROKE);
+            float step = reach / (float) RINGS;
+            ring.setStrokeWidth(step + 0.5f);
+            int a = color >>> 24;
+            for (int i = 0; i < RINGS; i++) {
+                float out = (i + 0.5f) * step, k = 1 - (i + 0.5f) / RINGS;
+                ring.setColor((Math.round(a * k * k * 0.6f) << 24) | (color & 0xFFFFFF));
+                r.set(b.left + reach - out, b.top + reach - out, b.right - reach + out, b.bottom - reach + out);
+                canvas.drawRoundRect(r, radius + out, radius + out, ring);
+            }
+        }
         @Override public void setAlpha(int alpha) { }
         @Override public void setColorFilter(ColorFilter cf) { }
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
