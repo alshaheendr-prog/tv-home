@@ -296,6 +296,8 @@ public class MainActivity extends Activity {
                 case "pin": openPin(false); break;
                 case "calendar": openCalendar(); break;
                 case "stress": stressTest(); break;
+                case "reciters": openQuran(); ui.postDelayed(this::openReciters, 300); break;
+                case "player": if (quranSurah > 0) { openQuran(); openPlayer(); } break;
                 default: break;
             }
         }, 400);
@@ -1647,6 +1649,33 @@ public class MainActivity extends Activity {
         return f;
     }
 
+    /**
+     * A centred glass card: a fixed header (kicker and title) and a scrolling list under it. The list has spare room
+     * on every side, so a focused row can grow and glow without being cut at the card's edges.
+     */
+    private ScrollView listCard(FrameLayout panel, String kick, String heading, View list, int w, int h) {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPadding(56, 44, 56, 24);
+        col.addView(kicker(text(kick, 20, fSemi, DIM)));
+        TextView title = text(heading, 46, fSemi, WHITE);
+        title.setPadding(0, 10, 0, 12);
+        col.addView(title);
+        ScrollView sv = new ScrollView(this);
+        clipToBounds(sv);
+        sv.setVerticalScrollBarEnabled(false);
+        sv.setClipToPadding(false);
+        sv.setPadding(30, 16, 30, 40);
+        sv.setVerticalFadingEdgeEnabled(true);
+        sv.setFadingEdgeLength(60);
+        sv.addView(list);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, 0, 1);
+        lp.leftMargin = -30; lp.rightMargin = -30; // the list's side room reaches into the card's own padding
+        col.addView(sv, lp);
+        panelCard(panel, col, w, h);
+        return sv;
+    }
+
     /** A hint pill at the top right of a panel, e.g. which button does what. */
     private TextView panelHint(FrameLayout panel, String hint) {
         TextView t = text(hint, 22, fMed, SOFT);
@@ -2149,63 +2178,77 @@ public class MainActivity extends Activity {
     private void showReciters(List<Quran.Reciter> all, Set<String> local) {
         if (reciterPanel == null) { reciterPanel = new FrameLayout(this); reciterPanel.setElevation(40); stage.addView(reciterPanel, bleed()); }
         reciterPanel.removeAllViews();
-        reciterPanel.setBackgroundColor(0x99050810);
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(56, 44, 56, 40);
-        box.addView(kicker(text("RECITER  ·  القارئ", 20, fSemi, DIM)), new LinearLayout.LayoutParams(-2, -2));
-        TextView title = text("Choose a reciter", 46, fSemi, WHITE);
-        title.setPadding(0, 10, 0, 18);
-        box.addView(title, new LinearLayout.LayoutParams(-2, -2));
+        reciterPanel.setBackgroundColor(0xB3050810);
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(2);
+        grid.setClipChildren(false);
         String chosen = prefs.getString("reciter", "");
-        View focus = null;
-        View any = reciterRow(box, "Any reciter", "A new voice every time  ·  قارئ مختلف كل مرة", "");
-        if (chosen.isEmpty()) focus = any;
+        View focus = reciterTile(grid, "أي قارئ", "Any reciter", "A new voice every time", "");
+        View any = focus;
         for (Quran.Reciter r : all) {
-            View row = reciterRow(box, r.en, (r.ar.isEmpty() ? "" : r.ar) + (local.contains(r.en) ? (r.ar.isEmpty() ? "" : "  ·  ") + "saved on the box" : ""), r.en);
-            if (r.en.equals(chosen)) focus = row;
+            View t = reciterTile(grid, r.ar, r.en, local.contains(r.en) ? "●  Saved on the box" : "", r.en);
+            if (r.en.equals(chosen)) focus = t;
         }
-        ScrollView sv = new ScrollView(this);
-        clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
-        sv.setVerticalScrollBarEnabled(false);
-        sv.setVerticalFadingEdgeEnabled(true);
-        sv.setFadingEdgeLength(80);
-        sv.addView(box);
-        panelCard(reciterPanel, sv, 1000, 940);
+        if (chosen.isEmpty()) focus = any;
+        listCard(reciterPanel, "RECITER  ·  القارئ", "Choose a reciter", grid, 1500, 940);
         reciterPanel.setVisibility(View.VISIBLE);
+        noAlphaLayers(reciterPanel);
         reciterPanel.setAlpha(0);
         reciterPanel.animate().alpha(1).setDuration(240).start();
-        View f = focus != null ? focus : any;
+        View f = focus;
         f.post(f::requestFocus);
     }
 
-    private View reciterRow(LinearLayout box, String name, String sub, String value) {
-        LinearLayout r = new LinearLayout(this);
-        r.setOrientation(LinearLayout.VERTICAL);
-        r.setPadding(26, 14, 26, 14);
-        r.setFocusable(true);
-        r.setClickable(true);
+    static final int RECITER_TILE_W = 664;
+
+    /** One reciter: the Arabic name large, the English name under it, and a gold note when it is saved on the box. */
+    private View reciterTile(GridLayout grid, String ar, String en, String note, String value) {
         boolean on = value.equals(prefs.getString("reciter", ""));
-        TextView n = text((on ? "✓  " : "") + name, 28, fMed, on ? GOLD : WHITE);
-        r.addView(n, new LinearLayout.LayoutParams(-2, -2));
-        if (!sub.isEmpty()) {
-            TextView s2 = text(sub, 22, fAr, DIM);
-            s2.setIncludeFontPadding(true);
-            s2.setTextDirection(View.TEXT_DIRECTION_LTR);
-            r.addView(s2, new LinearLayout.LayoutParams(-2, -2));
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setPadding(30, 16, 30, 18);
+        t.setFocusable(true);
+        t.setClickable(true);
+        Drawable rest = on ? goldEdge() : glass(22, 0x0FFFFFFF, 0x24FFFFFF);
+        t.setBackground(rest);
+        TextView big = text(ar.isEmpty() ? en : ar, 32, ar.isEmpty() ? fSemi : fAr, on ? GOLD : WHITE);
+        big.setIncludeFontPadding(true);
+        t.addView(big);
+        if (!ar.isEmpty()) {
+            TextView small = text((on ? "✓  " : "") + en, 24, fMed, on ? GOLD : SOFT);
+            small.setPadding(0, 2, 0, 0);
+            t.addView(small);
         }
-        r.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(has ? focusGlass(20) : null);
-            v.animate().scaleX(has ? 1.02f : 1f).scaleY(has ? 1.02f : 1f).setDuration(180).setInterpolator(EASE).start();
+        if (!note.isEmpty()) {
+            TextView n = text(note, 22, fMed, 0xCCF1D58A);
+            n.setPadding(0, 6, 0, 0);
+            t.addView(n);
+        }
+        t.setOnFocusChangeListener((v, has) -> {
+            v.setBackground(has ? focusGlass(22) : rest);
+            v.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start();
         });
-        r.setOnClickListener(v -> {
+        t.setOnClickListener(v -> {
             prefs.edit().putString("reciter", value).apply();
             drawReciterBtn();
             closeReciters();
             if (quranSurah > 0 && !quranQuiet) playSurah(quranSurah, false); // hear the new voice straight away
         });
-        box.addView(r, new LinearLayout.LayoutParams(-1, -2));
-        return r;
+        GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+        lp.width = RECITER_TILE_W;
+        lp.height = 160;
+        lp.setMargins(10, 10, 10, 10);
+        grid.addView(t, lp);
+        return t;
+    }
+
+    /** The chosen item at rest: a quiet glass with a thin gold edge. */
+    private static GradientDrawable goldEdge() {
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x24F1D58A, 0x0AF1D58A});
+        d.setCornerRadius(22);
+        d.setStroke(2, 0x99F1D58A);
+        return d;
     }
 
     private void closeReciters() {
@@ -2670,11 +2713,7 @@ public class MainActivity extends Activity {
         calendarPanel.removeViews(1, calendarPanel.getChildCount() - 1); // keep the scrim
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(56, 44, 56, 40);
-        box.addView(kicker(text("ISLAMIC CALENDAR  ·  التقويم الهجري", 20, fSemi, DIM)));
-        TextView title = text("Coming up", 46, fSemi, WHITE);
-        title.setPadding(0, 10, 0, 18);
-        box.addView(title);
+        box.setClipChildren(false);
         Calendar now = Calendar.getInstance(KUWAIT);
         SimpleDateFormat g = new SimpleDateFormat("EEE d MMM yyyy", Locale.UK);
         g.setTimeZone(KUWAIT);
@@ -2702,16 +2741,12 @@ public class MainActivity extends Activity {
             TextView left = text(days == 0 ? "Today" : days == 1 ? "Tomorrow" : "in " + days + " days", 28, fSemi, days <= 7 ? 0xFFF1D58A : SOFT);
             left.setGravity(Gravity.END);
             r.addView(left, new LinearLayout.LayoutParams(250, -2));
-            box.addView(r, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+            rp.bottomMargin = 6;
+            box.addView(r, rp);
             if (first == null) first = r;
         }
-        ScrollView sv = new ScrollView(this);
-        clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
-        sv.setVerticalScrollBarEnabled(false);
-        sv.setVerticalFadingEdgeEnabled(true);
-        sv.setFadingEdgeLength(80);
-        sv.addView(box);
-        panelCard(calendarPanel, sv, 1100, 940);
+        listCard(calendarPanel, "ISLAMIC CALENDAR  ·  التقويم الهجري", "Coming up", box, 1100, 940);
         show(calendarPanel);
         if (first != null) { View f = first; f.post(f::requestFocus); }
     }
