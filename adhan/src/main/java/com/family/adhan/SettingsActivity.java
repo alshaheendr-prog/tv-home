@@ -42,6 +42,10 @@ public class SettingsActivity extends Activity {
         sv.addView(list);
         setContentView(sv);
         AdhanService.start(this);
+        if (getIntent().getBooleanExtra("test", false)) { // Update TV shows the banner once to check it
+            startForegroundService(new Intent(this, AdhanService.class).setAction("test"));
+            finish();
+        }
     }
 
     @Override
@@ -174,7 +178,7 @@ public class SettingsActivity extends Activity {
             Intent i = new Intent(this, AdhanService.class).setAction("test");
             startForegroundService(i);
         });
-        TextView note = text("To use your favourite adhan recording, copy it to the box as Download/adhan.mp3. Until then a soft chime plays.", 24, fMedium, 0xB8F6F3FF);
+        TextView note = text("The adhan plays the opening takbir of the Makkah adhan (Download/takbir.mp3, prepared by Update TV). Until it is there a soft chime plays.", 24, fMedium, 0xB8F6F3FF);
         note.setPadding(px(28), px(14), px(28), 0);
         list.addView(note);
 

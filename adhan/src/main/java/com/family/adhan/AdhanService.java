@@ -275,35 +275,84 @@ public class AdhanService extends Service {
         }
     }
 
+    // ------------------------------------------------------------------ the adhan banner
+    // A glass band across the bottom tenth of the screen: a gold line draws out from the centre,
+    // the band rises, then the English and Arabic lines fade in. Everything is drawn live (no cached bitmaps).
+
+    static final float BAND = 116, BAND_FADE = 70; // band height and the soft fade above it, in 1920-wide TV pixels
+    private View alertBand, alertLine, alertDot;
+    private LinearLayout alertRow;
+
     private void buildAlert() {
+        Typeface en = getResources().getFont(R.font.inter_medium);
+        Typeface ar = getResources().getFont(R.font.plex_arabic_semibold);
         alert = new FrameLayout(this);
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setGravity(Gravity.CENTER_HORIZONTAL);
-        box.setPadding((int) px(70), (int) px(44), (int) px(70), (int) px(48));
-        GradientDrawable bg = rounded(0xF00A0C16, px(36));
-        bg.setStroke((int) Math.max(2, px(3)), GOLD);
-        box.setBackground(bg);
-        alertTitle = text("", 72, fHeavy, GOLD);
-        alertTitle.setGravity(Gravity.CENTER);
-        box.addView(alertTitle);
-        alertSub = text("", 40, fBold, TEXT);
-        alertSub.setGravity(Gravity.CENTER);
-        alertSub.setPadding(0, (int) px(10), 0, 0);
-        box.addView(alertSub);
-        alert.addView(box);
+        alert.setClipChildren(false);
+
+        // soft dark glass: clear at the top, deepest at the screen edge
+        alertBand = new View(this);
+        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x00070A12, 0x8C070A12, 0xD9070A12, 0xE6070A12});
+        glass.setDither(true);
+        alertBand.setBackground(glass);
+        alert.addView(alertBand, new FrameLayout.LayoutParams(-1, -1));
+
+        // a fine gold line along the top of the band, brightest in the middle
+        alertLine = new View(this);
+        GradientDrawable gold = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{0x00F1D58A, 0x99F1D58A, 0xFFF1D58A, 0x99F1D58A, 0x00F1D58A});
+        alertLine.setBackground(gold);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams((int) px(1400), (int) Math.max(2, px(2)), Gravity.CENTER_HORIZONTAL | Gravity.TOP);
+        lp.topMargin = (int) px(BAND_FADE);
+        alert.addView(alertLine, lp);
+
+        // one centred line: English · Arabic
+        alertRow = new LinearLayout(this);
+        alertRow.setOrientation(LinearLayout.HORIZONTAL);
+        alertRow.setGravity(Gravity.CENTER_VERTICAL);
+        alertTitle = text("", 46, en, 0xF2FFFFFF);
+        alertTitle.setShadowLayer(px(10), 0, px(2), 0x80000000);
+        alertSub = text("", 50, ar, 0xFFF1D58A);
+        alertSub.setIncludeFontPadding(true);
+        alertSub.setShadowLayer(px(10), 0, px(2), 0x80000000);
+        alertDot = new View(this);
+        alertDot.setBackground(rounded(0xCCF1D58A, px(6)));
+        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams((int) px(12), (int) px(12));
+        dp.setMargins((int) px(36), 0, (int) px(36), 0);
+        alertRow.addView(alertTitle);
+        alertRow.addView(alertDot, dp);
+        alertRow.addView(alertSub);
+        FrameLayout.LayoutParams rp = new FrameLayout.LayoutParams(-2, (int) px(BAND), Gravity.CENTER_HORIZONTAL | Gravity.TOP);
+        rp.topMargin = (int) px(BAND_FADE);
+        alert.addView(alertRow, rp);
     }
 
     private void showAlert(int i) {
         if (!canOverlay(this)) return;
         hideReminder.run();
-        alertTitle.setText("حان الآن موعد أذان " + PrayerTimes.AR[i]);
-        alertSub.setText("It's time for " + PrayerTimes.EN[i] + " · " + PrayerTimes.clock(today[i]));
+        boolean jumuah = i == 2 && Calendar.getInstance(KUWAIT).get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
+        alertTitle.setText(jumuah ? "It's time for Jumu'ah prayer" : "It's time for " + PrayerTimes.EN[i] + " prayer");
+        alertSub.setText(jumuah ? "حان الآن موعد صلاة الجمعة" : "حان الآن موعد صلاة " + PrayerTimes.AR[i]);
         if (!alertShown) {
-            try { wm.addView(alert, overlayParams(Gravity.CENTER)); alertShown = true; } catch (Exception ignored) { return; }
+            WindowManager.LayoutParams p = overlayParams(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            p.width = WindowManager.LayoutParams.MATCH_PARENT;
+            p.height = (int) px(BAND + BAND_FADE);
+            p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
+            try { wm.addView(alert, p); alertShown = true; } catch (Exception ignored) { return; }
         }
-        alert.setAlpha(0);
-        alert.animate().alpha(1).setDuration(300).start();
+        float h = px(BAND + BAND_FADE);
+        android.view.animation.Interpolator out = new android.view.animation.DecelerateInterpolator(2.2f);
+        alert.animate().cancel();
+        alert.setAlpha(1);
+        alertBand.setAlpha(0);
+        alertBand.setTranslationY(h * .5f);
+        alertBand.animate().alpha(1).translationY(0).setDuration(750).setInterpolator(out).withLayer().start();
+        alertLine.setScaleX(0);
+        alertLine.setAlpha(0);
+        alertLine.animate().scaleX(1).alpha(1).setStartDelay(180).setDuration(900).setInterpolator(out).start();
+        alertRow.setAlpha(0);
+        alertRow.setTranslationY(px(18));
+        alertRow.animate().alpha(1).translationY(0).setStartDelay(420).setDuration(700).setInterpolator(out).withLayer().start();
     }
 
     // ------------------------------------------------------------------ the 10-minute reminder
@@ -357,7 +406,12 @@ public class AdhanService extends Service {
     private void hideAlert() {
         if (!alertShown) return;
         alertShown = false;
-        alert.animate().alpha(0).setDuration(300).withEndAction(() -> {
+        alertRow.animate().alpha(0).translationY(px(12)).setStartDelay(0).setDuration(350)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator(1.5f)).start();
+        alertLine.animate().scaleX(0).alpha(0).setStartDelay(150).setDuration(500)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator(1.5f)).start();
+        alert.animate().alpha(0).setStartDelay(300).setDuration(550)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator(1.5f)).withEndAction(() -> {
             try { wm.removeView(alert); } catch (Exception ignored) { }
         }).start();
     }
@@ -476,10 +530,10 @@ public class AdhanService extends Service {
         if (sound) playSound(); else ui.postDelayed(this::hideAlert, 60_000);
     }
 
-    /** The adhan recording: Download/adhan.mp3 (or fajr.mp3 for Fajr) if the parent added one, otherwise a chime. */
+    /** The opening takbir of the Makkah adhan (Download/takbir.mp3, cut on the PC by Update TV), else a full adhan file, else a chime. */
     private Uri soundUri() {
         File dl = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        for (String name : new String[]{"adhan.mp3", "adhan.m4a", "adhan.wav"}) {
+        for (String name : new String[]{"takbir.mp3", "adhan.mp3", "adhan.m4a", "adhan.wav"}) {
             File f = new File(dl, name);
             if (f.canRead()) return Uri.fromFile(f);
         }
@@ -499,13 +553,20 @@ public class AdhanService extends Service {
         try {
             MediaPlayer mp = new MediaPlayer();
             mp.setAudioAttributes(attrs);
-            mp.setDataSource(this, soundUri());
-            mp.setOnPreparedListener(MediaPlayer::start);
-            mp.setOnCompletionListener(p -> {
+            Uri uri = soundUri();
+            mp.setDataSource(this, uri);
+            Runnable finish = () -> {
                 am.abandonAudioFocusRequest(focus);
                 ui.postDelayed(this::hideAlert, 4000);
                 stopSound();
+            };
+            // A full adhan recording: keep only the opening takbir, fading out over 2.5 s from 20 s in.
+            boolean full = "file".equals(uri.getScheme()) && !uri.getPath().endsWith("takbir.mp3");
+            mp.setOnPreparedListener(p -> {
+                p.start();
+                if (full) fadeOut(p, 20_000, 2500, finish);
             });
+            mp.setOnCompletionListener(p -> finish.run());
             mp.setOnErrorListener((p, w, x) -> { am.abandonAudioFocusRequest(focus); hideAlert(); return true; });
             mp.prepareAsync();
             player = mp;
@@ -513,6 +574,20 @@ public class AdhanService extends Service {
             am.abandonAudioFocusRequest(focus);
             ui.postDelayed(this::hideAlert, 60_000);
         }
+    }
+
+    private void fadeOut(MediaPlayer p, long after, long over, Runnable done) {
+        long t0 = android.os.SystemClock.uptimeMillis() + after;
+        Runnable step = new Runnable() {
+            @Override public void run() {
+                if (player != p) return; // already stopped
+                float f = 1f - (android.os.SystemClock.uptimeMillis() - t0) / (float) over;
+                if (f <= 0) { done.run(); return; }
+                try { p.setVolume(f * f, f * f); } catch (Exception ignored) { }
+                ui.postDelayed(this, 50);
+            }
+        };
+        ui.postAtTime(step, t0);
     }
 
     private void stopSound() {
