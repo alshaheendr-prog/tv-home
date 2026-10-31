@@ -228,6 +228,7 @@ public class MainActivity extends Activity {
         buildPlayer();
         lineFrame.setVisibility(prefs.getBoolean("verse", true) ? View.VISIBLE : View.GONE);
         noAlphaLayers(root);
+        cacheCards(true);
         registerDriveWatcher();
         ui.postDelayed(() -> bg.execute(() -> Quran.reciters(getCacheDir())), 20000); // warm the reciter list (names in Arabic)
 
@@ -307,8 +308,18 @@ public class MainActivity extends Activity {
      * Update TV's smoothness sweep: hide one layer at a time and measure, to find what costs the most per frame.
      * "none" shows everything again.
      */
+    /**
+     * Each home card is kept as a ready-made picture on the graphics chip and only redrawn when its own text changes,
+     * so moving along the dock repaints just the dock instead of every card's glass, glow and text each frame.
+     */
+    private void cacheCards(boolean on) {
+        for (View v : new View[]{topParts[0], topParts[1], eventChip, sunCard, nowWidget, lineFrame, centerGroup})
+            if (v != null) v.setLayerType(on ? View.LAYER_TYPE_HARDWARE : View.LAYER_TYPE_NONE, null);
+    }
+
     private void probe(String what) {
-        boolean all = what.equals("none");
+        cacheCards(!what.equals("nolayers"));
+        boolean all = what.equals("none") || what.equals("nolayers");
         java.util.List<View> cards = new java.util.ArrayList<>(java.util.Arrays.asList(topParts));
         cards.add(sunCard); cards.add(eventChip); cards.add(lineFrame);
         for (View v : cards) if (v != null) v.setAlpha(!all && what.equals("cards") ? 0 : 1);
@@ -1664,10 +1675,11 @@ public class MainActivity extends Activity {
         ScrollView sv = new ScrollView(this);
         clipToBounds(sv);
         sv.setVerticalScrollBarEnabled(false);
-        sv.setClipToPadding(false);
-        sv.setPadding(30, 16, 30, 40);
+        // the room for a growing row sits inside the scrolled list itself, so the soft fade at the top and bottom
+        // edges covers whole rows evenly (no half-faded row)
+        list.setPadding(30, 14, 30, 30);
         sv.setVerticalFadingEdgeEnabled(true);
-        sv.setFadingEdgeLength(60);
+        sv.setFadingEdgeLength(110);
         sv.addView(list);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, 0, 1);
         lp.leftMargin = -30; lp.rightMargin = -30; // the list's side room reaches into the card's own padding

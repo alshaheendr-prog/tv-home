@@ -345,6 +345,10 @@ public class AdhanService extends Service {
             p.width = WindowManager.LayoutParams.MATCH_PARENT;
             p.height = (int) px(BAND + BAND_FADE);
             p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
+            // Android draws "pass-through" overlays (not touchable) see-through on purpose; a TV has no touch screen,
+            // so the banner takes touches and can then be drawn fully dark. It still never takes the remote's keys.
+            p.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            p.alpha = 1f;
             try { wm.addView(alert, p); alertShown = true; } catch (Exception ignored) { return; }
         }
         float h = px(BAND + BAND_FADE);
