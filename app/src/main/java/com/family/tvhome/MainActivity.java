@@ -16,6 +16,9 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Outline;
@@ -1008,9 +1011,6 @@ public class MainActivity extends Activity {
         dock.setClipChildren(false);
         dock.setBackground(brandGlow);
         dock.setClipToPadding(false);
-        ViewOutlineProvider rounded = new ViewOutlineProvider() {
-            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 30); }
-        };
         for (Dock d : DOCK) {
             FrameLayout tile = new FrameLayout(this);
             tile.setFocusable(true);
@@ -1019,9 +1019,7 @@ public class MainActivity extends Activity {
             tile.setClipChildren(false);
             // The icon fills the tile edge to edge, with rounded corners, like Apple TV.
             ImageView icon = new ImageView(this);
-            icon.setScaleType(ImageView.ScaleType.FIT_XY);
-            icon.setOutlineProvider(rounded);
-            icon.setClipToOutline(true);
+            icon.setScaleType(ImageView.ScaleType.FIT_XY); // the icon bitmap already has rounded corners (fullBleed)
             tile.addView(icon, new FrameLayout.LayoutParams(-1, -1));
             TextView mark;
             if (d.id.equals("quran")) {
@@ -1534,7 +1532,14 @@ public class MainActivity extends Activity {
             c.drawBitmap(raw, src, new Rect(0, 0, size, size), new Paint(Paint.FILTER_BITMAP_FLAG));
             raw.recycle();
         }
-        return new BitmapDrawable(getResources(), b);
+        // Round the corners once here, so the dock never has to clip each icon to a rounded shape every frame.
+        Bitmap round = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Paint rp = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        rp.setShader(new BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP));
+        float rr = 30f * size / TILE;
+        new Canvas(round).drawRoundRect(new RectF(0, 0, size, size), rr, rr, rp);
+        b.recycle();
+        return new BitmapDrawable(getResources(), round);
     }
 
     /** Average of the solid pixels a little inside the icon's edge, used to fill the tile behind it. */
