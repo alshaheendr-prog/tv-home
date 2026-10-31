@@ -1,13 +1,10 @@
 package com.family.tvhome;
 
-import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
@@ -16,7 +13,7 @@ import android.view.animation.DecelerateInterpolator;
 
 /** A soft oval of light in the focused app's own colour, drawn behind the dock's icons, that glides to follow focus. */
 final class BrandGlow extends Drawable {
-    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float cx = -1, strength;
     private int color = 0xFFFFFFFF;
     private ValueAnimator anim;
@@ -27,9 +24,8 @@ final class BrandGlow extends Drawable {
     void moveTo(float x, int c) {
         if (anim != null) anim.cancel();
         final float fromX = cx < 0 ? x : cx, toX = x < 0 ? cx : x, fromS = strength, toS = x < 0 ? 0 : 1;
-        final int fromC = color;
         final int toC = Accent.mix(c | 0xFF000000, Accent.color, 0.3f * Accent.strength); // a touch of the wallpaper's colour
-        final ArgbEvaluator argb = new ArgbEvaluator();
+        color = toC; // the colour changes at once (one new gradient per move); only position and strength glide
         anim = ValueAnimator.ofFloat(0, 1);
         anim.setDuration(420);
         anim.setInterpolator(new DecelerateInterpolator(2f));
@@ -37,7 +33,6 @@ final class BrandGlow extends Drawable {
             float f = (float) a.getAnimatedValue();
             cx = fromX + (toX - fromX) * f;
             strength = fromS + (toS - fromS) * f;
-            color = (int) argb.evaluate(f, fromC, toC);
             invalidateSelf();
         });
         anim.start();
@@ -47,11 +42,12 @@ final class BrandGlow extends Drawable {
         if (strength <= 0.01f || cx < 0) return;
         Rect b = getBounds();
         float cy = b.top + b.height() * 0.62f, r = b.height() * 1.1f;
-        if (r != shaderR) {
+        if (r != shaderR || color != filterColor) {
             shaderR = r;
-            paint.setShader(new RadialGradient(0, 0, r, new int[]{0x66FFFFFF, 0x22FFFFFF, 0x00FFFFFF}, new float[]{0, 0.45f, 1}, Shader.TileMode.CLAMP));
+            filterColor = color;
+            int rgb = color & 0xFFFFFF;
+            paint.setShader(new RadialGradient(0, 0, r, new int[]{0x66000000 | rgb, 0x22000000 | rgb, rgb}, new float[]{0, 0.45f, 1}, Shader.TileMode.CLAMP));
         }
-        if (color != filterColor) { filterColor = color; paint.setColorFilter(new PorterDuffColorFilter(color | 0xFF000000, PorterDuff.Mode.MULTIPLY)); }
         paint.setAlpha(Math.round(255 * strength));
         c.save();
         c.translate(b.left + cx, cy);

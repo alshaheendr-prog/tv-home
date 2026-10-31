@@ -351,9 +351,9 @@ public class AdhanService extends Service {
         android.view.animation.Interpolator out = new android.view.animation.DecelerateInterpolator(2.2f);
         alert.animate().cancel();
         alert.setAlpha(1);
-        alertBand.setAlpha(0);
-        alertBand.setTranslationY(h * .5f);
-        alertBand.animate().alpha(1).translationY(0).setDuration(750).setInterpolator(out).withLayer().start();
+        alertBand.setAlpha(1);
+        alertBand.setTranslationY(h);
+        alertBand.animate().translationY(0).setDuration(750).setInterpolator(out).start(); // the band rises from below
         alertLine.setScaleX(0);
         alertLine.setAlpha(0);
         alertLine.animate().scaleX(1).alpha(1).setStartDelay(180).setDuration(900).setInterpolator(out).start();

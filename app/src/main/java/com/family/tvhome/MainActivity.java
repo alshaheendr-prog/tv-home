@@ -205,14 +205,12 @@ public class MainActivity extends Activity {
         // Soft dark gradients at the top and bottom keep the text readable on any video.
         topScrim = new View(this);
         topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x00000000}));
-        topScrim.getBackground().setDither(true); // smooth dark gradients, no stripes on the TV
         // only the top and bottom thirds carry any shade, so each scrim covers just that third (less to paint every frame)
         root.addView(topScrim, new FrameLayout.LayoutParams(-1, 380, Gravity.TOP));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitStage());
         bottomScrim = new View(this);
 
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000}));
-        bottomScrim.getBackground().setDither(true);
         root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, 380, Gravity.BOTTOM));
 
         stage = new FrameLayout(this);
