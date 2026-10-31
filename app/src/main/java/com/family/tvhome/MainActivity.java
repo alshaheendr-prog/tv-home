@@ -312,7 +312,8 @@ public class MainActivity extends Activity {
     /** "a · b" on one line when it fits in max pixels, otherwise a above b, so nothing is cut or crowded. */
     private static void fitPair(TextView t, String a, String b, int max) {
         String one = a + "  ·  " + b;
-        t.setText(t.getPaint().measureText(one) <= max ? one : a + "\n" + b);
+        // a little room to spare: Arabic and English laid out together come out slightly wider than measured
+        t.setText(t.getPaint().measureText(one) <= max - 30 ? one : a + "\n" + b);
     }
 
     private static void fitPair(TextView t, String pair, int max) {
@@ -338,7 +339,7 @@ public class MainActivity extends Activity {
         adhanName.setText("Suhoor ends");
         adhanAr.setText("الإمساك · الفجر");
         adhanCountdown.setText("10:59:59");
-        nowSurah.setText("سورة الشعراء   ·   Ash-Shu'ara");
+        fitPair(nowSurah, "سورة الشعراء", "Ash-Shu'ara", NOW_W);
         fitPair(nowReciter, "عبدالرحمن السديس", "Abdul Rahman Al-Sudais", NOW_W);
         showNowReciting(true);
         lineFrame.setVisibility(View.VISIBLE);
@@ -816,7 +817,9 @@ public class MainActivity extends Activity {
         adhanCountdown = text("--:--:--", 60, fLight, WHITE);
         adhanCountdown.setFontFeatureSettings("tnum");
         adhanCountdown.setGravity(Gravity.END);
-        nameRow.addView(names, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, -2, 1);
+        np.rightMargin = 20; // a clear gap before the countdown
+        nameRow.addView(names, np);
         nameRow.addView(adhanCountdown);
         card.addView(nameRow);
         // How much of the wait from the last prayer to the next one has passed.
@@ -2350,7 +2353,7 @@ public class MainActivity extends Activity {
         String reciter = quranReciter.ar.isEmpty() ? quranReciter.en : quranReciter.ar + "  ·  " + quranReciter.en;
         quranNow.setText("سورة " + Quran.AR[quranSurah - 1] + "  ·  " + Quran.EN[quranSurah - 1] + "\n" + reciter);
         quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
-        nowSurah.setText("سورة " + Quran.AR[quranSurah - 1] + "   ·   " + Quran.EN[quranSurah - 1]);
+        fitPair(nowSurah, "سورة " + Quran.AR[quranSurah - 1], Quran.EN[quranSurah - 1], NOW_W);
         drawPlayer();
         if (quranReciter.ar.isEmpty()) nowReciter.setText(quranReciter.en); else fitPair(nowReciter, quranReciter.ar, quranReciter.en, NOW_W);
         showNowReciting(true);

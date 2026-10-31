@@ -289,12 +289,19 @@ public class AdhanService extends Service {
         alert = new FrameLayout(this);
         alert.setClipChildren(false);
 
-        // soft dark glass: clear at the top, deepest at the screen edge
-        alertBand = new View(this);
-        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x00070A12, 0x8C070A12, 0xD9070A12, 0xE6070A12});
-        glass.setDither(true);
-        alertBand.setBackground(glass);
+        // dark glass: a short soft fade above, then a solid-enough band so the words read over anything (even the dock)
+        alertBand = new LinearLayout(this);
+        ((LinearLayout) alertBand).setOrientation(LinearLayout.VERTICAL);
+        View fade = new View(this);
+        GradientDrawable soft = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00080B14, 0xE0080B14});
+        soft.setDither(true);
+        fade.setBackground(soft);
+        ((LinearLayout) alertBand).addView(fade, new LinearLayout.LayoutParams(-1, (int) px(BAND_FADE)));
+        View solid = new View(this);
+        GradientDrawable deep = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xE0080B14, 0xF2080B14});
+        deep.setDither(true);
+        solid.setBackground(deep);
+        ((LinearLayout) alertBand).addView(solid, new LinearLayout.LayoutParams(-1, -1));
         alert.addView(alertBand, new FrameLayout.LayoutParams(-1, -1));
 
         // a fine gold line along the top of the band, brightest in the middle

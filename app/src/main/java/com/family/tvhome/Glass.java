@@ -40,13 +40,12 @@ final class Glass extends Drawable {
     private int alpha = 255;
     private final RectF box = new RectF(), edgeBox = new RectF();
 
+    private int bodyAccent = 1; // the accent the body shader was built for (1 = not built yet)
+
     private void prepareDirect(Rect b) {
-        int w = b.width(), h = b.height();
         box.set(b);
         edgeBox.set(b.left + 1, b.top + 1, b.right - 1, b.bottom - 1);
-        tintP.setColor(tint);
-        frostP.setShader(new LinearGradient(0, b.top, 0, b.bottom, 0x29FFFFFF, 0x0DFFFFFF, Shader.TileMode.CLAMP));
-        sheenP.setShader(new LinearGradient(0, b.top, 0, b.top + Math.min(h * 0.5f, 140), 0x1CFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        bodyAccent = 1;
         edgeP.setStyle(Paint.Style.STROKE);
         edgeP.setStrokeWidth(2f);
         edgeP.setShader(new LinearGradient(0, b.top, 0, b.bottom, new int[]{0xB3FFFFFF, 0x26FFFFFF, 0x40FFFFFF}, new float[]{0, .55f, 1}, Shader.TileMode.CLAMP));
@@ -87,20 +86,45 @@ final class Glass extends Drawable {
     public void draw(Canvas canvas) {
         if (glow <= 0) {
             if (box.isEmpty()) return;
+            // tint, the wallpaper's colour wash, the frost and the sheen are all vertical, so they are
+            // blended here into one gradient: the glass costs one fill per frame instead of four
+            int acc = Accent.strength > 0.01f ? (Math.round(0x24 * Accent.strength) << 24) | (Accent.color & 0xFFFFFF) : 0;
+            if (acc != bodyAccent) { bodyAccent = acc; buildBody(acc); }
             canvas.drawRoundRect(box, radius, radius, tintP);
-            if (Accent.strength > 0.01f) {
-                // a faint wash of the wallpaper's own colour inside the glass
-                accentP.setColor((Math.round(0x24 * Accent.strength * alpha / 255f) << 24) | (Accent.color & 0xFFFFFF));
-                canvas.drawRoundRect(box, radius, radius, accentP);
-            }
-            canvas.drawRoundRect(box, radius, radius, frostP);
-            canvas.drawRoundRect(box, radius, radius, sheenP);
             canvas.drawRoundRect(edgeBox, radius - 1, radius - 1, edgeP);
             return;
         }
         if (cache == null) return;
         Rect b = getBounds();
         canvas.drawBitmap(cache, b.left - (int) glow, b.top - (int) glow, blit);
+    }
+
+    private void buildBody(int accent) {
+        float h = box.height(), sheen = Math.min(h * 0.5f, 140) / h;
+        float[] pos = {0, sheen / 2, sheen, (sheen + 1) / 2, 1};
+        int[] cols = new int[pos.length];
+        for (int i = 0; i < pos.length; i++) {
+            float t = pos[i];
+            float[] c = argb(tint);
+            if (accent != 0) c = over(c, argb(accent));
+            c = over(c, new float[]{(0x29 + (0x0D - 0x29) * t) / 255f, 1, 1, 1});                      // frost
+            c = over(c, new float[]{t < sheen ? 0x1C / 255f * (1 - t / sheen) : 0, 1, 1, 1});            // sheen
+            cols[i] = (Math.round(c[0] * 255) << 24) | (Math.round(c[1] * 255) << 16) | (Math.round(c[2] * 255) << 8) | Math.round(c[3] * 255);
+        }
+        tintP.setShader(new LinearGradient(0, box.top, 0, box.bottom, cols, pos, Shader.TileMode.CLAMP));
+    }
+
+    private static float[] argb(int c) {
+        return new float[]{(c >>> 24) / 255f, (c >> 16 & 255) / 255f, (c >> 8 & 255) / 255f, (c & 255) / 255f};
+    }
+
+    /** src painted over dst, both {a, r, g, b} with straight (not premultiplied) colour. */
+    private static float[] over(float[] d, float[] s) {
+        float a = s[0] + d[0] * (1 - s[0]);
+        if (a <= 0) return new float[]{0, 0, 0, 0};
+        float[] o = {a, 0, 0, 0};
+        for (int k = 1; k < 4; k++) o[k] = (s[k] * s[0] + d[k] * d[0] * (1 - s[0])) / a;
+        return o;
     }
 
     @Override public void setAlpha(int alpha) {
