@@ -43,6 +43,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.text.TextUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -114,9 +115,21 @@ public class KidsActivity extends Activity {
         root.addView(video, new FrameLayout.LayoutParams(-1, -1));
         cover = new View(this);
         root.addView(cover, new FrameLayout.LayoutParams(-1, -1));
-        View scrim = new View(this);
-        scrim.setBackground(grad(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x1A000000, 0x1A000000, 0x73000000}));
-        root.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        // the shades cover only the top and bottom thirds, so the middle of the picture is drawn once
+        View topShade = new View(this);
+        topShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x73000000, 0x1A000000}));
+        root.addView(topShade, new FrameLayout.LayoutParams(-1, -1));
+        View bottomShade = new View(this);
+        bottomShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x1A000000}));
+        root.addView(bottomShade, new FrameLayout.LayoutParams(-1, -1));
+        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            int third = (b - t) / 3;
+            for (View sh : new View[]{topShade, bottomShade}) {
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) sh.getLayoutParams();
+                int g = sh == topShade ? Gravity.TOP : Gravity.BOTTOM;
+                if (lp.height != third || lp.gravity != g) { lp.height = third; lp.gravity = g; sh.setLayoutParams(lp); }
+            }
+        });
         stage = new FrameLayout(this);
         stage.setClipChildren(false);
         root.addView(stage, new FrameLayout.LayoutParams(1920, 1080));
@@ -138,6 +151,7 @@ public class KidsActivity extends Activity {
         buildApps();
         buildParent();
         buildPin();
+        noAlphaLayers((View) stage.getParent());
 
         if (Rules.pin(this).isEmpty()) {
             // First time: the parent picks a PIN, then kids mode starts.
@@ -598,14 +612,20 @@ public class KidsActivity extends Activity {
         place(tileLabel, 0, DOCK_Y + DOCK_H - DOCK_NAME - 4, -2, -2);
     }
 
+    /** Each new text re-measures the whole screen, so the once-a-second clock only sets what really changed. */
+    private static void setIfChanged(TextView t, CharSequence text) {
+        if (!TextUtils.equals(t.getText(), text)) t.setText(text);
+    }
+
     private void drawGreeting() {
         Calendar now = Calendar.getInstance(Rules.KUWAIT);
         int h = now.get(Calendar.HOUR_OF_DAY);
         java.text.SimpleDateFormat day = new java.text.SimpleDateFormat("EEEE d MMMM", Locale.ENGLISH);
         day.setTimeZone(Rules.KUWAIT);
-        hello.setText((h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening") + "  ·  " + day.format(now.getTime()));
-        weatherText.setText(weather);
-        weatherText.setVisibility(weather.isEmpty() ? View.GONE : View.VISIBLE);
+        setIfChanged(hello, (h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening") + "  ·  " + day.format(now.getTime()));
+        setIfChanged(weatherText, weather);
+        int wv = weather.isEmpty() ? View.GONE : View.VISIBLE;
+        if (weatherText.getVisibility() != wv) weatherText.setVisibility(wv);
         drawStars();
     }
 
@@ -800,6 +820,7 @@ public class KidsActivity extends Activity {
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(88, 88);
         ll.leftMargin = 30;
         tileRow.addView(lock, ll);
+        noAlphaLayers(tileRow);
         lockTile = lock;
 
         if (hadFocus || getCurrentFocus() == null) {
@@ -859,26 +880,26 @@ public class KidsActivity extends Activity {
         int limit = Rules.limitToday(this);
         if (extra > 0) {
             ring.set(1, 0xFF7CFC6A);
-            ringBig.setText(shortMinutes(extra / 1000));
-            ringSmall.setText("bonus");
-            ringNote.setText("Bonus time from a grown-up");
+            setIfChanged(ringBig, shortMinutes(extra / 1000));
+            setIfChanged(ringSmall, "bonus");
+            setIfChanged(ringNote, "Bonus time from a grown-up");
         } else if (left == Long.MAX_VALUE) {
             ring.set(1, world == null ? WHITE : world.accent);
-            ringBig.setText("∞");
-            ringSmall.setText("no limit");
-            ringNote.setText("No time limit today");
+            setIfChanged(ringBig, "∞");
+            setIfChanged(ringSmall, "no limit");
+            setIfChanged(ringNote, "No time limit today");
         } else {
             float f = limit <= 0 ? 0 : left / (limit * 60f);
             ring.set(f, f > 0.25f ? (world == null ? WHITE : world.accent) : 0xFFFF6B5B);
-            ringBig.setText(shortMinutes(left));
-            ringSmall.setText("left");
+            setIfChanged(ringBig, shortMinutes(left));
+            setIfChanged(ringSmall, "left");
             int bed = Rules.bedtime(this);
-            ringNote.setText(bed < 0 ? "Enjoy your shows!" : "Bedtime " + bedLabel(bed));
+            setIfChanged(ringNote, bed < 0 ? "Enjoy your shows!" : "Bedtime " + bedLabel(bed));
         }
         Calendar now = Calendar.getInstance(Rules.KUWAIT);
         int hr = now.get(Calendar.HOUR), min = now.get(Calendar.MINUTE);
-        clockText.setText((hr == 0 ? 12 : hr) + ":" + (min < 10 ? "0" : "") + min);
-        ampmText.setText(now.get(Calendar.AM_PM) == Calendar.AM ? "AM" : "PM");
+        setIfChanged(clockText, (hr == 0 ? 12 : hr) + ":" + (min < 10 ? "0" : "") + min);
+        setIfChanged(ampmText, now.get(Calendar.AM_PM) == Calendar.AM ? "AM" : "PM");
         if (min == 0 && now.get(Calendar.SECOND) < 2) drawGreeting();
         fetchWeather();
     }
@@ -1164,9 +1185,8 @@ public class KidsActivity extends Activity {
             ImageView img = new ImageView(this);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             pic.addView(img, new FrameLayout.LayoutParams(-1, -1));
-            TextView playMark = text("▶", 56, fHeavy, WHITE);
+            TextView playMark = text("▶", 56, fHeavy, 0xE6FFFFFF);
             playMark.setGravity(Gravity.CENTER);
-            playMark.setAlpha(0.9f);
             pic.addView(playMark, new FrameLayout.LayoutParams(-1, -1));
             card.addView(pic, new LinearLayout.LayoutParams(-1, 216));
             // the whole name, on as many lines as it needs
@@ -1580,7 +1600,7 @@ public class KidsActivity extends Activity {
                 mark.setText(on ? "✓  allowed" : "not allowed");
                 mark.setTextColor(on ? 0xFF8CFF7A : DIM);
                 mark.setBackground(solid(on ? 0x2E7CFC6A : 0x14FFFFFF, 26, 0));
-                icon.setAlpha(on ? 1f : 0.45f);
+                icon.setImageAlpha(on ? 255 : 115); // the picture only, no offscreen layer
             };
             draw.run();
             cell.setOnFocusChangeListener((v, has) -> cell.setBackground(has ? solid(0x24FFFFFF, 30, 0x30) : null));
@@ -1602,6 +1622,15 @@ public class KidsActivity extends Activity {
         return false;
     }
 
+    /** A view fading in or out is drawn straight onto the screen, not into a spare offscreen picture every frame (same as TV Home). */
+    private static void noAlphaLayers(View v) {
+        v.forceHasOverlappingRendering(false);
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) noAlphaLayers(g.getChildAt(i));
+        }
+    }
+
     private void closePanels() {
         for (View v : new View[]{pinPanel, parentPanel, appsPanel, cartoonsPanel}) hide(v);
         focusAfterPanel();
@@ -1609,7 +1638,7 @@ public class KidsActivity extends Activity {
 
     private FrameLayout panel() {
         FrameLayout p = new FrameLayout(this);
-        p.setBackground(grad(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xF20A0718, 0xFC070512}));
+        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xF20A0718, 0xFC070512})); // full screen: no dithering
         p.setVisibility(View.GONE);
         p.setClickable(true);
         stage.addView(p, new FrameLayout.LayoutParams(1920, 1080));
@@ -1617,6 +1646,7 @@ public class KidsActivity extends Activity {
     }
 
     private void show(View p) {
+        noAlphaLayers(p);
         p.bringToFront();
         p.setVisibility(View.VISIBLE);
         p.setAlpha(0);
