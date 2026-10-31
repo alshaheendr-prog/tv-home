@@ -203,15 +203,16 @@ public class MainActivity extends Activity {
         root.addView(dimView, new FrameLayout.LayoutParams(-1, -1));
         // Soft dark gradients at the top and bottom keep the text readable on any video.
         View topScrim = new View(this);
-        topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x00000000, 0x00000000}));
+        topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x00000000}));
         topScrim.getBackground().setDither(true); // smooth dark gradients, no stripes on the TV
-        root.addView(topScrim, new FrameLayout.LayoutParams(-1, -1));
+        // only the top and bottom thirds carry any shade, so each scrim covers just that third (less to paint every frame)
+        root.addView(topScrim, new FrameLayout.LayoutParams(-1, 380, Gravity.TOP));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitStage());
         View bottomScrim = new View(this);
 
-        bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000, 0x00000000}));
+        bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000}));
         bottomScrim.getBackground().setDither(true);
-        root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, 380, Gravity.BOTTOM));
 
         stage = new FrameLayout(this);
         stage.setClipChildren(false);
@@ -227,6 +228,7 @@ public class MainActivity extends Activity {
         buildParent();
         buildPlayer();
         lineFrame.setVisibility(prefs.getBoolean("verse", true) ? View.VISIBLE : View.GONE);
+        noAlphaLayers(root);
         registerDriveWatcher();
         ui.postDelayed(() -> bg.execute(() -> Quran.reciters(getCacheDir())), 20000); // warm the reciter list (names in Arabic)
 
@@ -1543,7 +1545,20 @@ public class MainActivity extends Activity {
         return o;
     }
 
+    /**
+     * A view drawn see-through (alpha below 1) is normally painted into its own off-screen picture first, every frame.
+     * On this box those extra full-size pictures were the main cost per frame, so fade each piece on its own instead.
+     */
+    private static void noAlphaLayers(View v) {
+        v.forceHasOverlappingRendering(false);
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) noAlphaLayers(g.getChildAt(i));
+        }
+    }
+
     private void show(View v) {
+        noAlphaLayers(v);
         v.setAlpha(0);
         v.setVisibility(View.VISIBLE);
         v.animate().alpha(1).setDuration(260).setInterpolator(EASE).start();
