@@ -6,6 +6,8 @@ import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
@@ -18,6 +20,8 @@ final class BrandGlow extends Drawable {
     private float cx = -1, strength;
     private int color = 0xFFFFFFFF;
     private ValueAnimator anim;
+    private float shaderR = -1;
+    private int filterColor;
 
     /** Glide to x (in the dock's coordinates) and color; a negative x fades the glow away. */
     void moveTo(float x, int c) {
@@ -42,9 +46,12 @@ final class BrandGlow extends Drawable {
         if (strength <= 0.01f || cx < 0) return;
         Rect b = getBounds();
         float cy = b.top + b.height() * 0.62f, r = b.height() * 1.1f;
-        int a = Math.round(0x66 * strength);
-        paint.setShader(new RadialGradient(0, 0, r, new int[]{(a << 24) | (color & 0xFFFFFF), ((a / 3) << 24) | (color & 0xFFFFFF), color & 0xFFFFFF},
-                new float[]{0, 0.45f, 1}, Shader.TileMode.CLAMP));
+        if (r != shaderR) {
+            shaderR = r;
+            paint.setShader(new RadialGradient(0, 0, r, new int[]{0x66FFFFFF, 0x22FFFFFF, 0x00FFFFFF}, new float[]{0, 0.45f, 1}, Shader.TileMode.CLAMP));
+        }
+        if (color != filterColor) { filterColor = color; paint.setColorFilter(new PorterDuffColorFilter(color | 0xFF000000, PorterDuff.Mode.MULTIPLY)); }
+        paint.setAlpha(Math.round(255 * strength));
         c.save();
         c.translate(b.left + cx, cy);
         c.scale(1.8f, 1f); // a wide, low oval

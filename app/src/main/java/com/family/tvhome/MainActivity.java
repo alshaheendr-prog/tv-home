@@ -38,7 +38,7 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.TextureView;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.ViewGroup;
@@ -118,7 +118,7 @@ public class MainActivity extends Activity {
     private Typeface fMed, fSemi, fBold, fAr, fArSemi, fQuran, fSerif, fLight, fThin;
 
     private FrameLayout root, stage;
-    private TextureView video;
+    private SurfaceView video;
     private View videoCover, dimView;
     private boolean resumed;
     private int lastDock;
@@ -167,6 +167,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
         prefs = getSharedPreferences("home", MODE_PRIVATE);
+        preferSixtyHz();
         fMed = getResources().getFont(R.font.inter_medium);
         fSemi = getResources().getFont(R.font.inter_semibold);
         fLight = getResources().getFont(R.font.inter_light);
@@ -181,8 +182,8 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
-        // The video draws inside the app's own window (not a hole behind it), so redrawn text never leaves light patches over it.
-        video = new TextureView(this);
+        // The video plays on its own hardware layer behind the window: the smoothest path on this box (no extra copy per frame).
+        video = new SurfaceView(this);
         root.addView(video, new FrameLayout.LayoutParams(-1, -1));
         videoCover = new View(this);
         videoCover.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF1B2A4A, 0xFF0E1426, 0xFF241A3A}));
@@ -220,7 +221,7 @@ public class MainActivity extends Activity {
         ui.postDelayed(() -> bg.execute(() -> Quran.reciters(getCacheDir())), 20000); // warm the reciter list (names in Arabic)
 
         player = new ExoPlayer.Builder(this).build();
-        player.setVideoTextureView(video);
+        player.setVideoSurfaceView(video);
         player.setRepeatMode(Player.REPEAT_MODE_ONE);
         player.setVolume(0f);
         player.addListener(new Player.Listener() {
@@ -257,7 +258,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         resumed = false;
-        ui.removeCallbacks(grabBackdrop);
         ui.removeCallbacks(startQuiet);
         player.pause();
         super.onPause();
@@ -368,6 +368,26 @@ public class MainActivity extends Activity {
             if (code == KeyEvent.KEYCODE_DEL) { pinPress("⌫"); return true; }
         }
         return super.dispatchKeyEvent(e);
+    }
+
+    // ================================================================== smoothness
+
+    /** Ask for a 60 Hz (or faster) display mode at the current resolution, so every animation can run at 60 fps. */
+    private void preferSixtyHz() {
+        try {
+            android.view.Display d = getWindowManager().getDefaultDisplay();
+            if (d == null) return;
+            android.view.Display.Mode cur = d.getMode(), best = null;
+            for (android.view.Display.Mode m : d.getSupportedModes()) {
+                if (m.getPhysicalWidth() != cur.getPhysicalWidth() || m.getPhysicalHeight() != cur.getPhysicalHeight()) continue;
+                if (m.getRefreshRate() < 59f || m.getRefreshRate() > 61f) continue;
+                best = m;
+            }
+            if (best == null || best.getModeId() == cur.getModeId()) return;
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.preferredDisplayModeId = best.getModeId();
+            getWindow().setAttributes(lp);
+        } catch (Exception ignored) { }
     }
 
     // ================================================================== fitting the TV
@@ -2096,25 +2116,6 @@ public class MainActivity extends Activity {
             barAnims[i] = a;
         }
     }
-
-    // ================================================================== frosted glass backdrop
-
-    /** Every 1.5 s, a tiny copy of the video frame is blurred and shown through the glass panels. */
-    private final Runnable grabBackdrop = new Runnable() {
-        @Override public void run() {
-            if (!resumed) return;
-            if (videoCover.getAlpha() < 0.5f && player.isPlaying() && video.isAvailable()) {
-                final Bitmap frame = video.getBitmap(192, 108);
-                if (frame != null) blurThread.execute(() -> {
-                    Bitmap b = Blur.blur(frame, 5);
-                    ui.post(() -> { if (resumed) GlassFrame.setBackdrop(b); });
-                });
-            } else if (videoCover.getAlpha() >= 0.5f) {
-                GlassFrame.setBackdrop(null);
-            }
-            ui.postDelayed(this, 1500);
-        }
-    };
 
     // ================================================================== hard drive status
 

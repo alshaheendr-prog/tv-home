@@ -26,6 +26,7 @@ public class StarField extends View {
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeWidth(1.6f);
         line.setColor(0x26F1D58A);
+        glow.setShader(new RadialGradient(W * 0.5f, H * 0.42f, 900, 0x30F1D58A, 0x00F1D58A, Shader.TileMode.CLAMP));
         fade.setShader(new LinearGradient(0, 0, 0, H, new int[]{0xCC070A15, 0x00070A15, 0x00070A15, 0xB3070A15},
                 new float[]{0, 0.28f, 0.75f, 1}, Shader.TileMode.CLAMP));
         for (int y = -STEP; y < H + 2 * STEP; y += STEP)
@@ -49,7 +50,7 @@ public class StarField extends View {
         float t = (System.currentTimeMillis() - start) / 1000f;
         c.drawRect(0, 0, W, H, bg);
         float breathe = 0.75f + 0.25f * (float) Math.sin(t * 0.5f);
-        glow.setShader(new RadialGradient(W * 0.5f, H * 0.42f, 900, (Math.round(0x30 * breathe) << 24) | 0xF1D58A, 0x00F1D58A, Shader.TileMode.CLAMP));
+        glow.setAlpha(Math.round(255 * breathe)); // one gradient made once; only its strength changes each frame
         c.drawRect(0, 0, W, H, glow);
         c.save();
         c.translate((t * 6) % STEP, (t * 3) % STEP); // about a pixel every few frames: barely there, but alive
