@@ -1259,7 +1259,7 @@ public class MainActivity extends Activity {
         box.addView(pinIcon, new LinearLayout.LayoutParams(96, 96));
         TextView k = kicker(text("PARENT LOCK  ·  قفل الوالدين", 20, fSemi, DIM));
         k.setPadding(0, 22, 0, 0);
-        box.addView(k);
+        box.addView(k, new LinearLayout.LayoutParams(-2, -2));
         pinTitle = text("", 44, fSemi, WHITE);
         pinTitle.setGravity(Gravity.CENTER);
         pinTitle.setPadding(0, 12, 0, 0);
@@ -1317,7 +1317,7 @@ public class MainActivity extends Activity {
             keys.addView(key, p);
             if (label.equals("1")) firstPinKey = key;
         }
-        box.addView(keys);
+        box.addView(keys, new LinearLayout.LayoutParams(-2, -2));
         pinBox = panelCard(pinPanel, box, 600, -1);
     }
 
@@ -1540,7 +1540,7 @@ public class MainActivity extends Activity {
             });
             if (!a.pkg.equals(SETTINGS) && !a.pkg.equals(CALENDAR)) item.setOnLongClickListener(v -> { toggleKid(a.pkg); return true; });
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
-            p.width = 220; p.height = 236;
+            p.width = 226; p.height = 236; // seven columns fill the row edge to edge under the header
             p.setMargins(10, 10, 10, 10);
             appGrid.addView(item, p);
             if (first == null) first = item;
@@ -1578,6 +1578,9 @@ public class MainActivity extends Activity {
     private LinearLayout quranControls;
     private GridLayout surahGrid;
 
+    /** Surah tiles: deep navy glass with a faint gold edge, so the star pattern shows in the gaps, not through the names. */
+    static final int SURAH_FILL = 0xB30D1428, SURAH_EDGE = 0x33F1D58A;
+
     private void buildQuran() {
         quranPanel = overlay();
         StarField field = new StarField(this);
@@ -1591,8 +1594,10 @@ public class MainActivity extends Activity {
         quranControls = new LinearLayout(this);
         quranControls.setGravity(Gravity.CENTER_VERTICAL);
         quranNow = text("", 24, fAr, SOFT);
-        quranNow.setPadding(0, 0, 24, 0);
-        quranControls.addView(quranNow, new LinearLayout.LayoutParams(440, -2));
+        quranNow.setPadding(0, 0, 28, 0);
+        quranNow.setGravity(Gravity.END);
+        quranNow.setLineSpacing(0, 1.1f);
+        quranControls.addView(quranNow, new LinearLayout.LayoutParams(600, -2));
         quranPlayBtn = quranButton("Pause", () -> {
             if (quran == null) return;
             quran.setPlayWhenReady(!quran.getPlayWhenReady());
@@ -1619,7 +1624,7 @@ public class MainActivity extends Activity {
             cell.setPadding(22, 8, 22, 14);
             cell.setFocusable(true);
             cell.setClickable(true);
-            cell.setBackground(glass(24, 0x14FFFFFF, 0x1FFFFFFF));
+            cell.setBackground(glass(24, SURAH_FILL, SURAH_EDGE));
             // a small gold medallion with the surah number, the name in Amiri, then the English name
             LinearLayout top = new LinearLayout(this);
             top.setGravity(Gravity.CENTER_VERTICAL);
@@ -1640,7 +1645,7 @@ public class MainActivity extends Activity {
             cell.addView(top);
             cell.addView(en);
             cell.setOnFocusChangeListener((v, has) -> {
-                v.setBackground(has ? focusGlass(24) : glass(24, 0x14FFFFFF, 0x1FFFFFFF));
+                v.setBackground(has ? focusGlass(24) : glass(24, SURAH_FILL, SURAH_EDGE));
                 en.setTextColor(has ? SOFT : DIM);
                 v.animate().scaleX(has ? 1.07f : 1f).scaleY(has ? 1.07f : 1f).setDuration(200).setInterpolator(EASE).start();
                 goldLift(v, has, 18);

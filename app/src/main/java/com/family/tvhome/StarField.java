@@ -25,7 +25,7 @@ public class StarField extends View {
         bg.setShader(new LinearGradient(0, 0, 0, H, new int[]{0xFF0B1124, 0xFF0A0F1F, 0xFF070A15}, null, Shader.TileMode.CLAMP));
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeWidth(1.6f);
-        line.setColor(0x2EF1D58A);
+        line.setColor(0x26F1D58A);
         fade.setShader(new LinearGradient(0, 0, 0, H, new int[]{0xCC070A15, 0x00070A15, 0x00070A15, 0xB3070A15},
                 new float[]{0, 0.28f, 0.75f, 1}, Shader.TileMode.CLAMP));
         for (int y = -STEP; y < H + 2 * STEP; y += STEP)
