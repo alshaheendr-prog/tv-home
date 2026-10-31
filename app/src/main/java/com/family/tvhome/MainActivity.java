@@ -1171,6 +1171,22 @@ public class MainActivity extends Activity {
         return t;
     }
 
+    /** A solid glass card in the middle of a panel. Plain gradient and edge only, clipped to its rounded shape. */
+    private FrameLayout panelCard(FrameLayout panel, View content, int w, int h) {
+        FrameLayout f = new FrameLayout(this);
+        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xF21A2036, 0xF20C1020});
+        bg.setCornerRadius(44);
+        bg.setStroke(2, 0x47FFFFFF);
+        f.setBackground(bg);
+        f.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 44); }
+        });
+        f.setClipToOutline(true);
+        f.addView(content, new FrameLayout.LayoutParams(-1, h < 0 ? -2 : -1));
+        panel.addView(f, new FrameLayout.LayoutParams(w, h < 0 ? -2 : h, Gravity.CENTER));
+        return f;
+    }
+
     /** A hint pill at the top right of a panel, e.g. which button does what. */
     private TextView panelHint(FrameLayout panel, String hint) {
         TextView t = text(hint, 22, fMed, SOFT);
@@ -1274,7 +1290,7 @@ public class MainActivity extends Activity {
             if (label.equals("1")) firstPinKey = key;
         }
         box.addView(keys);
-        pinBox = glassCard(pinPanel, box, 600, -1, Gravity.CENTER, 0, 0, 44, 40, 0x59FFFFFF, 0x59000000, false);
+        pinBox = panelCard(pinPanel, box, 600, -1);
     }
 
     private String savedPin() { return prefs.getString("pin", ""); }
@@ -1416,7 +1432,7 @@ public class MainActivity extends Activity {
             for (String cat : new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER}) {
                 for (ResolveInfo r : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(cat), 0)) {
                     String pkg = r.activityInfo.packageName;
-                    if (!seen.add(pkg)) continue;
+                    if (pkg.equals("com.android.tv.settings") || !seen.add(pkg)) continue; // our own Settings tile opens it
                     AppEntry a = new AppEntry();
                     a.pkg = pkg;
                     a.label = r.loadLabel(pm).toString();
@@ -1534,9 +1550,10 @@ public class MainActivity extends Activity {
 
     private void buildQuran() {
         quranPanel = overlay();
-        TextView title = panelHeader(quranPanel, "THE HOLY QURAN  ·  pick a surah, a different reciter every time", "القرآن الكريم");
+        TextView title = panelHeader(quranPanel, "THE HOLY QURAN  ·  A NEW RECITER EVERY TIME", "القرآن الكريم");
         title.setTypeface(fQuran);
         title.setIncludeFontPadding(true);
+        title.setTextDirection(View.TEXT_DIRECTION_LTR); // keep the Arabic title on the left, under the kicker
 
         quranControls = new LinearLayout(this);
         quranControls.setGravity(Gravity.CENTER_VERTICAL);
@@ -1563,7 +1580,8 @@ public class MainActivity extends Activity {
             final int n = i + 1;
             LinearLayout cell = new LinearLayout(this);
             cell.setOrientation(LinearLayout.VERTICAL);
-            cell.setGravity(Gravity.CENTER);
+            cell.setGravity(Gravity.CENTER_VERTICAL);
+            cell.setPadding(22, 6, 22, 10);
             cell.setFocusable(true);
             cell.setClickable(true);
             cell.setBackground(glass(24, 0x14FFFFFF, 0x1FFFFFFF));
@@ -1583,7 +1601,7 @@ public class MainActivity extends Activity {
             ar.setPadding(14, 0, 0, 0);
             top.addView(ar);
             TextView en = text(Quran.EN[i], 22, fMed, DIM);
-            en.setPadding(0, 2, 0, 0);
+            en.setPadding(54, 2, 0, 0); // under the name, past the medallion
             cell.addView(top);
             cell.addView(en);
             cell.setOnFocusChangeListener((v, has) -> {
@@ -1947,7 +1965,7 @@ public class MainActivity extends Activity {
         parentList = new LinearLayout(this);
         parentList.setOrientation(LinearLayout.VERTICAL);
         box.addView(parentList, new LinearLayout.LayoutParams(-1, -2));
-        glassCard(parentPanel, box, 900, -1, Gravity.CENTER, 0, 0, 44, 40, 0x59FFFFFF, 0x59000000, false);
+        panelCard(parentPanel, box, 900, -1);
     }
 
     private void openParent() {
@@ -2055,25 +2073,29 @@ public class MainActivity extends Activity {
             int days = (int) e[2];
             LinearLayout r = new LinearLayout(this);
             r.setGravity(Gravity.CENTER_VERTICAL);
-            r.setPadding(26, 10, 26, 10);
+            r.setPadding(26, 14, 30, 14);
             r.setFocusable(true);
             r.setOnFocusChangeListener((v, has) -> v.setBackground(has ? glass(18, 0x26FFFFFF, 0x66FFFFFF) : null));
             LinearLayout names = new LinearLayout(this);
             names.setOrientation(LinearLayout.VERTICAL);
             names.addView(text((String) e[0], 28, fMed, WHITE));
-            TextView ar = text((String) e[1] + "   ·   " + g.format(new java.util.Date((long) e[3])), 22, fAr, DIM);
+            TextView ar = text(g.format(new java.util.Date((long) e[3])) + "   ·   " + e[1], 22, fAr, DIM);
             ar.setIncludeFontPadding(true);
+            ar.setTextDirection(View.TEXT_DIRECTION_LTR);
+            ar.setGravity(Gravity.START);
+            ar.setPadding(0, 4, 0, 0);
             names.addView(ar);
             r.addView(names, new LinearLayout.LayoutParams(0, -2, 1));
             TextView left = text(days == 0 ? "Today" : days == 1 ? "Tomorrow" : "in " + days + " days", 28, fSemi, days <= 7 ? 0xFFF1D58A : SOFT);
-            r.addView(left);
+            left.setGravity(Gravity.END);
+            r.addView(left, new LinearLayout.LayoutParams(250, -2));
             box.addView(r, new LinearLayout.LayoutParams(-1, -2));
             if (first == null) first = r;
         }
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
         sv.addView(box);
-        glassCard(calendarPanel, sv, 1000, 900, Gravity.CENTER, 0, 0, 44, 40, 0x59FFFFFF, 0x59000000, false);
+        panelCard(calendarPanel, sv, 1100, 940);
         show(calendarPanel);
         if (first != null) { View f = first; f.post(f::requestFocus); }
     }
