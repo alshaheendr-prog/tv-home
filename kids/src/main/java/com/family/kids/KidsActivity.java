@@ -748,6 +748,12 @@ public class KidsActivity extends Activity {
                 }
                 tile.addView(img, new FrameLayout.LayoutParams(-1, -1));
             }
+            // a fine light edge on every tile, as on the family home's dock
+            GradientDrawable edge = new GradientDrawable();
+            edge.setCornerRadius(26);
+            edge.setStroke(2, 0x4DFFFFFF);
+            tile.setForeground(edge);
+
             final int index = i;
             tileColors.add(pkg.isEmpty() ? world.accent : appColor(pkg));
             tile.setOnFocusChangeListener((v, has) -> {
