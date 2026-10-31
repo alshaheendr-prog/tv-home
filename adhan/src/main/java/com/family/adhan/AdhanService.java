@@ -289,19 +289,19 @@ public class AdhanService extends Service {
         alert = new FrameLayout(this);
         alert.setClipChildren(false);
 
-        // dark glass: a short soft fade above, then a solid-enough band so the words read over anything (even the dock)
-        alertBand = new LinearLayout(this);
-        ((LinearLayout) alertBand).setOrientation(LinearLayout.VERTICAL);
-        View fade = new View(this);
-        GradientDrawable soft = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00080B14, 0xE0080B14});
-        soft.setDither(true);
-        fade.setBackground(soft);
-        ((LinearLayout) alertBand).addView(fade, new LinearLayout.LayoutParams(-1, (int) px(BAND_FADE)));
-        View solid = new View(this);
-        GradientDrawable deep = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xE0080B14, 0xF2080B14});
-        deep.setDither(true);
-        solid.setBackground(deep);
-        ((LinearLayout) alertBand).addView(solid, new LinearLayout.LayoutParams(-1, -1));
+        // dark glass: a short soft fade above, then a near-solid band so the words read over anything (even the dock).
+        // One gradient painted straight onto the canvas: clear, then dark at the band's top edge, then darker still.
+        alertBand = new View(this) {
+            private final android.graphics.Paint p = new android.graphics.Paint();
+            @Override protected void onSizeChanged(int w, int h, int ow, int oh) {
+                float edge = px(BAND_FADE) / Math.max(1, h);
+                p.setShader(new android.graphics.LinearGradient(0, 0, 0, h,
+                        new int[]{0x00080B14, 0xE6080B14, 0xF5080B14}, new float[]{0, edge, 1},
+                        android.graphics.Shader.TileMode.CLAMP));
+                p.setDither(true);
+            }
+            @Override protected void onDraw(android.graphics.Canvas c) { c.drawRect(0, 0, getWidth(), getHeight(), p); }
+        };
         alert.addView(alertBand, new FrameLayout.LayoutParams(-1, -1));
 
         // a fine gold line along the top of the band, brightest in the middle

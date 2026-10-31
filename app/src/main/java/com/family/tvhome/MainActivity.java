@@ -121,6 +121,7 @@ public class MainActivity extends Activity {
 
     private FrameLayout root, stage;
     private SurfaceView video;
+    private View topScrim, bottomScrim, dockBar;
     private View videoCover, dimView;
     private boolean resumed;
     private int lastDock;
@@ -202,13 +203,13 @@ public class MainActivity extends Activity {
         dimView.setAlpha(1 - prefs.getInt("brightness", 100) / 100f);
         root.addView(dimView, new FrameLayout.LayoutParams(-1, -1));
         // Soft dark gradients at the top and bottom keep the text readable on any video.
-        View topScrim = new View(this);
+        topScrim = new View(this);
         topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x00000000}));
         topScrim.getBackground().setDither(true); // smooth dark gradients, no stripes on the TV
         // only the top and bottom thirds carry any shade, so each scrim covers just that third (less to paint every frame)
         root.addView(topScrim, new FrameLayout.LayoutParams(-1, 380, Gravity.TOP));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitStage());
-        View bottomScrim = new View(this);
+        bottomScrim = new View(this);
 
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000}));
         bottomScrim.getBackground().setDither(true);
@@ -287,6 +288,8 @@ public class MainActivity extends Activity {
         closePanels();
         dockTiles.get(lastDock).requestFocus();
         // Update TV opens each panel in turn to photograph it for polishing (never the parent settings, which need the PIN).
+        String probe = intent.getStringExtra("probe");
+        if (probe != null) { probe(probe); return; }
         String panel = intent.getStringExtra("panel");
         if (panel != null) ui.postDelayed(() -> {
             switch (panel) {
@@ -298,6 +301,23 @@ public class MainActivity extends Activity {
                 default: break;
             }
         }, 400);
+    }
+
+    /**
+     * Update TV's smoothness sweep: hide one layer at a time and measure, to find what costs the most per frame.
+     * "none" shows everything again.
+     */
+    private void probe(String what) {
+        boolean all = what.equals("none");
+        java.util.List<View> cards = new java.util.ArrayList<>(java.util.Arrays.asList(topParts));
+        cards.add(sunCard); cards.add(eventChip); cards.add(lineFrame);
+        for (View v : cards) if (v != null) v.setAlpha(!all && what.equals("cards") ? 0 : 1);
+        centerGroup.setAlpha(!all && what.equals("clock") ? 0 : 1);
+        topScrim.setAlpha(!all && what.equals("scrims") ? 0 : 1);
+        bottomScrim.setAlpha(!all && what.equals("scrims") ? 0 : 1);
+        if (skyTint != null) skyTint.setVisibility(!all && what.equals("tint") ? View.INVISIBLE : View.VISIBLE);
+        dockBar.setBackground(!all && what.equals("dockglow") ? null : brandGlow);
+        video.setVisibility(!all && what.equals("video") ? View.INVISIBLE : View.VISIBLE);
     }
 
     // ================================================================== stress test
@@ -971,6 +991,7 @@ public class MainActivity extends Activity {
     /** Bottom: the app dock, centred. Moving across it magnifies the focused app and, a little, its neighbours. */
     private void buildBottom() {
         LinearLayout dock = new LinearLayout(this);
+        dockBar = dock;
         dock.setGravity(Gravity.CENTER_VERTICAL);
         dock.setPadding(48, 0, 48, 0); // room for the end tiles to grow and slide
         dock.setClipChildren(false);
