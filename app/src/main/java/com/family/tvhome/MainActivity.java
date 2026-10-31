@@ -422,7 +422,7 @@ public class MainActivity extends Activity {
         lastInput = System.currentTimeMillis();
         if (splash != null) { if (e.getAction() == KeyEvent.ACTION_UP) hideSplash(); return true; } // a press skips the intro
         if (stress && e.getAction() == KeyEvent.ACTION_UP) endStress();
-        if (playerOpen() && e.getAction() == KeyEvent.ACTION_DOWN) showPlayerControls();
+        if (playerOpen() && playerKey(e)) return true;
         if (ambient) { if (e.getAction() == KeyEvent.ACTION_UP) leaveAmbient(); return true; } // the first press only wakes the screen
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) {
@@ -476,7 +476,6 @@ public class MainActivity extends Activity {
         playerShade = new View(this);
         playerShade.setTag("bg");
         GradientDrawable shade = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x66000000, 0x1A000000, 0x1A000000, 0x99000000});
-        shade.setDither(true);
         playerShade.setBackground(shade);
         playerShade.setVisibility(View.GONE);
         playerPanel.addView(playerShade, bleed());
@@ -487,11 +486,15 @@ public class MainActivity extends Activity {
         playerSurah = text("", 168, fAr, 0xD9FFFFFF);
         playerSurah.setIncludeFontPadding(true);
         playerSurah.setGravity(Gravity.CENTER);
+        playerSurah.setPadding(90, 40, 90, 50); // room for the Arabic swashes and the soft shadow, so neither is cut off
         playerSurah.setShadowLayer(40, 0, 6, 0x80000000);
+        playerSurah.setLayerType(View.LAYER_TYPE_HARDWARE, null); // the big blurred title is drawn once, not every frame
         playerReciter = text("", 44, fAr, 0xB3FFFFFF);
         playerReciter.setIncludeFontPadding(true);
         playerReciter.setGravity(Gravity.CENTER);
+        playerReciter.setPadding(60, 10, 60, 20);
         playerReciter.setShadowLayer(18, 0, 3, 0x80000000);
+        playerReciter.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         mid.addView(playerSurah, new LinearLayout.LayoutParams(-2, -2));
         mid.addView(playerReciter, new LinearLayout.LayoutParams(-2, -2));
         playerPanel.addView(mid, new FrameLayout.LayoutParams(1920, -2, Gravity.CENTER));
@@ -511,6 +514,7 @@ public class MainActivity extends Activity {
         bp.bottomMargin = 34;
         playerControls.addView(playerBar, bp);
         LinearLayout row = new LinearLayout(this);
+        playerRow = row;
         row.setGravity(Gravity.CENTER_VERTICAL);
         playerButton(row, "⏮", () -> { quranQuiet = false; playSurah(nextSurah(quranSurah > 0 ? quranSurah : 1, -1), false); });
         playerPlay = playerButton(row, "⏸", () -> {
@@ -531,9 +535,44 @@ public class MainActivity extends Activity {
         stage.addView(playerPanel, new FrameLayout.LayoutParams(1920, 1080));
     }
 
+    private LinearLayout playerRow;
+    private boolean swallowUp;
+
+    /** The player moves focus itself, one button at a time along its row, so a press can never land on the grid or
+     *  buttons hidden behind it. While the controls are faded out, the first press only brings them back. */
+    private boolean playerKey(KeyEvent e) {
+        if (reciterPanel != null && reciterPanel.getVisibility() == View.VISIBLE) return false;
+        int code = e.getKeyCode();
+        boolean dpad = code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
+                || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN;
+        boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
+        if (e.getAction() == KeyEvent.ACTION_UP) {
+            if (swallowUp && (dpad || ok)) { swallowUp = false; return true; }
+            return dpad;
+        }
+        if (e.getAction() != KeyEvent.ACTION_DOWN) return dpad;
+        boolean hidden = playerControls.getAlpha() < 0.5f;
+        showPlayerControls();
+        View f = getCurrentFocus();
+        int at = -1;
+        for (int i = 0; i < playerRow.getChildCount(); i++) if (playerRow.getChildAt(i) == f) at = i;
+        if (at < 0) { playerPlay.requestFocus(); swallowUp = dpad || ok; return dpad || ok; }
+        if (hidden && e.getRepeatCount() == 0 && (dpad || ok)) { swallowUp = true; return true; }
+        if (!dpad) return false;
+        int to = at + (code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 0);
+        if (to != at && to >= 0 && to < playerRow.getChildCount()) playerRow.getChildAt(to).requestFocus();
+        return true;
+    }
+    private PlayerIcon playIcon;
+
     private TextView playerButton(LinearLayout row, String label, Runnable onClick) {
         boolean icon = label.length() == 1;
-        TextView b = text(label, icon ? 34 : 24, fSemi, WHITE);
+        TextView b = text(icon ? "" : label, 24, fSemi, WHITE);
+        if (icon) {
+            PlayerIcon pi = new PlayerIcon(label.equals("⏮") ? PlayerIcon.PREV : label.equals("⏭") ? PlayerIcon.NEXT : PlayerIcon.PAUSE);
+            b.setForeground(pi);
+            if (!label.equals("⏮") && !label.equals("⏭")) playIcon = pi;
+        }
         b.setGravity(Gravity.CENTER);
         b.setPadding(icon ? 0 : 30, 0, icon ? 0 : 30, 2);
         b.setFocusable(true);
@@ -574,9 +613,10 @@ public class MainActivity extends Activity {
         playerVideo = bgVideo != null;
         playerBgBox.setVisibility(playerVideo ? View.GONE : View.VISIBLE);
         playerShade.setVisibility(playerVideo ? View.VISIBLE : View.GONE);
+        // the grid steps out of the way, so it isn't drawn under the player every frame
+        quranPanel.animate().alpha(0).setDuration(400).start();
         if (playerVideo) {
-            // the wallpaper's own video layer plays the background, so it costs nothing extra; the grid steps out of the way
-            quranPanel.animate().alpha(0).setDuration(400).start();
+            // the wallpaper's own video layer plays the background, so it costs nothing extra
             videoCover.animate().alpha(1).setDuration(300).withEndAction(() -> {
                 playingUri = bgVideo;
                 player.setMediaItem(MediaItem.fromUri(bgVideo));
@@ -595,9 +635,9 @@ public class MainActivity extends Activity {
     }
 
     private void closePlayer() {
+        quranPanel.animate().alpha(1).setDuration(300).start();
         if (playerVideo) {
             playerVideo = false;
-            quranPanel.animate().alpha(1).setDuration(300).start();
             playRandomClip(); // back to a home wallpaper
         }
         playerPanel.animate().alpha(0).setDuration(300).withEndAction(() -> playerPanel.setVisibility(View.GONE)).start();
@@ -608,11 +648,11 @@ public class MainActivity extends Activity {
     }
 
     private final Runnable hideControls = () -> {
-        if (playerControls != null) playerControls.animate().alpha(0).translationY(20).setDuration(800).start();
+        if (playerControls != null) playerControls.animate().alpha(0).translationY(20).setDuration(800).withLayer().start();
     };
 
     private void showPlayerControls() {
-        playerControls.animate().alpha(1).translationY(0).setDuration(250).start();
+        if (playerControls.getAlpha() < 1f) playerControls.animate().alpha(1).translationY(0).setDuration(250).withLayer().start();
         ui.removeCallbacks(hideControls);
         ui.postDelayed(hideControls, 6000);
     }
@@ -623,7 +663,7 @@ public class MainActivity extends Activity {
         int n = playerLast;
         if (n > 0) playerSurah.setText("سورة " + Quran.AR[n - 1]);
         if (quranReciter != null) playerReciter.setText(quranReciter.ar.isEmpty() ? quranReciter.en : quranReciter.ar);
-        playerPlay.setText(quran != null && quranSurah > 0 && quran.getPlayWhenReady() ? "⏸" : "▶");
+        playIcon.setKind(quran != null && quranSurah > 0 && quran.getPlayWhenReady() ? PlayerIcon.PAUSE : PlayerIcon.PLAY);
         boolean sh = prefs.getBoolean("q_shuffle", false);
         playerShuffle.setText(sh ? "Shuffle: On" : "Shuffle: Off");
         playerShuffle.setTextColor(sh ? GOLD : WHITE);
