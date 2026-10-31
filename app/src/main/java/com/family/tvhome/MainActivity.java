@@ -405,6 +405,14 @@ public class MainActivity extends Activity {
         playerBgBox.setTag("bg");
         playerBgBox.addView(new StarField(this), new FrameLayout.LayoutParams(-1, -1));
         playerPanel.addView(playerBgBox, bleed());
+        // Over a background video: a soft darkening at the top and bottom so the words always read clearly.
+        playerShade = new View(this);
+        playerShade.setTag("bg");
+        GradientDrawable shade = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x66000000, 0x1A000000, 0x1A000000, 0x99000000});
+        shade.setDither(true);
+        playerShade.setBackground(shade);
+        playerShade.setVisibility(View.GONE);
+        playerPanel.addView(playerShade, bleed());
 
         LinearLayout mid = new LinearLayout(this);
         mid.setOrientation(LinearLayout.VERTICAL);
@@ -466,9 +474,33 @@ public class MainActivity extends Activity {
     }
 
     private int playerLast;
+    private View playerShade;
+    private boolean playerVideo; // the wallpaper player is showing a Quran background while the player is open
+
+    /** A random Quran background from Movies/QuranBackgrounds (made by Make Quran Backgrounds on the PC), or null. */
+    private Uri quranBackground() {
+        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "QuranBackgrounds");
+        File[] files = dir.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".mp4"));
+        List<File> ok = new ArrayList<>();
+        if (files != null) for (File f : files) if (f.canRead()) ok.add(f);
+        return ok.isEmpty() ? null : Uri.fromFile(ok.get(random.nextInt(ok.size())));
+    }
 
     private void openPlayer() {
         if (playerPanel == null) return;
+        Uri bgVideo = quranBackground();
+        playerVideo = bgVideo != null;
+        playerBgBox.setVisibility(playerVideo ? View.GONE : View.VISIBLE);
+        playerShade.setVisibility(playerVideo ? View.VISIBLE : View.GONE);
+        if (playerVideo) {
+            // the wallpaper's own video layer plays the background, so it costs nothing extra; the grid steps out of the way
+            quranPanel.animate().alpha(0).setDuration(400).start();
+            videoCover.animate().alpha(1).setDuration(300).withEndAction(() -> {
+                player.setMediaItem(MediaItem.fromUri(bgVideo));
+                player.prepare();
+                player.play();
+            }).start();
+        }
         playerPanel.setAlpha(0);
         playerPanel.setVisibility(View.VISIBLE);
         playerPanel.animate().alpha(1).setDuration(500).setInterpolator(new DecelerateInterpolator(2f)).start();
@@ -480,6 +512,11 @@ public class MainActivity extends Activity {
     }
 
     private void closePlayer() {
+        if (playerVideo) {
+            playerVideo = false;
+            quranPanel.animate().alpha(1).setDuration(300).start();
+            playRandomClip(); // back to a home wallpaper
+        }
         playerPanel.animate().alpha(0).setDuration(300).withEndAction(() -> playerPanel.setVisibility(View.GONE)).start();
         if (quranPanel.getVisibility() == View.VISIBLE) {
             int focus = (quranSurah > 0 ? quranSurah : Math.max(1, playerLast)) - 1;
@@ -1515,6 +1552,7 @@ public class MainActivity extends Activity {
 
     private void closePanels() {
         if (playerPanel != null) playerPanel.setVisibility(View.GONE);
+        if (playerVideo) { playerVideo = false; playRandomClip(); } // leave the Quran background, back to a wallpaper
         if (reciterPanel != null) reciterPanel.setVisibility(View.GONE);
         boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE
                 || quranPanel.getVisibility() == View.VISIBLE || parentPanel.getVisibility() == View.VISIBLE
