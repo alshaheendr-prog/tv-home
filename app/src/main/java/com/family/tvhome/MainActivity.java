@@ -516,6 +516,12 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         playerRow = row;
         row.setGravity(Gravity.CENTER_VERTICAL);
+        // room for the focused button to grow: without it the row cut its top and bottom off
+        row.setPadding(20, 16, 20, 16);
+        row.setClipChildren(false);
+        row.setClipToPadding(false);
+        playerControls.setClipChildren(false);
+        playerControls.setClipToPadding(false);
         playerButton(row, "⏮", () -> { quranQuiet = false; playSurah(nextSurah(quranSurah > 0 ? quranSurah : 1, -1), false); });
         playerPlay = playerButton(row, "⏸", () -> {
             if (quran == null) return;
@@ -531,7 +537,7 @@ public class MainActivity extends Activity {
             drawPlayer();
         });
         playerControls.addView(row, new LinearLayout.LayoutParams(-2, -2));
-        playerPanel.addView(playerControls, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 90));
+        playerPanel.addView(playerControls, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 74));
         stage.addView(playerPanel, new FrameLayout.LayoutParams(1920, 1080));
     }
 
