@@ -566,9 +566,9 @@ public class MainActivity extends Activity {
         lineEn.setMaxWidth(1360);
         lineEn.setLineSpacing(0, 1.05f);
         lineEn.setPadding(0, 2, 0, 0);
-        lineBox.addView(lineKicker);
-        lineBox.addView(lineAr);
-        lineBox.addView(lineEn);
+        lineBox.addView(lineKicker, new LinearLayout.LayoutParams(-2, -2));
+        lineBox.addView(lineAr, new LinearLayout.LayoutParams(-2, -2));
+        lineBox.addView(lineEn, new LinearLayout.LayoutParams(-2, -2));
         // Fills over the 30 seconds each line stays up.
         lineBar = new ThinBar(this);
         lineBar.setColor(0x66FFFFFF);
@@ -938,10 +938,10 @@ public class MainActivity extends Activity {
                     JSONObject daily = all.getJSONObject("daily");
                     org.json.JSONArray mx = daily.getJSONArray("temperature_2m_max"), mn = daily.getJSONArray("temperature_2m_min");
                     org.json.JSONArray wc = daily.optJSONArray("weather_code");
-                    hiLo = "Today  ↑" + Math.round(mx.getDouble(0)) + "° ↓" + Math.round(mn.getDouble(0)) + "°";
+                    hiLo = "Today  " + Math.round(mx.getDouble(0)) + "° / " + Math.round(mn.getDouble(0)) + "°";
                     if (mx.length() > 1)
                         hiLo += "     Tomorrow  " + (wc != null && wc.length() > 1 ? skyIcon(wc.getInt(1)) + " " : "")
-                                + "↑" + Math.round(mx.getDouble(1)) + "° ↓" + Math.round(mn.getDouble(1)) + "°";
+                                + Math.round(mx.getDouble(1)) + "° / " + Math.round(mn.getDouble(1)) + "°";
                 } catch (Exception ignored) { }
                 JSONObject cur = all.getJSONObject("current");
                 tempNow = cur.getDouble("temperature_2m");
@@ -1163,10 +1163,10 @@ public class MainActivity extends Activity {
     private TextView panelHeader(FrameLayout panel, String kickerText, String titleText) {
         LinearLayout h = new LinearLayout(this);
         h.setOrientation(LinearLayout.VERTICAL);
-        h.addView(kicker(text(kickerText, 20, fSemi, 0xCCF1D58A)));
+        h.addView(kicker(text(kickerText, 20, fSemi, 0xCCF1D58A)), new LinearLayout.LayoutParams(-2, -2));
         TextView t = text(titleText, 52, fSemi, WHITE);
         t.setPadding(0, 8, 0, 0);
-        h.addView(t);
+        h.addView(t, new LinearLayout.LayoutParams(-2, -2));
         View bar = new View(this);
         bar.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xFFF1D58A, 0x00F1D58A}));
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(140, 3);
@@ -1601,7 +1601,7 @@ public class MainActivity extends Activity {
             LinearLayout cell = new LinearLayout(this);
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER_VERTICAL);
-            cell.setPadding(22, 6, 22, 10);
+            cell.setPadding(22, 8, 22, 14);
             cell.setFocusable(true);
             cell.setClickable(true);
             cell.setBackground(glass(24, 0x14FFFFFF, 0x1FFFFFFF));
@@ -1632,7 +1632,7 @@ public class MainActivity extends Activity {
             });
             cell.setOnClickListener(v -> { quranQuiet = false; playSurah(n, false); });
             GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
-            gp.width = 268; gp.height = 128;
+            gp.width = 268; gp.height = 150;
             gp.setMargins(9, 9, 9, 9);
             surahGrid.addView(cell, gp);
         }

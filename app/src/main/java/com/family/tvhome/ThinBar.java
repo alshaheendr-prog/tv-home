@@ -29,6 +29,13 @@ public class ThinBar extends View {
         invalidate();
     }
 
+    /** No width of its own: it takes whatever its row gives it, and never stretches a row that wraps its content. */
+    @Override
+    protected void onMeasure(int w, int h) {
+        setMeasuredDimension(MeasureSpec.getMode(w) == MeasureSpec.EXACTLY ? MeasureSpec.getSize(w) : 0,
+                MeasureSpec.getMode(h) == MeasureSpec.EXACTLY ? MeasureSpec.getSize(h) : 3);
+    }
+
     @Override
     protected void onDraw(Canvas c) {
         float h = getHeight(), r = h / 2f, w = getWidth();
