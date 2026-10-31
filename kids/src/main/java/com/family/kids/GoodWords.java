@@ -47,7 +47,7 @@ final class GoodWords {
     static final Hadith[] HADITHS = {
             new Hadith("😊", "تَبَسُّمُكَ فِي وَجْهِ أَخِيكَ لَكَ صَدَقَةٌ", "Smiling at your brother is a charity.", "Tirmidhi"),
             new Hadith("💬", "الْكَلِمَةُ الطَّيِّبَةُ صَدَقَةٌ", "A kind word is a charity.", "Bukhari & Muslim"),
-            new Hadith("🧊", "لَا تَغْضَبْ", "Don't get angry. The Prophet ﷺ said it three times to a man who asked for advice.", "Bukhari"),
+            new Hadith("🧊", "لَا تَغْضَبْ", "Don't get angry! (He ﷺ said it three times to a man who asked for advice.)", "Bukhari"),
             new Hadith("💪", "لَيْسَ الشَّدِيدُ بِالصُّرَعَةِ", "The strong one is not the best wrestler, but the one who stays calm when angry.", "Bukhari & Muslim"),
             new Hadith("🫧", "الطُّهُورُ شَطْرُ الْإِيمَانِ", "Being clean is half of faith.", "Muslim"),
             new Hadith("🎁", "تَهَادَوْا تَحَابُّوا", "Give each other gifts, and you will love each other.", "Al-Adab al-Mufrad"),
