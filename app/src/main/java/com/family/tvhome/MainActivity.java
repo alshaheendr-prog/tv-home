@@ -332,7 +332,7 @@ public class MainActivity extends Activity {
     private void fitStage() {
         int w = root.getWidth(), h = root.getHeight();
         if (w == 0 || h == 0) return;
-        float s = Math.min(w / 1920f, h / 1080f) * prefs.getInt("fit", 94) / 100f;
+        float s = Math.min(w / 1920f, h / 1080f) * prefs.getInt("fit", 100) / 100f;
         stage.setPivotX(0); stage.setPivotY(0);
         stage.setScaleX(s); stage.setScaleY(s);
         stage.setTranslationX((w - 1920 * s) / 2);
@@ -618,7 +618,7 @@ public class MainActivity extends Activity {
     private void buildBottom() {
         LinearLayout dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER_VERTICAL);
-        dock.setPadding(30, 0, 30, 0);
+        dock.setPadding(48, 0, 48, 0); // room for the end tiles to grow and slide
         dock.setClipChildren(false);
         dock.setClipToPadding(false);
         ViewOutlineProvider rounded = new ViewOutlineProvider() {
@@ -695,7 +695,9 @@ public class MainActivity extends Activity {
             int dist = focused < 0 ? 9 : Math.abs(i - focused);
             float s = dist == 0 ? 1.22f : dist == 1 ? 1.07f : 1f;
             float lift = dist == 0 ? -20 : dist == 1 ? -5 : 0;
-            t.animate().scaleX(s).scaleY(s).translationY(lift).setDuration(240).setInterpolator(EASE).withLayer().start();
+            // the others slide aside so the enlarged tiles never cover their neighbours
+            float side = focused < 0 || dist == 0 ? 0 : Math.signum(i - focused) * (dist == 1 ? 22 : 26);
+            t.animate().scaleX(s).scaleY(s).translationX(side).translationY(lift).setDuration(240).setInterpolator(EASE).withLayer().start();
             t.setBackground(dist == 0 ? tileFocus.get(i)[0] : null);
             t.setForeground(dist == 0 ? tileFocus.get(i)[1] : null);
         }
@@ -2170,7 +2172,7 @@ public class MainActivity extends Activity {
             if (quiet && quranQuiet) stopQuran(); else if (!quiet) { quietStopped = false; backgroundQuran(); }
             drawParent(6);
         });
-        int fit = prefs.getInt("fit", 94);
+        int fit = prefs.getInt("fit", 100);
         parentRow("Screen size (fit the TV's edges)", fit + "%", () -> {
             int i = 0;
             while (i < FITS.length && FITS[i] != fit) i++;
