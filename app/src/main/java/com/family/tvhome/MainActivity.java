@@ -546,7 +546,7 @@ public class MainActivity extends Activity {
         clockRow.addView(ampmText);
         c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 296));
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 236));
         centerGroup = c;
 
         // The verse / hadith card, low on the screen just above the dock: Amiri for the Arabic, an italic serif for the English.
@@ -1440,7 +1440,9 @@ public class MainActivity extends Activity {
         appGrid.setColumnCount(7);
         appGrid.setClipChildren(false);
         sv.addView(appGrid);
-        appsPanel.addView(sv, at(1920 - 200, 1080 - 190, Gravity.TOP | Gravity.START, 100, 190));
+        sv.setVerticalFadingEdgeEnabled(true);
+        sv.setFadingEdgeLength(90);
+        appsPanel.addView(sv, at(1920 - 200, 1080 - 230, Gravity.TOP | Gravity.START, 100, 230));
     }
 
     private void refreshApps() {
@@ -1637,7 +1639,9 @@ public class MainActivity extends Activity {
             surahGrid.addView(cell, gp);
         }
         sv.addView(surahGrid);
-        quranPanel.addView(sv, at(1920 - 200, 1080 - 200, Gravity.TOP | Gravity.START, 100, 200));
+        sv.setVerticalFadingEdgeEnabled(true);
+        sv.setFadingEdgeLength(90); // rows melt away under the header instead of being cut
+        quranPanel.addView(sv, at(1920 - 200, 1080 - 250, Gravity.TOP | Gravity.START, 100, 250));
 
         // On the home screen: what is playing, at the bottom of the weather card.
         buildNowReciting();
@@ -2122,6 +2126,8 @@ public class MainActivity extends Activity {
         }
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
+        sv.setVerticalFadingEdgeEnabled(true);
+        sv.setFadingEdgeLength(80);
         sv.addView(box);
         panelCard(calendarPanel, sv, 1100, 940);
         show(calendarPanel);
