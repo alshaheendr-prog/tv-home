@@ -14,7 +14,7 @@ import android.view.View;
  * and a warm glow that breathes behind the page. One path, drawn with a moving offset, so it stays light on the box.
  */
 public class StarField extends View {
-    static final int W = 1920, H = 1080, STEP = 150;
+    static final int W = 1920 + 2 * MainActivity.BLEED, H = 1080 + 2 * MainActivity.BLEED, STEP = 150; // reaches past the layout's edges
     private final Paint bg = new Paint(), line = new Paint(Paint.ANTI_ALIAS_FLAG), glow = new Paint(Paint.ANTI_ALIAS_FLAG),
             fade = new Paint();
     private final Path lattice = new Path();

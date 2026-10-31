@@ -196,15 +196,9 @@ public class MainActivity extends Activity {
         View topScrim = new View(this);
         topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x00000000, 0x00000000}));
         root.addView(topScrim, new FrameLayout.LayoutParams(-1, -1));
-        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            float s = Math.min((r - l) / 1920f, (b - t) / 1080f);
-            stage.setPivotX(0); stage.setPivotY(0);
-            stage.setScaleX(s); stage.setScaleY(s);
-            stage.setTranslationX(((r - l) - 1920 * s) / 2);
-            stage.setTranslationY(((b - t) - 1080 * s) / 2);
-            GlassFrame.setScreen(r - l, b - t, s);
-        });
+        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitStage());
         View bottomScrim = new View(this);
+
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000, 0x00000000}));
         root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, -1));
 
@@ -327,6 +321,32 @@ public class MainActivity extends Activity {
             if (code == KeyEvent.KEYCODE_DEL) { pinPress("⌫"); return true; }
         }
         return super.dispatchKeyEvent(e);
+    }
+
+    // ================================================================== fitting the TV
+
+    /** Screen size in percent: many TVs crop the picture's edges (overscan), so the whole layout can be shrunk to fit inside. */
+    static final int[] FITS = {100, 97, 94, 91, 88};
+
+    /** Scales the 1920 x 1080 layout to the screen, inside the chosen margin; the video and scrims still fill the whole screen. */
+    private void fitStage() {
+        int w = root.getWidth(), h = root.getHeight();
+        if (w == 0 || h == 0) return;
+        float s = Math.min(w / 1920f, h / 1080f) * prefs.getInt("fit", 94) / 100f;
+        stage.setPivotX(0); stage.setPivotY(0);
+        stage.setScaleX(s); stage.setScaleY(s);
+        stage.setTranslationX((w - 1920 * s) / 2);
+        stage.setTranslationY((h - 1080 * s) / 2);
+        GlassFrame.setScreen(w, h, s);
+    }
+
+    /** Full-screen layers inside the stage reach past its edges, so a shrunk layout leaves no hard border. */
+    static final int BLEED = 200;
+
+    private static FrameLayout.LayoutParams bleed() {
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(1920 + 2 * BLEED, 1080 + 2 * BLEED);
+        p.leftMargin = -BLEED; p.topMargin = -BLEED;
+        return p;
     }
 
     // ================================================================== helpers
@@ -720,8 +740,10 @@ public class MainActivity extends Activity {
         int last = prefs.getInt("last_intro", -1), pick = random.nextInt(IntroView.COUNT);
         if (pick == last) pick = (pick + 1 + random.nextInt(IntroView.COUNT - 1)) % IntroView.COUNT;
         prefs.edit().putInt("last_intro", pick).apply();
-        splash.addView(new IntroView(this, pick, fQuran, fSemi), new FrameLayout.LayoutParams(1920, 1080));
-        stage.addView(splash, new FrameLayout.LayoutParams(1920, 1080));
+        FrameLayout.LayoutParams ip = new FrameLayout.LayoutParams(1920, 1080);
+        ip.leftMargin = BLEED; ip.topMargin = BLEED;
+        splash.addView(new IntroView(this, pick, fQuran, fSemi), ip);
+        stage.addView(splash, bleed());
         ui.postDelayed(this::hideSplash, SPLASH_MAX); // never wait longer than this, even without a video
     }
 
@@ -1138,8 +1160,12 @@ public class MainActivity extends Activity {
 
     private FrameLayout overlay() {
         FrameLayout o = new FrameLayout(this);
+        o.setClipChildren(false);
         // a soft scrim: darker at the top and bottom where the headers and last rows sit, lighter in the middle
-        o.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xCC050810, 0x8C050810, 0xD9050810}));
+        View scrim = new View(this);
+        scrim.setTag("bg");
+        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xCC050810, 0x8C050810, 0xD9050810}));
+        o.addView(scrim, bleed());
         o.setVisibility(View.GONE);
         o.setElevation(30);
         stage.addView(o, new FrameLayout.LayoutParams(1920, 1080));
@@ -1585,7 +1611,7 @@ public class MainActivity extends Activity {
         quranPanel = overlay();
         StarField field = new StarField(this);
         field.setTag("bg");
-        quranPanel.addView(field, new FrameLayout.LayoutParams(1920, 1080));
+        quranPanel.addView(field, bleed());
         TextView title = panelHeader(quranPanel, "THE HOLY QURAN  ·  A NEW RECITER EVERY TIME", "القرآن الكريم");
         title.setTypeface(fQuran);
         title.setIncludeFontPadding(true);
@@ -1709,7 +1735,7 @@ public class MainActivity extends Activity {
     }
 
     private void showReciters(List<Quran.Reciter> all, Set<String> local) {
-        if (reciterPanel == null) { reciterPanel = new FrameLayout(this); reciterPanel.setElevation(40); stage.addView(reciterPanel, new FrameLayout.LayoutParams(1920, 1080)); }
+        if (reciterPanel == null) { reciterPanel = new FrameLayout(this); reciterPanel.setElevation(40); stage.addView(reciterPanel, bleed()); }
         reciterPanel.removeAllViews();
         reciterPanel.setBackgroundColor(0x99050810);
         LinearLayout box = new LinearLayout(this);
@@ -2109,7 +2135,7 @@ public class MainActivity extends Activity {
     private void openParent() {
         drawParent(0);
         show(parentPanel);
-        View box = parentPanel.getChildAt(0);
+        View box = parentPanel.getChildAt(1); // 0 is the scrim
         box.setScaleX(0.94f); box.setScaleY(0.94f); box.setAlpha(0);
         box.animate().scaleX(1).scaleY(1).alpha(1).setDuration(340).setInterpolator(new DecelerateInterpolator(2.2f)).start();
     }
@@ -2143,6 +2169,14 @@ public class MainActivity extends Activity {
             prefs.edit().putBoolean("quiet_quran", !quiet).apply();
             if (quiet && quranQuiet) stopQuran(); else if (!quiet) { quietStopped = false; backgroundQuran(); }
             drawParent(6);
+        });
+        int fit = prefs.getInt("fit", 94);
+        parentRow("Screen size (fit the TV's edges)", fit + "%", () -> {
+            int i = 0;
+            while (i < FITS.length && FITS[i] != fit) i++;
+            prefs.edit().putInt("fit", FITS[(i + 1) % FITS.length]).apply();
+            fitStage();
+            drawParent(7);
         });
         parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
         View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
@@ -2195,7 +2229,7 @@ public class MainActivity extends Activity {
     /** A page of the coming Islamic dates with how many days are left, opened from All apps. */
     private void openCalendar() {
         appsPanel.setVisibility(View.GONE);
-        calendarPanel.removeAllViews();
+        calendarPanel.removeViews(1, calendarPanel.getChildCount() - 1); // keep the scrim
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(56, 44, 56, 40);
