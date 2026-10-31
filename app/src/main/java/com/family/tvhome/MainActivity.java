@@ -276,9 +276,54 @@ public class MainActivity extends Activity {
                 case "quran": openQuran(); break;
                 case "pin": openPin(false); break;
                 case "calendar": openCalendar(); break;
+                case "stress": stressTest(); break;
                 default: break;
             }
         }, 400);
+    }
+
+    // ================================================================== stress test
+
+    /** Update TV photographs the home screen with the longest text each card can get, to prove nothing overlaps or is cut. */
+    private boolean stress;
+
+    private void stressTest() {
+        stress = true;
+        boolean h24 = prefs.getBoolean("clock24", false);
+        clockText.setText(h24 ? "23:58" : "12:58");
+        ampmText.setText(h24 ? "" : "PM");
+        tempText.setText("48°");
+        skyText.setText("Thunderstorm with hail  ·  عاصفة رعدية مع برد");
+        dateText.setText("Wednesday 28 September");
+        hijriText.setText("٢٩ ذو الحجة ١٤٤٨ هـ");
+        dayText.setText("Today  48° / 36°     Tomorrow ⛈ 47° / 35°");
+        driveText.setText("●  Drive unplugged");
+        driveText.setVisibility(View.VISIBLE);
+        eventText.setText("●  First ten days of Dhul Hijjah  ·  العشر الأوائل من ذي الحجة");
+        eventChip.setVisibility(View.VISIBLE);
+        adhanName.setText("Suhoor ends");
+        adhanAr.setText("الإمساك · الفجر");
+        adhanCountdown.setText("10:59:59");
+        nowSurah.setText("سورة الشعراء   ·   Ash-Shu'ara");
+        nowReciter.setText("عبدالرحمن السديس  ·  Abdul Rahman Al-Sudais");
+        showNowReciting(true);
+        lineFrame.setVisibility(View.VISIBLE);
+        lineKicker.setText("VERSE OF THE DAY  ·  آية اليوم   ·   Al-Baqarah 2:286");
+        lineAr.setText("رَبَّنَا لَا تُؤَاخِذْنَا إِن نَّسِينَا أَوْ أَخْطَأْنَا رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِن قَبْلِنَا");
+        lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, 32);
+        lineEn.setText("Our Lord, do not take us to task if we forget or make a mistake. Our Lord, do not place on us a burden like the one You placed on those before us.");
+        lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 28);
+    }
+
+    private void endStress() {
+        stress = false;
+        cachedDay = "";
+        shownClock = "";
+        updateDrive();
+        drawQuranState();
+        fetchWeather();
+        nextLine(Calendar.getInstance(KUWAIT));
+        tick();
     }
 
     @Override
@@ -307,6 +352,7 @@ public class MainActivity extends Activity {
         int code = e.getKeyCode();
         lastInput = System.currentTimeMillis();
         if (splash != null) { if (e.getAction() == KeyEvent.ACTION_UP) hideSplash(); return true; } // a press skips the intro
+        if (stress && e.getAction() == KeyEvent.ACTION_UP) endStress();
         if (ambient) { if (e.getAction() == KeyEvent.ACTION_UP) leaveAmbient(); return true; } // the first press only wakes the screen
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) {
@@ -555,6 +601,23 @@ public class MainActivity extends Activity {
     private LinearLayout leftCard;
     private View lineFrame;
 
+    /** The clock's typefaces, chosen in Parent settings: {name, digits font, AM/PM font}. */
+    static final String[] CLOCK_FONTS = {"Outfit", "Jost", "Cormorant", "Inter"};
+
+    private void applyClockFont() {
+        int k = prefs.getInt("clock_font", 0) % CLOCK_FONTS.length;
+        int[] digits = {R.font.outfit_thin, R.font.jost_extralight, R.font.cormorant_light, R.font.inter_extralight};
+        Typeface tf = getResources().getFont(digits[k]);
+        clockText.setTypeface(tf);
+        ampmText.setTypeface(k == 3 ? fLight : tf);
+        // each face sits a little differently on the line: tune size, spacing and the AM/PM baseline to match
+        float[] size = {236, 232, 250, 230}, spacing = {-0.02f, 0f, -0.01f, -0.03f};
+        int[] ampmLift = {40, 40, 46, 38};
+        clockText.setTextSize(TypedValue.COMPLEX_UNIT_PX, size[k]);
+        clockText.setLetterSpacing(spacing[k]);
+        ampmText.setPadding(16, 0, 0, ampmLift[k]);
+    }
+
     /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
     private void buildCenter() {
         LinearLayout c = new LinearLayout(this);
@@ -564,12 +627,12 @@ public class MainActivity extends Activity {
         clockRow.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         clockText = text("--:--", 230, fThin, 0xF2FFFFFF);
         clockText.setFontFeatureSettings("tnum");
-        clockText.setLetterSpacing(-0.03f);
         clockText.setShadowLayer(40, 0, 4, 0x40000000);
         ampmText = text("", 44, fLight, 0xB3FFFFFF);
-        ampmText.setPadding(14, 0, 0, 38);
+        ampmText.setLetterSpacing(0.08f);
         clockRow.addView(clockText);
         clockRow.addView(ampmText);
+        applyClockFont();
         c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
         stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 236));
@@ -814,6 +877,7 @@ public class MainActivity extends Activity {
     // ================================================================== clock, adhan, widgets
 
     private void tick() {
+        if (stress) return; // the stress test holds its long texts until a key is pressed
         Calendar now = Calendar.getInstance(KUWAIT);
         int y = now.get(Calendar.YEAR), m = now.get(Calendar.MONTH) + 1, d = now.get(Calendar.DAY_OF_MONTH);
         String key = y + "-" + m + "-" + d;
@@ -2179,6 +2243,12 @@ public class MainActivity extends Activity {
             prefs.edit().putInt("fit", FITS[(i + 1) % FITS.length]).apply();
             fitStage();
             drawParent(7);
+        });
+        int cf = prefs.getInt("clock_font", 0) % CLOCK_FONTS.length;
+        parentRow("Clock font", CLOCK_FONTS[cf], () -> {
+            prefs.edit().putInt("clock_font", (cf + 1) % CLOCK_FONTS.length).apply();
+            applyClockFont();
+            drawParent(8);
         });
         parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
         View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
