@@ -37,7 +37,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
-import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageView;
@@ -116,19 +115,14 @@ public class KidsActivity extends Activity {
         cover = new View(this);
         root.addView(cover, new FrameLayout.LayoutParams(-1, -1));
         View scrim = new View(this);
-        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x1A000000, 0x1A000000, 0x73000000}));
+        scrim.setBackground(grad(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x1A000000, 0x1A000000, 0x73000000}));
         root.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
         stage = new FrameLayout(this);
         stage.setClipChildren(false);
         root.addView(stage, new FrameLayout.LayoutParams(1920, 1080));
-        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            float s = Math.min((r - l) / 1920f, (b - t) / 1080f);
-            stage.setPivotX(0); stage.setPivotY(0);
-            stage.setScaleX(s); stage.setScaleY(s);
-            stage.setTranslationX(((r - l) - 1920 * s) / 2);
-            stage.setTranslationY(((b - t) - 1080 * s) / 2);
-        });
+        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitStage());
         setContentView(root);
+        preferSixtyHz();
 
         video.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override public void surfaceCreated(SurfaceHolder h) { surfaceReady = true; playClip(); }
@@ -202,6 +196,37 @@ public class KidsActivity extends Activity {
         loadCartoons();
     }
 
+    /** Screen size in percent, as on the family home: TVs that crop the picture's edges can shrink the layout to fit. */
+    static final int[] FITS = {100, 97, 94, 91, 88};
+
+    private void fitStage() {
+        int w = root.getWidth(), h = root.getHeight();
+        if (w == 0 || h == 0) return;
+        float s = Math.min(w / 1920f, h / 1080f) * Rules.prefs(this).getInt("fit", 100) / 100f;
+        stage.setPivotX(0); stage.setPivotY(0);
+        stage.setScaleX(s); stage.setScaleY(s);
+        stage.setTranslationX((w - 1920 * s) / 2);
+        stage.setTranslationY((h - 1080 * s) / 2);
+    }
+
+    /** Ask for a 60 Hz display mode at the current resolution, so every animation can run at 60 fps. */
+    private void preferSixtyHz() {
+        try {
+            android.view.Display d = getWindowManager().getDefaultDisplay();
+            if (d == null) return;
+            android.view.Display.Mode cur = d.getMode(), best = null;
+            for (android.view.Display.Mode m : d.getSupportedModes()) {
+                if (m.getPhysicalWidth() != cur.getPhysicalWidth() || m.getPhysicalHeight() != cur.getPhysicalHeight()) continue;
+                if (m.getRefreshRate() < 59f || m.getRefreshRate() > 61f) continue;
+                best = m;
+            }
+            if (best == null || best.getModeId() == cur.getModeId()) return;
+            android.view.WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.preferredDisplayModeId = best.getModeId();
+            getWindow().setAttributes(lp);
+        } catch (Exception ignored) { }
+    }
+
     private void hideBars() {
         root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
     }
@@ -270,7 +295,7 @@ public class KidsActivity extends Activity {
         boolean pinned = Rules.prefs(this).getInt("world", -1) >= 0;
         Worlds.Character ch = Worlds.characterOfTheDay(w, pinned);
         charName.setText(ch.name);
-        charFrom.setText(ch.from);
+        charFrom.setText(ch.from.toUpperCase(Locale.ROOT));
         charFrom.setTextColor(w.accent);
         charFact.setText(ch.fact);
         drawGoodWord();
@@ -444,27 +469,22 @@ public class KidsActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(52, 36, 52, 40);
+        card.setPadding(48, 32, 48, 36);
         card.setBackground(glass(48));
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
-        TextView kick = text("CHARACTER OF THE DAY", 30, fBold, DIM);
-        kick.setLetterSpacing(0.2f);
-        t.addView(kick);
-        LinearLayout nameRow = new LinearLayout(this);
-        nameRow.setGravity(Gravity.BOTTOM);
-        charName = text("", 68, fHeavy, WHITE);
-        charName.setIncludeFontPadding(false);
-        nameRow.addView(charName);
+        // the show's name is the heading ("SONIC THE HEDGEHOG"), the character's name is big below it
         charFrom = text("", 30, fBold, WHITE);
-        charFrom.setPadding(22, 0, 0, 8);
-        nameRow.addView(charFrom);
-        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-2, -2);
-        nl.topMargin = 10;
-        t.addView(nameRow, nl);
-        charFact = text("", 34, fMed, SOFT);
-        charFact.setPadding(0, 10, 0, 0);
-        t.addView(charFact);
+        charFrom.setLetterSpacing(0.16f);
+        t.addView(charFrom);
+        charName = text("", 64, fHeavy, WHITE);
+        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-1, -2);
+        nl.topMargin = 6;
+        t.addView(charName, nl);
+        charFact = text("", 32, fMed, SOFT);
+        LinearLayout.LayoutParams fl = new LinearLayout.LayoutParams(-1, -2);
+        fl.topMargin = 8;
+        t.addView(charFact, fl);
         card.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
         charPhoto = new ImageView(this);
         charPhoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -482,7 +502,7 @@ public class KidsActivity extends Activity {
     }
 
     /** Where the character card ends and the good-word card begins, on the 1920 stage. */
-    private static final int MID_SPLIT = 890, MID_GAP = 28, MID_BOTTOM = 762;
+    private static final int MID_SPLIT = 890, MID_GAP = 28, MID_BOTTOM = KidsActivity.DOCK_Y - 30;
 
     /** The middle cards sit just under the welcome card, and never run into the dock label. */
     private void fitMiddle() {
@@ -490,7 +510,7 @@ public class KidsActivity extends Activity {
         int h = Math.max(charCard.getHeight(), wordCard.getHeight());
         // both cards take the taller one's height, so the row looks like one piece
         if (charCard.getMinimumHeight() != h || wordCard.getMinimumHeight() != h) { charCard.setMinimumHeight(h); wordCard.setMinimumHeight(h); }
-        int top = Math.min(welcomeCard.getBottom() + MID_GAP, MID_BOTTOM - h);
+        int top = Math.max(welcomeCard.getBottom() + 16, Math.min(welcomeCard.getBottom() + MID_GAP, MID_BOTTOM - h));
         for (View v : new View[]{charCard, wordCard}) {
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) v.getLayoutParams();
             if (lp.topMargin != top) { lp.topMargin = top; v.setLayoutParams(lp); }
@@ -500,22 +520,22 @@ public class KidsActivity extends Activity {
     /** A beautiful name of Allah or a short hadith, a new one each day, with a simple picture. */
     private void buildGoodWord() {
         LinearLayout card = new LinearLayout(this);
-        card.setPadding(44, 32, 44, 36);
+        card.setPadding(44, 32, 40, 36);
         card.setBackground(glass(48));
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
         wordKick = text("", 30, fBold, DIM);
         wordKick.setLetterSpacing(0.2f);
         t.addView(wordKick);
-        wordArabic = text("", 46, fBold, 0xFFFFD45A);
+        wordArabic = text("", 42, fBold, 0xFFFFD45A);
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2);
         al.topMargin = 8;
         t.addView(wordArabic, al);
-        wordName = text("", 34, fBold, WHITE);
+        wordName = text("", 30, fBold, WHITE);
         t.addView(wordName);
-        wordMeaning = text("", 38, fHeavy, WHITE);
+        wordMeaning = text("", 34, fHeavy, WHITE);
         t.addView(wordMeaning);
-        wordLine = text("", 32, fMed, SOFT);
+        wordLine = text("", 30, fMed, SOFT);
         wordLine.setPadding(0, 6, 0, 0);
         t.addView(wordLine);
         card.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
@@ -560,21 +580,22 @@ public class KidsActivity extends Activity {
         // the glass dock along the bottom, like the family home screen
         View dock = new View(this);
         dock.setBackground(glass(60));
-        place(dock, 80, 866, 1760, 178);
+        place(dock, 80, DOCK_Y, 1760, DOCK_H);
 
         tileRow = new LinearLayout(this);
         tileRow.setGravity(Gravity.CENTER);
         tileRow.setClipChildren(false);
         tileRow.setClipToPadding(false);
-        place(tileRow, 80, 866, 1760, 178);
+        tileRow.setPadding(48, 0, 48, DOCK_NAME); // the bottom strip is where the focused app's name appears
+        tileRow.setBackground(glow); // the focused app's colour, glowing softly behind its tile
+        place(tileRow, 80, DOCK_Y, 1760, DOCK_H);
 
-        tileLabel = text("", 32, fHeavy, WHITE);
+        // the focused app's name, under its tile inside the dock (no box)
+        tileLabel = text("", 30, fBold, WHITE);
         tileLabel.setGravity(Gravity.CENTER);
-        tileLabel.setPadding(30, 4, 30, 6);
-        tileLabel.setBackground(glass(40));
         labelPill = tileLabel;
         tileLabel.setAlpha(0); // shown once a tile has focus
-        place(tileLabel, 0, 776, -2, -2);
+        place(tileLabel, 0, DOCK_Y + DOCK_H - DOCK_NAME - 4, -2, -2);
     }
 
     private void drawGreeting() {
@@ -599,13 +620,55 @@ public class KidsActivity extends Activity {
         starsText.setText(b.toString());
     }
 
-    /** Puts the name pill just above the focused tile. */
+    static final int DOCK_Y = 836, DOCK_H = 208, DOCK_NAME = 52;
+    private final BrandGlow glow = new BrandGlow();
+    private final List<Integer> tileColors = new ArrayList<>();
+
+    /** Puts the focused app's name just under its tile, rising in softly. */
     private void moveLabel(View tile, String label) {
         tileLabel.setText(label);
         tileLabel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         float cx = 80 + tile.getLeft() + tile.getWidth() / 2f; // the dock starts 80 px in
         float x = Math.max(80, Math.min(1840 - tileLabel.getMeasuredWidth(), cx - tileLabel.getMeasuredWidth() / 2f));
-        tileLabel.animate().translationX(x).alpha(1).setDuration(260).setInterpolator(EASE).start();
+        tileLabel.animate().cancel();
+        tileLabel.setTranslationX(x);
+        tileLabel.setAlpha(0);
+        tileLabel.setTranslationY(8);
+        tileLabel.animate().alpha(1).translationY(0).setDuration(250).setInterpolator(EASE).start();
+    }
+
+    /**
+     * Focus in the dock: the focused tile grows a little and lifts, its neighbours slide aside so nothing
+     * overlaps, and the app's own colour glows behind it. No white box or ring.
+     */
+    private void magnify(int focused) {
+        for (int i = 0; i < tileRow.getChildCount(); i++) {
+            View t = tileRow.getChildAt(i);
+            int dist = focused < 0 ? 9 : Math.abs(i - focused);
+            float sc = dist == 0 ? 1.12f : dist == 1 ? 1.03f : 1f;
+            float lift = dist == 0 ? -12 : dist == 1 ? -3 : 0;
+            float side = focused < 0 || dist == 0 ? 0 : Math.signum(i - focused) * (dist == 1 ? 16 : 20);
+            t.animate().scaleX(sc).scaleY(sc).translationX(side).translationY(lift).setDuration(250).setInterpolator(GROW).start();
+        }
+        if (focused < 0 || focused >= tileColors.size()) { glow.moveTo(-1, 0); return; }
+        View f = tileRow.getChildAt(focused);
+        int c = tileColors.get(focused);
+        if (f.getWidth() == 0) f.post(() -> glow.moveTo(f.getLeft() + f.getWidth() / 2f, c));
+        else glow.moveTo(f.getLeft() + f.getWidth() / 2f, c);
+    }
+    private static final DecelerateInterpolator GROW = new DecelerateInterpolator(2f);
+
+    /** The colour each app is known by, for its glow in the dock (the same colours as the family home). */
+    private int appColor(String pkg) {
+        switch (pkg) {
+            case "com.netflix.ninja": return 0xFFE50914;
+            case "com.crunchyroll.crunchyroid": return 0xFFF47521;
+            case "com.amazon.amazonvideo.livingroom": return 0xFF1AA3E8;
+            case "net.mbc.shahidTV": case "net.mbc.shahid": return 0xFF1FD3A5;
+            case "org.xbmc.kodi": case "org.videolan.vlc": return 0xFF17B2E7;
+            case "com.disney.disneyplus": return 0xFF1F80E0;
+            default: return 0xFFDDE6FF;
+        }
     }
     private static final DecelerateInterpolator EASE = new DecelerateInterpolator(1.8f);
 
@@ -647,6 +710,7 @@ public class KidsActivity extends Activity {
         boolean hadFocus = focused != null && tiles.contains(focused);
         tileRow.removeAllViews();
         tiles.clear();
+        tileColors.clear();
         PackageManager pm = getPackageManager();
         List<String[]> items = new ArrayList<>(); // {pkg or "", label}
         items.add(new String[]{"", "My cartoons"});
@@ -656,7 +720,7 @@ public class KidsActivity extends Activity {
             if (allowed.contains(p) && !Rules.NEVER.contains(p)) items.add(new String[]{p, r.loadLabel(pm).toString()});
         }
         int n = items.size();
-        int w = Math.min(242, 1500 / n - 44), h = w * 9 / 16; // TV banners are 16:9: nothing gets cropped
+        int w = Math.min(250, 1460 / n - 52), h = w * 9 / 16; // TV banners are 16:9: nothing gets cropped
         for (int i = 0; i < n; i++) {
             String pkg = items.get(i)[0], label = items.get(i)[1];
             FrameLayout tile = new FrameLayout(this);
@@ -668,7 +732,7 @@ public class KidsActivity extends Activity {
             ImageView img = new ImageView(this);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             if (pkg.isEmpty()) {
-                tile.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{world.body, world.bodyDark}));
+                tile.setBackground(grad(GradientDrawable.Orientation.TL_BR, new int[]{world.body, world.bodyDark}));
                 TextView t = text("▶ Cartoons", 32, fHeavy, WHITE);
                 t.setGravity(Gravity.CENTER);
                 tile.addView(t, new FrameLayout.LayoutParams(-1, -1));
@@ -684,33 +748,22 @@ public class KidsActivity extends Activity {
                 }
                 tile.addView(img, new FrameLayout.LayoutParams(-1, -1));
             }
-            View ringView = new View(this);
-            GradientDrawable edge = new GradientDrawable();
-            edge.setCornerRadius(26);
-            edge.setStroke(6, WHITE);
-            ringView.setBackground(edge);
-            ringView.setAlpha(0);
-            tile.addView(ringView, new FrameLayout.LayoutParams(-1, -1));
-
             final int index = i;
+            tileColors.add(pkg.isEmpty() ? world.accent : appColor(pkg));
             tile.setOnFocusChangeListener((v, has) -> {
-                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).translationY(has ? -10 : 0)
-                        .setDuration(has ? 420 : 220).setInterpolator(has ? new OvershootInterpolator(2.2f) : new DecelerateInterpolator(1.6f)).start();
-                v.setTranslationZ(has ? 10 : 0); // on top of its neighbours, with no shadow drawn outside the tile
-                ringView.animate().alpha(has ? 1 : 0).setDuration(200).start();
                 if (has) {
                     lastTile = index;
-                    v.post(() -> {
-                        moveLabel(v, label);
-                        float cx = 80 + v.getLeft() + v.getWidth() / 2f;
-                    });
+                    magnify(index);
+                    v.post(() -> moveLabel(v, label));
+                } else {
+                    v.post(() -> { if (!dockFocused()) { magnify(-1); tileLabel.animate().alpha(0).setDuration(150).start(); } });
                 }
             });
             tile.setOnClickListener(v -> {
                 if (pkg.isEmpty()) openCartoons(); else launch(pkg);
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
-            lp.leftMargin = lp.rightMargin = 22; // room for the 8% focus zoom, so tiles never overlap
+            lp.leftMargin = lp.rightMargin = 16; // neighbours slide aside when one grows, so tiles never overlap
             tileRow.addView(tile, lp);
             tiles.add(tile);
         }
@@ -731,9 +784,11 @@ public class KidsActivity extends Activity {
         dl.topMargin = dl.rightMargin = 10;
         lock.addView(setupDot, dl);
         setupDot.setVisibility(setupComplete() ? View.GONE : View.VISIBLE);
+        tileColors.add(0xFFFFD45A);
+        final int lockIndex = tiles.size();
         lock.setOnFocusChangeListener((v, has) -> {
-            v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(200).start();
-            if (has) moveLabel(v, "Grown-ups");
+            if (has) { magnify(lockIndex); v.post(() -> moveLabel(v, "Grown-ups")); }
+            else v.post(() -> { if (!dockFocused()) { magnify(-1); tileLabel.animate().alpha(0).setDuration(150).start(); } });
         });
         lock.setOnClickListener(v -> askPin("check", this::openParent));
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(88, 88);
@@ -745,6 +800,11 @@ public class KidsActivity extends Activity {
             if (anyPanelOpen()) return;
             tiles.get(Math.min(lastTile, tiles.size() - 1)).requestFocus();
         }
+    }
+
+    private boolean dockFocused() {
+        View f = getCurrentFocus();
+        return f != null && f.getParent() == tileRow;
     }
 
     private List<ResolveInfo> launchables() {
@@ -1094,7 +1154,7 @@ public class KidsActivity extends Activity {
             card.setOutlineProvider(rounded(26));
             // the picture: today's world colours with a play mark, until the video's own frame is ready
             FrameLayout pic = new FrameLayout(this);
-            pic.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{world.body, world.bodyDark}));
+            pic.setBackground(grad(GradientDrawable.Orientation.TL_BR, new int[]{world.body, world.bodyDark}));
             ImageView img = new ImageView(this);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             pic.addView(img, new FrameLayout.LayoutParams(-1, -1));
@@ -1310,6 +1370,7 @@ public class KidsActivity extends Activity {
         choiceRow("Bedtime (until 7 am)", BEDTIMES, "bedtime", 20 * 60 + 30, KidsActivity::bedLabel);
         choiceRow("Bedtime wind-down", new int[]{0, 1}, "winddown", 1, v -> v == 1 ? "On" : "Off");
         parentList.addView(section("Look"));
+        choiceRow("Screen size (fit the TV's edges)", FITS, "fit", 100, v -> v + "%");
         int[] worlds = new int[Worlds.ALL.length + 1];
         for (int i = 0; i < worlds.length; i++) worlds[i] = i - 1;
         choiceRow("World", worlds, "world", -1, v -> v < 0 ? "A new one every day" : Worlds.ALL[v].name);
@@ -1389,6 +1450,7 @@ public class KidsActivity extends Activity {
             Rules.prefs(this).edit().putInt(key, values[at]).apply();
             draw.run();
             if (key.equals("world")) { applyWorld(); refreshTiles(); }
+            if (key.equals("fit")) fitStage();
             drawStars();
             if (restPanel.getVisibility() == View.VISIBLE) drawRestStars(Rules.resting(this).equals("bed"));
             tick();
@@ -1541,7 +1603,7 @@ public class KidsActivity extends Activity {
 
     private FrameLayout panel() {
         FrameLayout p = new FrameLayout(this);
-        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xF20A0718, 0xFC070512}));
+        p.setBackground(grad(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xF20A0718, 0xFC070512}));
         p.setVisibility(View.GONE);
         p.setClickable(true);
         stage.addView(p, new FrameLayout.LayoutParams(1920, 1080));
@@ -1610,9 +1672,17 @@ public class KidsActivity extends Activity {
         return b;
     }
 
+    /** A gradient drawn with dithering, so dark fades stay smooth on the TV instead of showing stripes. */
+    @SuppressWarnings("deprecation")
+    private static GradientDrawable grad(GradientDrawable.Orientation o, int[] colors) {
+        GradientDrawable d = new GradientDrawable(o, colors);
+        d.setDither(true);
+        return d;
+    }
+
     private static GradientDrawable glass(float radius) {
         // light at the top, clearer below, with a fine bright edge: the video shows through
-        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x40FFFFFF, 0x1FFFFFFF});
+        GradientDrawable d = grad(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x40FFFFFF, 0x1FFFFFFF});
         d.setStroke(2, 0x52FFFFFF);
         d.setCornerRadius(radius);
         return d;
@@ -1620,7 +1690,7 @@ public class KidsActivity extends Activity {
 
     /** The card every grown-up panel sits on: deep violet, lit from the top left, with a fine edge. */
     private static GradientDrawable sheet(float radius) {
-        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF241B45, 0xFF150F2B});
+        GradientDrawable d = grad(GradientDrawable.Orientation.TL_BR, new int[]{0xFF241B45, 0xFF150F2B});
         d.setCornerRadius(radius);
         d.setStroke(2, 0x30FFFFFF);
         return d;
