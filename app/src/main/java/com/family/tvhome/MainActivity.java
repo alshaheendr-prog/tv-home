@@ -959,6 +959,7 @@ public class MainActivity extends Activity {
             mark.setGravity(Gravity.CENTER);
             tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
             tile.setPivotY(TILE);
+            tile.setForeground(ring(30, 2, 0x4DFFFFFF)); // a fine light edge so every icon reads as one set
             if (d.id.equals("yt")) tile.setOnLongClickListener(v -> { openPin(true); return true; });
             tile.setOnClickListener(v -> openDock(d));
             tile.setOnFocusChangeListener((v, has) -> {
@@ -1024,11 +1025,9 @@ public class MainActivity extends Activity {
         if (tile.getWidth() == 0 || !tile.isLaidOut()) { tile.post(() -> { if (tile.hasFocus()) showDockLabel(tile, name); }); return; }
         dockLabel.setText(name);
         dockLabel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int[] a = new int[2], s = new int[2];
-        tile.getLocationOnScreen(a);
-        stage.getLocationOnScreen(s);
-        float sc = stage.getScaleX();
-        float cx = (a[0] - s[0]) / sc + tile.getWidth() * tile.getScaleX() / 2f;
+        // the tile's resting centre in stage coordinates (layout only, so a slide or grow in progress can't push it off)
+        float cx = tile.getLeft() + tile.getWidth() / 2f;
+        for (View v = (View) tile.getParent(); v != null && v != stage; v = (View) v.getParent()) cx += v.getLeft();
         dockLabel.animate().cancel();
         dockLabel.setX(cx - dockLabel.getMeasuredWidth() / 2f);
         float y = 1080 - DOCK_Y - (DOCK_H - TILE) / 2f - 20 + 4; // just under the lifted icon, inside the dock
