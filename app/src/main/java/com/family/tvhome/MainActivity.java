@@ -354,7 +354,7 @@ public class MainActivity extends Activity {
 
     /** The strip stays one height: the surah and reciter always take one line each, and the strip widens to fit them.
      *  Only a name too long for the screen drops its English half (never cut off with "..."). */
-    static final int NOW_LINE_MAX = 640;
+    static final int NOW_LINE_MAX = 520;
     private static void oneLine(TextView t, String ar, String en) {
         String both = ar + "  ·  " + en;
         t.setText(t.getPaint().measureText(both) <= NOW_LINE_MAX ? both : ar);
@@ -1010,7 +1010,7 @@ public class MainActivity extends Activity {
     /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
     /** Text shadows stay tight around the letters (a soft drop shadow, no halo box). */
     static final float TEXT_SHADOW = 4f;
-    static final int CLOCK_TOP = 34, LINE_Y = 470, STRIP_Y = 690, STRIP_H = 110, RIGHT_EDGE = 110;
+    static final int CLOCK_TOP = 34, LINE_Y = 494, STRIP_Y = 706, STRIP_H = 100, RIGHT_EDGE = 110;
 
     private static void moveTo(View v, ViewGroup to, ViewGroup.LayoutParams lp) {
         if (v.getParent() != null) ((ViewGroup) v.getParent()).removeView(v);
@@ -1086,12 +1086,12 @@ public class MainActivity extends Activity {
         lineAr = text("", 38, fQuran, WHITE);
         lineAr.setIncludeFontPadding(true);
         lineAr.setGravity(Gravity.END);
-        lineAr.setMaxWidth(1400);
+        lineAr.setMaxWidth(1700);
         lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, 36);
         lineAr.setPadding(0, 6, 0, 0);
         lineEn = text("", 32, fSerif, SOFT);
         lineEn.setGravity(Gravity.END);
-        lineEn.setMaxWidth(1400);
+        lineEn.setMaxWidth(1700);
         lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 30);
         lineEn.setLineSpacing(0, 1.05f);
         lineEn.setPadding(0, 2, 0, 0);
@@ -1104,6 +1104,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams lbp = new LinearLayout.LayoutParams(220, 2);
         lbp.topMargin = 14;
         lineBox.addView(lineBar, lbp);
+        lineBar.setVisibility(View.GONE); // no stray lines on the home screen
         // no box around it any more: just the words, with a soft shadow so they read on any wallpaper
         for (TextView t : new TextView[]{lineKicker, lineAr, lineEn}) t.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         // held in its own frame: the line's own fade moves lineBox, the quiet-mode slide moves the frame, so neither undoes the other
@@ -1120,7 +1121,7 @@ public class MainActivity extends Activity {
         pillText.setPadding(34, 14, 34, 16);
         pillText.setBackground(new Glass(40, 0, 0, 0x4D000000));
         pillText.setAlpha(0);
-        stage.addView(pillText, at(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 60));
+        stage.addView(pillText, at(-2, -2, Gravity.TOP | Gravity.START, 80, 56)); // top left, clear of the weather on the right
     }
 
     static final int TILE = 132, DOCK_H = 188, DOCK_Y = 36;
@@ -2206,14 +2207,14 @@ public class MainActivity extends Activity {
         nlp.rightMargin = 36; // names, then the countdown, sized to their text
         ((View) adhanName.getParent()).setLayoutParams(nlp);
         adhanName.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);
-        adhanName.setTextSize(TypedValue.COMPLEX_UNIT_PX, 38);
+        adhanName.setTextSize(TypedValue.COMPLEX_UNIT_PX, 32);
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, 3);
         bp.topMargin = 8;
         moveTo(adhanBar, colA, bp);
         strip.addView(colA, new LinearLayout.LayoutParams(-2, -2));
         strip.addView(stripDivider());
         View times = prayerCells[0] == null ? null : (View) prayerCells[0].getParent();
-        moveTo(times, strip, new LinearLayout.LayoutParams(660, -2));
+        moveTo(times, strip, new LinearLayout.LayoutParams(520, -2));
         LinearLayout nowPart = new LinearLayout(this);
         nowPart.setGravity(Gravity.CENTER_VERTICAL);
         nowPart.addView(stripDivider());
@@ -2230,13 +2231,21 @@ public class MainActivity extends Activity {
         names.setOrientation(LinearLayout.HORIZONTAL);
         names.setGravity(Gravity.CENTER_VERTICAL);
         adhanAr.setPadding(18, 0, 0, 0);
-        adhanCountdown.setTextSize(TypedValue.COMPLEX_UNIT_PX, 52);
+        adhanCountdown.setTextSize(TypedValue.COMPLEX_UNIT_PX, 44);
+        adhanAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, 26);
         for (TextView[] p : prayerTexts) p[1].setVisibility(View.GONE);
         ((ViewGroup) nowSurah.getParent()).getChildAt(0).setVisibility(View.GONE);
         shadowAll(strip);
         // no box: just the row, wide, over the soft dark fade at the bottom of the screen
         strip.setPadding(0, 0, 0, 0);
-        stage.addView(strip, at(-2, STRIP_H, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, STRIP_Y));
+        stage.addView(strip, at(-2, STRIP_H, Gravity.TOP | Gravity.END, RIGHT_EDGE, STRIP_Y));
+        strip.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
+        // no lines in the strip: spacing alone separates its parts
+        adhanBar.setVisibility(View.GONE);
+        nowBar.setVisibility(View.GONE);
+        // the recitation row was built hidden (it used to be its own card); the part around it now shows and hides it
+        nowRow.setVisibility(View.VISIBLE);
+        nowRow.setAlpha(1);
         topParts[1] = strip;
     }
 
@@ -2248,8 +2257,8 @@ public class MainActivity extends Activity {
     private View stripDivider() {
         View d = new View(this);
         d.setBackgroundColor(0x33FFFFFF);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(2, 70);
-        p.leftMargin = 44; p.rightMargin = 44;
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, 70);
+        p.leftMargin = 20; p.rightMargin = 20; // just a gap, no visible line
         d.setLayoutParams(p);
         return d;
     }
