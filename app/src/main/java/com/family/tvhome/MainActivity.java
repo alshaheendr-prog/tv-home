@@ -2111,6 +2111,9 @@ public class MainActivity extends Activity {
     /** Surah tiles: deep navy glass with a faint gold edge, so the star pattern shows in the gaps, not through the names. */
     static final int SURAH_FILL = 0xB30D1428, SURAH_EDGE = 0x33F1D58A;
 
+    static final int SURAH_STEP = 164, QNOW_W = 640;
+    private TextView quranNowReciter;
+
     private void buildQuran() {
         quranPanel = overlay();
         StarField field = new StarField(this);
@@ -2123,11 +2126,21 @@ public class MainActivity extends Activity {
 
         quranControls = new LinearLayout(this);
         quranControls.setGravity(Gravity.CENTER_VERTICAL);
-        quranNow = text("", 24, fAr, SOFT);
-        quranNow.setPadding(0, 0, 28, 0);
-        quranNow.setGravity(Gravity.END);
-        quranNow.setLineSpacing(0, 1.1f);
-        quranControls.addView(quranNow, new LinearLayout.LayoutParams(600, -2));
+        // what is playing, large and centred in the open space between the title and the buttons
+        LinearLayout nowBox = new LinearLayout(this);
+        nowBox.setOrientation(LinearLayout.VERTICAL);
+        nowBox.setGravity(Gravity.CENTER_HORIZONTAL);
+        quranNow = text("", 40, fAr, WHITE);
+        quranNow.setIncludeFontPadding(true);
+        quranNow.setGravity(Gravity.CENTER);
+        quranNowReciter = text("", 30, fAr, SOFT);
+        quranNowReciter.setIncludeFontPadding(true);
+        quranNowReciter.setGravity(Gravity.CENTER);
+        quranNowReciter.setLineSpacing(0, 1.05f);
+        nowBox.addView(quranNow, new LinearLayout.LayoutParams(-1, -2));
+        nowBox.addView(quranNowReciter, new LinearLayout.LayoutParams(-1, -2));
+        quranPanel.addView(nowBox, at(QNOW_W, -2, Gravity.TOP | Gravity.START, 430, 96));
+        quranControls.addView(new View(this), new LinearLayout.LayoutParams(0, 0)); // keeps the buttons from index 1
         quranPlayBtn = quranButton("Pause", () -> {
             if (quran == null) return;
             quran.setPlayWhenReady(!quran.getPlayWhenReady());
@@ -2139,11 +2152,21 @@ public class MainActivity extends Activity {
         quranButton("Stop", this::stopQuran);
         quranPanel.addView(quranControls, at(-2, -2, Gravity.TOP | Gravity.END, 110, 80));
 
-        ScrollView sv = new ScrollView(this);
+        // Rows always stop whole at the top edge (no half-cut row under the header): every scroll is a whole number of rows.
+        ScrollView sv = new ScrollView(this) {
+            @Override protected int computeScrollDeltaToGetChildRectOnScreen(android.graphics.Rect r) {
+                int d = super.computeScrollDeltaToGetChildRectOnScreen(r);
+                if (d == 0) return 0;
+                float rows = (getScrollY() + d) / (float) SURAH_STEP;
+                int to = (d > 0 ? (int) Math.ceil(rows - 0.01f) : (int) Math.floor(rows + 0.01f)) * SURAH_STEP;
+                int max = Math.max(0, getChildAt(0).getHeight() + getPaddingTop() + getPaddingBottom() - getHeight());
+                return Math.max(0, Math.min(to, max)) - getScrollY();
+            }
+        };
         clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setClipToPadding(false);
-        sv.setPadding(0, 16, 0, 60);
+        sv.setPadding(0, 8, 0, 2); // 8 + 5 rows of 164 + 2 = 830, the scroller's height: five whole rows, always
         surahGrid = new GridLayout(this);
         surahGrid.setColumnCount(6);
         surahGrid.setClipChildren(false);
@@ -2183,13 +2206,11 @@ public class MainActivity extends Activity {
             });
             cell.setOnClickListener(v -> { quranQuiet = false; playSurah(n, false); openPlayer(); });
             GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
-            gp.width = 268; gp.height = 150;
+            gp.width = 268; gp.height = SURAH_STEP - 18;
             gp.setMargins(9, 9, 9, 9);
             surahGrid.addView(cell, gp);
         }
         sv.addView(surahGrid);
-        sv.setVerticalFadingEdgeEnabled(true);
-        sv.setFadingEdgeLength(90); // rows melt away under the header instead of being cut
         quranPanel.addView(sv, at(1920 - 200, 1080 - 250, Gravity.TOP | Gravity.START, 100, 250));
 
         // On the home screen: what is playing, at the bottom of the weather card.
@@ -2391,6 +2412,7 @@ public class MainActivity extends Activity {
         if (!anotherReciter) quranErrors = 0;
         final Quran.Reciter not = anotherReciter ? quranReciter : null;
         quranNow.setText("Loading · جارٍ التحميل…");
+        quranNowReciter.setText("");
         bg.execute(() -> {
             // Recitations stored on the box play first (no internet needed); otherwise stream one.
             Quran.cacheDir = getCacheDir();
@@ -2472,12 +2494,14 @@ public class MainActivity extends Activity {
         for (int i = 1; i < quranControls.getChildCount(); i++) quranControls.getChildAt(i).setVisibility(active ? View.VISIBLE : View.GONE);
         if (!active) {
             quranNow.setText("");
+            quranNowReciter.setText("");
             showNowReciting(false);
             drawPlayer();
             return;
         }
-        String reciter = quranReciter.ar.isEmpty() ? quranReciter.en : quranReciter.ar + "  ·  " + quranReciter.en;
-        quranNow.setText("سورة " + Quran.AR[quranSurah - 1] + "  ·  " + Quran.EN[quranSurah - 1] + "\n" + reciter);
+        fitPair(quranNow, "سورة " + Quran.AR[quranSurah - 1], Quran.EN[quranSurah - 1], QNOW_W);
+        if (quranReciter.ar.isEmpty()) quranNowReciter.setText(quranReciter.en);
+        else fitPair(quranNowReciter, quranReciter.ar, quranReciter.en, QNOW_W);
         quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
         fitPair(nowSurah, "سورة " + Quran.AR[quranSurah - 1], Quran.EN[quranSurah - 1], NOW_W);
         drawPlayer();
