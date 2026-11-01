@@ -316,7 +316,7 @@ public class MainActivity extends Activity {
      * so moving along the dock repaints just the dock instead of every card's glass, glow and text each frame.
      */
     private void cacheCards(boolean on) {
-        for (View v : new View[]{topParts[0], topParts[1], eventChip, sunCard, lineFrame, centerGroup})
+        for (View v : new View[]{topParts[0], eventChip, sunCard, lineFrame, centerGroup})
             if (v != null) v.setLayerType(on ? View.LAYER_TYPE_HARDWARE : View.LAYER_TYPE_NONE, null);
     }
 
@@ -341,7 +341,7 @@ public class MainActivity extends Activity {
 
     // widths that keep the top row's pieces apart: sky text beside the temperature, the event chip
     // under the left card, and the now-reciting card in the gap between the two top cards
-    static final int SKY_W = 330, CHIP_W = 470, NOW_W = 440;
+    static final int SKY_W = 420, CHIP_W = 470, NOW_W = 380;
 
     /** "a · b" on one line when it fits in max pixels, otherwise a above b, so nothing is cut or crowded. */
     private static void fitPair(TextView t, String a, String b, int max) {
@@ -990,7 +990,7 @@ public class MainActivity extends Activity {
         ampmText.setTypeface(k == 4 ? fLight : tf);
         // each face sits a little differently on the line: tune size, spacing and the AM/PM baseline to match.
         // The clock is the centrepiece: as large as fits between the two top cards.
-        float[] size = {300, 290, 286, 310, 284}, spacing = {-0.01f, -0.02f, 0f, -0.01f, -0.03f};
+        float[] size = {340, 310, 306, 330, 304}, spacing = {-0.01f, -0.02f, 0f, -0.01f, -0.03f};
         int[] ampmLift = {58, 50, 50, 56, 48};
         clockText.setTextSize(TypedValue.COMPLEX_UNIT_PX, size[k]);
         clockText.setLetterSpacing(spacing[k]);
@@ -998,6 +998,13 @@ public class MainActivity extends Activity {
     }
 
     /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
+    static final int CLOCK_TOP = 34, STRIP_Y = 488;
+
+    private static void moveTo(View v, ViewGroup to, ViewGroup.LayoutParams lp) {
+        if (v.getParent() != null) ((ViewGroup) v.getParent()).removeView(v);
+        to.addView(v, lp);
+    }
+
     private void buildCenter() {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
@@ -1012,9 +1019,52 @@ public class MainActivity extends Activity {
         clockRow.addView(clockText);
         clockRow.addView(ampmText);
         applyClockFont();
-        c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 278)); // below the top cards, with the whole width to itself
+        // The weather and the date live with the clock now (the weather card is gone): the weather above it, the dates below.
+        LinearLayout wxRow = new LinearLayout(this);
+        wxRow.setGravity(Gravity.CENTER_VERTICAL);
+        tempText.setTextSize(TypedValue.COMPLEX_UNIT_PX, 58);
+        skyText.setTextSize(TypedValue.COMPLEX_UNIT_PX, 28);
+        skyText.setTextColor(WHITE);
+        moveTo(tempText, wxRow, new LinearLayout.LayoutParams(-2, -2));
+        moveTo(skyText, wxRow, new LinearLayout.LayoutParams(-2, -2));
+        for (TextView t : new TextView[]{tempText, skyText}) t.setShadowLayer(16, 0, 2, 0x99000000);
+        c.addView(wxRow, new LinearLayout.LayoutParams(-2, -2));
+        LinearLayout dayRow = new LinearLayout(this);
+        dayRow.setGravity(Gravity.CENTER_VERTICAL);
+        dayText.setPadding(0, 0, 0, 0);
+        dayText.setTextColor(SOFT);
+        driveText.setPadding(28, 0, 0, 0);
+        moveTo(dayText, dayRow, new LinearLayout.LayoutParams(-2, -2));
+        moveTo(driveText, dayRow, new LinearLayout.LayoutParams(-2, -2));
+        for (TextView t : new TextView[]{dayText, driveText}) t.setShadowLayer(14, 0, 2, 0x99000000);
+        c.addView(dayRow, new LinearLayout.LayoutParams(-2, -2));
+        LinearLayout.LayoutParams crp = new LinearLayout.LayoutParams(-1, -2);
+        crp.topMargin = -62; crp.bottomMargin = -66;
+        c.addView(clockRow, crp);
+        LinearLayout dateRow = new LinearLayout(this);
+        dateRow.setGravity(Gravity.CENTER_VERTICAL);
+        dateText.setPadding(0, 0, 0, 0);
+        dateText.setTextSize(TypedValue.COMPLEX_UNIT_PX, 34);
+        hijriText.setPadding(0, 0, 0, 0);
+        hijriText.setTextSize(TypedValue.COMPLEX_UNIT_PX, 32);
+        hijriText.setTextColor(SOFT);
+        TextView dot = text("   ·   ", 30, fMed, DIM);
+        moveTo(dateText, dateRow, new LinearLayout.LayoutParams(-2, -2));
+        dateRow.addView(dot);
+        moveTo(hijriText, dateRow, new LinearLayout.LayoutParams(-2, -2));
+        for (TextView t : new TextView[]{dateText, dot, hijriText}) t.setShadowLayer(16, 0, 2, 0x99000000);
+        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-2, -2);
+        c.addView(dateRow, dp);
+        topParts[0].setVisibility(View.GONE); // the weather card itself
+
+        // the dates and sunrise sit under the clock; the next adhan, the prayer times and the recitation share one strip below
+        moveTo(sunLine, dateRow, new LinearLayout.LayoutParams(-2, -2));
+        sunLine.setTextSize(TypedValue.COMPLEX_UNIT_PX, 28);
+        sunLine.setPadding(0, 0, 0, 0);
+        sunLine.setShadowLayer(16, 0, 2, 0x99000000);
+        dateRow.addView(text("   ·   ", 30, fMed, DIM), dateRow.getChildCount() - 1);
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, CLOCK_TOP)); // layout 1: one centred column, the clock its heart
         centerGroup = c;
 
         // The verse / hadith card, low on the screen just above the dock: Amiri for the Arabic, an italic serif for the English.
@@ -1027,11 +1077,11 @@ public class MainActivity extends Activity {
         lineAr = text("", 38, fQuran, WHITE);
         lineAr.setIncludeFontPadding(true);
         lineAr.setGravity(Gravity.CENTER);
-        lineAr.setMaxWidth(1360);
+        lineAr.setMaxWidth(1500);
         lineAr.setPadding(0, 6, 0, 0);
         lineEn = text("", 32, fSerif, SOFT);
         lineEn.setGravity(Gravity.CENTER);
-        lineEn.setMaxWidth(1360);
+        lineEn.setMaxWidth(1500);
         lineEn.setLineSpacing(0, 1.05f);
         lineEn.setPadding(0, 2, 0, 0);
         lineBox.addView(lineKicker, new LinearLayout.LayoutParams(-2, -2));
@@ -2123,6 +2173,49 @@ public class MainActivity extends Activity {
     private Quran.Reciter quranReciter;
     private TextView quranNow, quranPlayBtn, nowSurah, nowReciter;
     private View nowWidget;
+    private LinearLayout nowRow;
+
+    /** Layout 1: the next adhan, the five prayer times and (while it plays) the recitation in one slim glass strip under
+     *  the clock. Built from the adhan card's own parts, which keep updating as before. */
+    private void assembleStrip() {
+        View oldCard = topParts[1];
+        LinearLayout strip = new LinearLayout(this);
+        strip.setGravity(Gravity.CENTER_VERTICAL);
+        strip.setPadding(34, 18, 34, 18);
+        LinearLayout colA = new LinearLayout(this);
+        colA.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout adhanCard = (LinearLayout) adhanBar.getParent();
+        View kick = adhanCard.getChildAt(0), nameRow = adhanCard.getChildAt(1);
+        adhanCard.removeView(kick); // "Fajr  1:07:07" says it on its own; the strip stays slim
+        moveTo(nameRow, colA, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, 3);
+        bp.topMargin = 8;
+        moveTo(adhanBar, colA, bp);
+        strip.addView(colA, new LinearLayout.LayoutParams(440, -2));
+        strip.addView(stripDivider());
+        View times = prayerCells[0] == null ? null : (View) prayerCells[0].getParent();
+        moveTo(times, strip, new LinearLayout.LayoutParams(540, -2));
+        LinearLayout nowPart = new LinearLayout(this);
+        nowPart.setGravity(Gravity.CENTER_VERTICAL);
+        nowPart.addView(stripDivider());
+        nowRow.setPadding(6, 0, 4, 0);
+        moveTo(nowRow, nowPart, new LinearLayout.LayoutParams(-2, -2));
+        strip.addView(nowPart, new LinearLayout.LayoutParams(-2, -2));
+        nowWidget = nowPart;
+        nowPart.setAlpha(0);
+        nowPart.setVisibility(View.GONE);
+        oldCard.setVisibility(View.GONE);
+        topParts[1] = glassCard(stage, strip, -1, -1, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 22, STRIP_Y, 34, 22, 0x33FFFFFF, CARD_TINT, false);
+    }
+
+    private View stripDivider() {
+        View d = new View(this);
+        d.setBackgroundColor(0x33FFFFFF);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(2, 120);
+        p.leftMargin = 30; p.rightMargin = 30;
+        d.setLayoutParams(p);
+        return d;
+    }
     private LinearLayout quranControls;
     private GridLayout surahGrid;
 
@@ -2233,6 +2326,7 @@ public class MainActivity extends Activity {
 
         // On the home screen: what is playing, at the bottom of the weather card.
         buildNowReciting();
+        assembleStrip();
         drawQuranState();
     }
 
@@ -2554,7 +2648,8 @@ public class MainActivity extends Activity {
         nbp.topMargin = 8;
         texts.addView(nowBar, nbp);
         row.addView(texts);
-        nowWidget = glassCard(stage, row, -1, -1, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 56, 30, 22, 0x33FFFFFF, CARD_TINT, false);
+        nowRow = row;
+        nowWidget = row;
         nowWidget.setAlpha(0);
         nowWidget.setVisibility(View.GONE);
     }
@@ -3001,6 +3096,7 @@ public class MainActivity extends Activity {
         // the clock and the verse card settle lower together, into the dock's space, keeping their gap
         centerGroup.animate().translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
         lineFrame.animate().translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
+        topParts[1].animate().translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
     }
 
     /** After fifteen quiet minutes the whole screen dims; the video and the soft Quran keep playing. */
@@ -3025,6 +3121,7 @@ public class MainActivity extends Activity {
         lineFrame.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
         for (View t : topParts) t.animate().alpha(1).setDuration(450).start();
         centerGroup.animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
+        topParts[1].animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
         View f = dockTiles.get(lastDock);
         if (f.hasFocus()) showDockLabel(f, DOCK[lastDock].name); else f.requestFocus();
     }
