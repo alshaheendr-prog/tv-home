@@ -316,7 +316,7 @@ public class MainActivity extends Activity {
      * so moving along the dock repaints just the dock instead of every card's glass, glow and text each frame.
      */
     private void cacheCards(boolean on) {
-        for (View v : new View[]{topParts[0], topParts[1], eventChip, sunCard, nowWidget, lineFrame, centerGroup})
+        for (View v : new View[]{topParts[0], topParts[1], eventChip, sunCard, lineFrame, centerGroup})
             if (v != null) v.setLayerType(on ? View.LAYER_TYPE_HARDWARE : View.LAYER_TYPE_NONE, null);
     }
 
@@ -2123,8 +2123,6 @@ public class MainActivity extends Activity {
     private Quran.Reciter quranReciter;
     private TextView quranNow, quranPlayBtn, nowSurah, nowReciter;
     private View nowWidget;
-    private final View[] nowBars = new View[3];
-    private final ValueAnimator[] barAnims = new ValueAnimator[3];
     private LinearLayout quranControls;
     private GridLayout surahGrid;
 
@@ -2535,18 +2533,8 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(30, 18, 34, 18);
-        LinearLayout bars = new LinearLayout(this);
-        bars.setGravity(Gravity.BOTTOM);
-        for (int i = 0; i < 3; i++) {
-            View b = new View(this);
-            b.setBackground(glass(3, 0xFFF1D58A, 0));
-            b.setPivotY(30);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(6, 30);
-            p.rightMargin = 5;
-            bars.addView(b, p);
-            nowBars[i] = b;
-        }
-        row.addView(bars, new LinearLayout.LayoutParams(-2, 30));
+        nowEq = new EqualizerView(this);
+        row.addView(nowEq, new LinearLayout.LayoutParams(46, 56));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(20, 0, 0, 0);
@@ -2584,20 +2572,10 @@ public class MainActivity extends Activity {
     }
 
     /** Three gold bars that rise and fall gently while a recitation plays; flat when paused. */
+    private EqualizerView nowEq;
+
     private void animateBars(boolean playing) {
-        for (int i = 0; i < 3; i++) {
-            View b = nowBars[i];
-            if (barAnims[i] != null) { barAnims[i].cancel(); barAnims[i] = null; }
-            if (!playing) { b.animate().scaleY(0.3f).setDuration(200).start(); continue; }
-            ValueAnimator a = ValueAnimator.ofFloat(0.3f, 1f);
-            a.setDuration(520 + i * 170L);
-            a.setStartDelay(i * 90L);
-            a.setRepeatMode(ValueAnimator.REVERSE);
-            a.setRepeatCount(ValueAnimator.INFINITE);
-            a.addUpdateListener(v -> b.setScaleY((float) v.getAnimatedValue()));
-            a.start();
-            barAnims[i] = a;
-        }
+        if (nowEq != null) nowEq.setPlaying(playing);
     }
 
     // ================================================================== hard drive status
