@@ -2877,9 +2877,59 @@ public class MainActivity extends Activity {
             if (acc) Accent.glideTo(Accent.color, 0, null); else ui.post(sampleAccent);
             drawParent(10);
         });
+        String aerial = aerialDream();
+        String saver = Settings.Secure.getString(getContentResolver(), SAVER_KEY);
+        boolean aerialOn = aerial != null && saver != null && saver.startsWith(AERIAL_PKG);
+        String saverValue = screensaverNote != null ? screensaverNote
+                : aerial == null ? "Get Aerial Views ›" : aerialOn ? "Aerial Views" : "TV default";
+        screensaverNote = null;
+        parentRow("Screensaver (in other apps)", saverValue, () -> {
+            if (aerial == null) { closePanels(); openStore(AERIAL_PKG); return; }
+            screensaverNote = setScreensaver(aerialOn ? null : aerial) ? null : "Run Update TV once first";
+            drawParent(11);
+        });
+        if (aerialOn) parentRow("Screensaver videos and clock", "›", () -> {
+            Intent i = getPackageManager().getLaunchIntentForPackage(AERIAL_PKG);
+            if (i == null) i = getPackageManager().getLeanbackLaunchIntentForPackage(AERIAL_PKG);
+            if (i != null) { closePanels(); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); try { startActivity(i); } catch (Exception ignored) { } }
+        });
         parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
         View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
         f.post(f::requestFocus);
+    }
+
+    // Screensaver: the home screen itself never sleeps (it is a moving wallpaper already), so this is the
+    // screensaver other apps get when left idle, e.g. a paused film in Kodi. Switching needs
+    // WRITE_SECURE_SETTINGS, which Update TV grants over ADB.
+    private static final String AERIAL_PKG = "com.neilturner.aerialviews";
+    private static final String SAVER_KEY = "screensaver_components";
+    private static final String TV_DEFAULT_SAVER = "com.google.android.apps.tv.dreamx/.service.Backdrop";
+    private String screensaverNote;
+
+    /** Aerial Views' screensaver, as "package/class", or null when the app isn't installed. */
+    private String aerialDream() {
+        Intent q = new Intent("android.service.dreams.DreamService").setPackage(AERIAL_PKG);
+        for (ResolveInfo r : getPackageManager().queryIntentServices(q, 0))
+            return r.serviceInfo.packageName + "/" + r.serviceInfo.name;
+        return null;
+    }
+
+    /** Turns Aerial Views on (component) or puts back the screensaver the TV had before (null). */
+    private boolean setScreensaver(String component) {
+        try {
+            android.content.ContentResolver cr = getContentResolver();
+            if (component != null) {
+                String before = Settings.Secure.getString(cr, SAVER_KEY);
+                if (before != null && !before.startsWith(AERIAL_PKG)) prefs.edit().putString("saver_before", before).apply();
+                Settings.Secure.putString(cr, SAVER_KEY, component);
+                Settings.Secure.putInt(cr, "screensaver_enabled", 1);
+            } else {
+                Settings.Secure.putString(cr, SAVER_KEY, prefs.getString("saver_before", TV_DEFAULT_SAVER));
+            }
+            return true;
+        } catch (SecurityException e) {
+            return false;
+        }
     }
 
     /** The weekly family stats page, inside the parent menu: screen time from Kids Corner and the Quran heard this week. */
