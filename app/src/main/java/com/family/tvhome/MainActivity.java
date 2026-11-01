@@ -114,6 +114,11 @@ public class MainActivity extends Activity {
             new Dock("yt", "YouTube", 0xFFE62117, "com.google.android.youtube.tv", "com.google.android.youtube"),
     };
     static int dockIndex(String id) { for (int i = 0; i < DOCK.length; i++) if (DOCK[i].id.equals(id)) return i; return 0; }
+    static Dock catalog(String id) { for (Dock d : DOCK) if (d.id.equals(id)) return d; return null; }
+    /** The built-in tile for a package, if any (so re-adding Netflix from All apps brings back the Netflix tile). */
+    static Dock catalogForPkg(String pkg) { for (Dock d : DOCK) for (String p : d.pkgs) if (p.equals(pkg)) return d; return null; }
+    static final int DOCK_MAX = 11; // what fits across the screen
+    static final Set<String> DOCK_FIXED = new HashSet<>(Arrays.asList("apps", "quran")); // always on the home row
     static final Set<String> HIDDEN_FROM_LIST = new HashSet<>(Arrays.asList("com.google.android.youtube.tv", "com.google.android.youtube"));
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -124,7 +129,8 @@ public class MainActivity extends Activity {
 
     private FrameLayout root, stage;
     private SurfaceView video;
-    private View topScrim, bottomScrim, dockBar;
+    private View topScrim, bottomScrim;
+    private LinearLayout dockBar;
     private View videoCover, dimView;
     private boolean resumed;
     private int lastDock;
@@ -290,7 +296,8 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         if (ambient) leaveAmbient();
         closePanels();
-        dockTiles.get(lastDock).requestFocus();
+        endArrange(null);
+        dockTiles.get(Math.min(lastDock, dockTiles.size() - 1)).requestFocus();
         // Update TV opens each panel in turn to photograph it for polishing (never the parent settings, which need the PIN).
         String probe = intent.getStringExtra("probe");
         if (probe != null) { probe(probe); return; }
@@ -434,9 +441,11 @@ public class MainActivity extends Activity {
         if (stress && e.getAction() == KeyEvent.ACTION_UP) endStress();
         if (playerOpen() && playerKey(e)) return true;
         if (ambient) { if (e.getAction() == KeyEvent.ACTION_UP) leaveAmbient(); return true; } // the first press only wakes the screen
+        if (arrangeTile != null && arrangeKey(e)) return true;
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) {
-                if (reciterPanel != null && reciterPanel.getVisibility() == View.VISIBLE) closeReciters();
+                if (appMenuBox != null) closeAppMenu(appMenuFrom);
+                else if (reciterPanel != null && reciterPanel.getVisibility() == View.VISIBLE) closeReciters();
                 else if (playerOpen()) closePlayer();
                 else closePanels();
             }
@@ -1010,7 +1019,7 @@ public class MainActivity extends Activity {
     /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
     /** Text shadows stay tight around the letters (a soft drop shadow, no halo box). */
     static final float TEXT_SHADOW = 4f;
-    static final int CLOCK_TOP = 34, LINE_Y = 494, STRIP_Y = 706, STRIP_H = 100, RIGHT_EDGE = 110;
+    static final int CLOCK_TOP = 34, LINE_Y = 494, STRIP_Y = 700, STRIP_H = 124, RIGHT_EDGE = 110;
 
     private static void moveTo(View v, ViewGroup to, ViewGroup.LayoutParams lp) {
         if (v.getParent() != null) ((ViewGroup) v.getParent()).removeView(v);
@@ -1135,44 +1144,7 @@ public class MainActivity extends Activity {
         dock.setClipChildren(false);
         dock.setBackground(brandGlow);
         dock.setClipToPadding(false);
-        for (Dock d : DOCK) {
-            FrameLayout tile = new FrameLayout(this);
-            tile.setFocusable(true);
-            tile.setClickable(true);
-            tile.setTag(d);
-            tile.setClipChildren(false);
-            // The icon fills the tile edge to edge, with rounded corners, like Apple TV.
-            ImageView icon = new ImageView(this);
-            icon.setScaleType(ImageView.ScaleType.FIT_XY); // the icon bitmap already has rounded corners (fullBleed)
-            tile.addView(icon, new FrameLayout.LayoutParams(-1, -1));
-            TextView mark;
-            if (d.id.equals("quran")) {
-                mark = text("القرآن", 44, fQuran, 0xFFF1D58A);
-                mark.setIncludeFontPadding(true);
-                mark.setBackground(tileFace(0xFF14504A, 0xFF0A2A27));
-            } else if (d.id.equals("apps")) {
-                mark = text("⋯", 60, fBold, WHITE);
-                mark.setBackground(new Glass(30, 0, 0, 0x33000000));
-            } else {
-                mark = text(d.name.substring(0, 1), 64, fBold, WHITE);
-                mark.setBackground(tileFace(d.color, darker(d.color)));
-            }
-            mark.setGravity(Gravity.CENTER);
-            tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
-            tile.setPivotX(TILE / 2f); // grow from the middle: setting only pivotY left pivotX at 0, so the icon grew off to the right of its name
-            tile.setPivotY(TILE);
-            tile.setForeground(ring(30, 2, 0x4DFFFFFF)); // a fine light edge so every icon reads as one set
-            if (d.id.equals("yt")) tile.setOnLongClickListener(v -> { openPin(true); return true; });
-            tile.setOnClickListener(v -> openDock(d));
-            tile.setOnFocusChangeListener((v, has) -> {
-                if (has) { lastDock = dockTiles.indexOf(v); magnify(lastDock); showDockLabel(v, d.name); }
-                else if (!anyDockFocused()) { magnify(-1); dockLabel.animate().alpha(0).setDuration(150).start(); }
-            });
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(TILE, TILE);
-            tp.leftMargin = 11; tp.rightMargin = 11;
-            dock.addView(tile, tp);
-            dockTiles.add(tile);
-        }
+        for (Dock d : dockList()) addDockTile(dock, d, -1);
         // just the icons, no panel around them: the soft dark fade at the bottom of the screen keeps them readable
         FrameLayout dockWrap = new FrameLayout(this);
         dockWrap.setClipChildren(false);
@@ -1187,6 +1159,179 @@ public class MainActivity extends Activity {
         dockLabel.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         dockLabel.setAlpha(0);
         stage.addView(dockLabel, at(-2, -2, Gravity.TOP | Gravity.START, 0, 0));
+    }
+
+    private List<Dock> dockList() {
+        List<Dock> out = new ArrayList<>();
+        String saved = prefs.getString("dock_order", null);
+        if (saved == null) { out.addAll(Arrays.asList(DOCK)); return out; }
+        for (String id : saved.split(",")) {
+            if (id.isEmpty()) continue;
+            Dock d = catalog(id);
+            if (d == null && id.startsWith("pkg:")) {
+                String pkg = id.substring(4);
+                String label = prefs.getString("dock_label:" + pkg, pkg);
+                d = new Dock(id, label, 0xFF5A6478, pkg);
+            }
+            if (d != null) out.add(d);
+        }
+        for (String fixed : DOCK_FIXED) if (catalog(fixed) != null && !hasId(out, fixed)) out.add(catalog(fixed));
+        return out;
+    }
+
+    private static boolean hasId(List<Dock> l, String id) { for (Dock d : l) if (d.id.equals(id)) return true; return false; }
+
+    private void saveDock() {
+        StringBuilder b = new StringBuilder();
+        for (FrameLayout t : dockTiles) b.append(((Dock) t.getTag()).id).append(',');
+        prefs.edit().putString("dock_order", b.toString()).apply();
+    }
+
+    private FrameLayout tileFor(String id) {
+        for (FrameLayout t : dockTiles) if (((Dock) t.getTag()).id.equals(id)) return t;
+        return dockTiles.isEmpty() ? null : dockTiles.get(0);
+    }
+
+    private void addDockTile(LinearLayout dock, Dock d, int at) {
+        FrameLayout tile = new FrameLayout(this);
+        tile.setFocusable(true);
+        tile.setClickable(true);
+        tile.setTag(d);
+        tile.setClipChildren(false);
+        // The icon fills the tile edge to edge, with rounded corners, like Apple TV.
+        ImageView icon = new ImageView(this);
+        icon.setScaleType(ImageView.ScaleType.FIT_XY); // the icon bitmap already has rounded corners (fullBleed)
+        tile.addView(icon, new FrameLayout.LayoutParams(-1, -1));
+        TextView mark;
+        if (d.id.equals("quran")) {
+            mark = text("القرآن", 44, fQuran, 0xFFF1D58A);
+            mark.setIncludeFontPadding(true);
+            mark.setBackground(tileFace(0xFF14504A, 0xFF0A2A27));
+        } else if (d.id.equals("apps")) {
+            mark = text("⋯", 60, fBold, WHITE);
+            mark.setBackground(new Glass(30, 0, 0, 0x33000000));
+        } else {
+            mark = text(d.name.substring(0, 1), 64, fBold, WHITE);
+            mark.setBackground(tileFace(d.color, darker(d.color)));
+        }
+        mark.setGravity(Gravity.CENTER);
+        tile.addView(mark, new FrameLayout.LayoutParams(-1, -1));
+        tile.setPivotX(TILE / 2f); // grow from the middle: setting only pivotY left pivotX at 0, so the icon grew off to the right of its name
+        tile.setPivotY(TILE);
+        tile.setForeground(ring(30, 2, 0x4DFFFFFF)); // a fine light edge so every icon reads as one set
+        tile.setOnLongClickListener(v -> { startArrange((FrameLayout) v); return true; }); // hold OK: move or remove it
+        tile.setOnClickListener(v -> openDock(d));
+        tile.setOnFocusChangeListener((v, has) -> {
+            if (has) { lastDock = dockTiles.indexOf(v); magnify(lastDock); showDockLabel(v, arrangeTile == v ? ARRANGE_HINT : d.name); }
+            else if (!anyDockFocused()) { magnify(-1); dockLabel.animate().alpha(0).setDuration(150).start(); }
+        });
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(TILE, TILE);
+        tp.leftMargin = 11; tp.rightMargin = 11;
+        if (at < 0) { dock.addView(tile, tp); dockTiles.add(tile); }
+        else { dock.addView(tile, at, tp); dockTiles.add(at, tile); }
+    }
+
+    // ---------------------------------------------------------------- arranging the home row
+
+    static final String ARRANGE_HINT = "◀ ▶  move     ▼  remove     OK  done";
+    private FrameLayout arrangeTile;
+    private boolean arrangeSkipUp;
+
+    /** Hold OK on an app in the home row: it lifts with a gold edge, the arrows move it, down removes it, OK finishes. */
+    private void startArrange(FrameLayout tile) {
+        arrangeTile = tile;
+        arrangeSkipUp = true; // the OK that started this is still held: its release must not end it at once
+        tile.setForeground(ring(30, 4, GOLD));
+        showDockLabel(tile, ARRANGE_HINT);
+    }
+
+    private void endArrange(String note) {
+        if (arrangeTile == null) return;
+        FrameLayout t = arrangeTile;
+        arrangeTile = null;
+        t.setForeground(ring(30, 2, 0x4DFFFFFF));
+        saveDock();
+        if (note != null) toast(note);
+        if (t.getParent() != null && t.hasFocus()) showDockLabel(t, ((Dock) t.getTag()).name);
+    }
+
+    private boolean arrangeKey(KeyEvent e) {
+        int code = e.getKeyCode();
+        boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
+        if (e.getAction() == KeyEvent.ACTION_UP) {
+            if (ok && arrangeSkipUp) { arrangeSkipUp = false; return true; }
+            if (ok || code == KeyEvent.KEYCODE_BACK) { endArrange(null); return true; }
+            return true;
+        }
+        if (ok || code == KeyEvent.KEYCODE_BACK) return true;
+        int i = dockTiles.indexOf(arrangeTile);
+        if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            int to = i + (code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+            if (to < 0 || to >= dockTiles.size()) return true;
+            ViewGroup.LayoutParams lp = arrangeTile.getLayoutParams();
+            dockBar.removeView(arrangeTile);
+            dockBar.addView(arrangeTile, to, lp);
+            dockTiles.remove(i);
+            dockTiles.add(to, arrangeTile);
+            arrangeTile.requestFocus();
+            lastDock = to;
+            ui.post(() -> { magnify(to); if (arrangeTile != null) showDockLabel(arrangeTile, ARRANGE_HINT); });
+            return true;
+        }
+        if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
+            Dock d = (Dock) arrangeTile.getTag();
+            if (DOCK_FIXED.contains(d.id)) { toast(d.name + " always stays on the home row."); return true; }
+            FrameLayout gone = arrangeTile;
+            arrangeTile = null;
+            dockBar.removeView(gone);
+            dockTiles.remove(gone);
+            saveDock();
+            lastDock = Math.max(0, Math.min(i, dockTiles.size() - 1));
+            dockTiles.get(lastDock).requestFocus();
+            toast("Removed " + d.name + ". Add apps back from All apps (hold OK).");
+            return true;
+        }
+        return true; // up and anything else: stay in arranging
+    }
+
+    /** Puts an app on the home row, just before All apps. */
+    private void addToDock(String pkg, String label) {
+        Dock d = catalogForPkg(pkg);
+        if (d == null) { d = new Dock("pkg:" + pkg, label, 0xFF5A6478, pkg); prefs.edit().putString("dock_label:" + pkg, label).apply(); }
+        for (FrameLayout t : dockTiles) if (((Dock) t.getTag()).id.equals(d.id)) { toast(label + " is already on the home row."); return; }
+        if (dockTiles.size() >= DOCK_MAX) { toast("The home row is full. Hold OK on an app there to remove one first."); return; }
+        int at = dockTiles.indexOf(tileFor("apps"));
+        addDockTile(dockBar, d, at < 0 ? -1 : at);
+        noAlphaLayers(dockBar);
+        saveDock();
+        loadDockIcons();
+        toast("Added " + label + " to the home row.");
+    }
+
+    private boolean onDock(String pkg) {
+        for (FrameLayout t : dockTiles) for (String p : ((Dock) t.getTag()).pkgs) if (p.equals(pkg)) return true;
+        return false;
+    }
+
+    private void removeFromDock(String pkg) {
+        for (FrameLayout t : new ArrayList<>(dockTiles)) {
+            Dock d = (Dock) t.getTag();
+            if (DOCK_FIXED.contains(d.id)) continue;
+            for (String p : d.pkgs) if (p.equals(pkg)) { dockBar.removeView(t); dockTiles.remove(t); break; }
+        }
+        lastDock = Math.max(0, Math.min(lastDock, dockTiles.size() - 1));
+        saveDock();
+        toast("Removed from the home row.");
+    }
+
+    private void resetDock() {
+        prefs.edit().remove("dock_order").apply();
+        for (FrameLayout t : dockTiles) dockBar.removeView(t);
+        dockTiles.clear();
+        for (Dock d : dockList()) addDockTile(dockBar, d, -1);
+        noAlphaLayers(dockBar);
+        lastDock = 0;
+        loadDockIcons();
     }
 
     private static GradientDrawable tileFace(int top, int bottom) {
@@ -1237,7 +1382,7 @@ public class MainActivity extends Activity {
         float cx = tile.getLeft() + tile.getWidth() / 2f;
         for (View v = (View) tile.getParent(); v != null && v != stage; v = (View) v.getParent()) cx += v.getLeft();
         dockLabel.animate().cancel();
-        dockLabel.setX(cx - dockLabel.getMeasuredWidth() / 2f);
+        dockLabel.setX(Math.max(60, Math.min(1860 - dockLabel.getMeasuredWidth(), cx - dockLabel.getMeasuredWidth() / 2f)));
         float y = 1080 - DOCK_Y - (DOCK_H - TILE) / 2f - 20 + 4; // just under the lifted icon, inside the dock
         dockLabel.setAlpha(0);
         dockLabel.setTranslationY(y + 10);
@@ -1841,8 +1986,9 @@ public class MainActivity extends Activity {
         boolean wasOpen = pinPanel.getVisibility() == View.VISIBLE || appsPanel.getVisibility() == View.VISIBLE
                 || quranPanel.getVisibility() == View.VISIBLE || parentPanel.getVisibility() == View.VISIBLE
                 || calendarPanel.getVisibility() == View.VISIBLE;
-        View back = dockTiles.get(dockIndex(quranPanel.getVisibility() == View.VISIBLE ? "quran"
-                : pinPanel.getVisibility() == View.VISIBLE ? "yt" : appsPanel.getVisibility() == View.VISIBLE ? "apps" : DOCK[lastDock].id));
+        View back = tileFor(quranPanel.getVisibility() == View.VISIBLE ? "quran"
+                : pinPanel.getVisibility() == View.VISIBLE ? "yt" : appsPanel.getVisibility() == View.VISIBLE ? "apps"
+                : ((Dock) dockTiles.get(Math.min(lastDock, dockTiles.size() - 1)).getTag()).id);
         for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel, calendarPanel}) {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
@@ -2107,7 +2253,7 @@ public class MainActivity extends Activity {
         List<AppEntry> all = appCache;
         if (all == null) { refreshApps(); ui.postDelayed(() -> openApps(mode), 600); return; }
         Set<String> kids = kidPicks();
-        appsTitle.setText("Hold OK to add an app to Kids ⭐");
+        appsTitle.setText("Hold OK for options: home row or Kids ⭐");
         appGrid.removeAllViews();
         View first = null;
         // Kids picks first, marked with a star.
@@ -2153,7 +2299,7 @@ public class MainActivity extends Activity {
                 else if (a.pkg.equals(CALENDAR)) openCalendar();
                 else if (!launch(a.pkg)) toast("Couldn't open " + a.label);
             });
-            if (!a.pkg.equals(SETTINGS) && !a.pkg.equals(CALENDAR)) item.setOnLongClickListener(v -> { toggleKid(a.pkg); return true; });
+            if (!a.pkg.equals(SETTINGS) && !a.pkg.equals(CALENDAR)) item.setOnLongClickListener(v -> { appMenu(a, v); return true; });
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
             p.width = 226; p.height = 236; // seven columns fill the row edge to edge under the header
             p.setMargins(10, 10, 10, 10);
@@ -2162,6 +2308,57 @@ public class MainActivity extends Activity {
         }
         show(appsPanel);
         if (first != null) first.requestFocus();
+    }
+
+    private FrameLayout appMenuBox;
+    private View appMenuFrom;
+
+    /** Hold OK on an app in All apps: put it on (or take it off) the home row, or the Kids Corner. */
+    private void appMenu(AppEntry a, View from) {
+        if (appMenuBox != null) appsPanel.removeView(appMenuBox);
+        appMenuFrom = from;
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPadding(40, 30, 40, 30);
+        TextView title = text(a.label, 34, fSemi, WHITE);
+        title.setPadding(10, 0, 10, 16);
+        col.addView(title);
+        boolean home = onDock(a.pkg), kid = kidPicks().contains(a.pkg);
+        TextView first = menuButton(col, home ? "Remove from the home row" : "Add to the home row", () -> {
+            closeAppMenu(from);
+            if (home) removeFromDock(a.pkg); else addToDock(a.pkg, a.label);
+        });
+        menuButton(col, kid ? "Remove from Kids Corner" : "Add to Kids Corner ⭐", () -> { closeAppMenu(from); toggleKid(a.pkg); });
+        menuButton(col, "Cancel", () -> closeAppMenu(from));
+        appMenuBox = new FrameLayout(this);
+        appMenuBox.setBackgroundColor(0x8C000000);
+        appMenuBox.setClickable(true);
+        glassCard(appMenuBox, col, 640, -1, Gravity.CENTER, 0, 0, 34, 28, 0x40FFFFFF, 0x99101418, false);
+        appsPanel.addView(appMenuBox, bleed());
+        appMenuBox.setAlpha(0);
+        appMenuBox.animate().alpha(1).setDuration(200).start();
+        first.requestFocus();
+    }
+
+    private void closeAppMenu(View back) {
+        if (appMenuBox == null) return;
+        View box = appMenuBox;
+        appMenuBox = null;
+        appsPanel.removeView(box);
+        if (back != null) back.requestFocus();
+    }
+
+    private TextView menuButton(LinearLayout col, String label, Runnable run) {
+        TextView b = text(label, 28, fMed, SOFT);
+        b.setPadding(30, 18, 30, 18);
+        b.setFocusable(true);
+        b.setClickable(true);
+        b.setOnFocusChangeListener((v, has) -> { v.setBackground(has ? focusGlass(22) : null); b.setTextColor(has ? WHITE : SOFT); });
+        b.setOnClickListener(v -> run.run());
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.topMargin = 6;
+        col.addView(b, p);
+        return b;
     }
 
     private void toggleKid(String pkg) {
@@ -2839,6 +3036,7 @@ public class MainActivity extends Activity {
         int bright = prefs.getInt("brightness", 100);
         parentRow("This week's family stats", "›", this::drawStats);
         parentRow("Change the YouTube PIN", "›", () -> openPin(true));
+        parentRow("Home row apps: back to the original set", "›", () -> { resetDock(); toast("The home row is back to its original apps."); });
         parentRow("Play a different wallpaper", "›", () -> { closePanels(); playRandomClip(); });
         parentRow("Wallpaper brightness", bright + "%", () -> {
             int next = bright == 100 ? 85 : bright == 85 ? 70 : 100;
@@ -3255,7 +3453,8 @@ public class MainActivity extends Activity {
         for (View t : topParts) t.animate().alpha(1).setDuration(450).start();
         centerGroup.animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
         topParts[1].animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
+        lastDock = Math.min(lastDock, dockTiles.size() - 1);
         View f = dockTiles.get(lastDock);
-        if (f.hasFocus()) showDockLabel(f, DOCK[lastDock].name); else f.requestFocus();
+        if (f.hasFocus()) showDockLabel(f, ((Dock) f.getTag()).name); else f.requestFocus();
     }
 }
