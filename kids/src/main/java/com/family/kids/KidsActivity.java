@@ -85,7 +85,11 @@ public class KidsActivity extends Activity {
     private long lastWeather;
     private ImageView charPhoto;
     private TextView wordKick, wordPic, wordArabic, wordName, wordMeaning, wordLine;
-    private View charCard, wordCard, welcomeCard;
+    private View charCard, wordCard, welcomeCard, clockCard, topShade, midShade, bottomShade;
+    /** Each app's icon drawn edge to edge, made once per app on a background thread. */
+    private final java.util.Map<String, Drawable> iconCache = new java.util.HashMap<>();
+    /** The tile being moved after a grown-up held OK on it, or null. */
+    private View arrangeTile;
     private Ring ring;
     private LinearLayout tileRow;
     private View lockTile, setupDot;
@@ -115,21 +119,22 @@ public class KidsActivity extends Activity {
         root.addView(video, new FrameLayout.LayoutParams(-1, -1));
         cover = new View(this);
         root.addView(cover, new FrameLayout.LayoutParams(-1, -1));
-        // the shades cover only the top and bottom thirds, so the middle of the picture is drawn once
-        View topShade = new View(this);
-        topShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x73000000, 0x1A000000}));
-        root.addView(topShade, new FrameLayout.LayoutParams(-1, -1));
-        View bottomShade = new View(this);
-        bottomShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x1A000000}));
-        root.addView(bottomShade, new FrameLayout.LayoutParams(-1, -1));
+        // Top and bottom shades over their thirds, and the wallpaper dimming in the middle third:
+        // three bands that never overlap, so the darkening costs one fill of the screen at most.
+        topShade = new View(this);
+        midShade = new View(this);
+        bottomShade = new View(this);
+        for (View sh : new View[]{topShade, midShade, bottomShade}) root.addView(sh, new FrameLayout.LayoutParams(-1, 0));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             int third = (b - t) / 3;
-            for (View sh : new View[]{topShade, bottomShade}) {
-                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) sh.getLayoutParams();
-                int g = sh == topShade ? Gravity.TOP : Gravity.BOTTOM;
-                if (lp.height != third || lp.gravity != g) { lp.height = third; lp.gravity = g; sh.setLayoutParams(lp); }
+            View[] bands = {topShade, midShade, bottomShade};
+            for (int i = 0; i < 3; i++) {
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) bands[i].getLayoutParams();
+                int h = i == 1 ? (b - t) - 2 * third : third, top = i * third;
+                if (lp.height != h || lp.topMargin != top) { lp.height = h; lp.topMargin = top; lp.gravity = Gravity.TOP; bands[i].setLayoutParams(lp); }
             }
         });
+        applyShade();
         stage = new FrameLayout(this);
         stage.setClipChildren(false);
         root.addView(stage, new FrameLayout.LayoutParams(1920, 1080));
@@ -151,6 +156,7 @@ public class KidsActivity extends Activity {
         buildApps();
         buildParent();
         buildPin();
+        applyLook();
         noAlphaLayers((View) stage.getParent());
 
         if (Rules.pin(this).isEmpty()) {
@@ -248,6 +254,7 @@ public class KidsActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         int code = e.getKeyCode();
+        if (arrangeTile != null && !vis(pinPanel)) return arrangeKey(e);
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) back();
             return true; // Kids Corner never closes itself
@@ -361,14 +368,30 @@ public class KidsActivity extends Activity {
      * otherwise any of them.
      */
     private File clipFor(Worlds.World w) {
-        File movies = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
-        List<File> home = videosIn(new File(movies, "TVWallpapers")), fits = new ArrayList<>();
+        List<File> home = wallpapers(), fits = new ArrayList<>();
+        int pick0 = Rules.prefs(this).getInt("wallpaper", -1);
+        if (pick0 >= 0 && pick0 < home.size()) return home.get(pick0); // the grown-up chose this one
+        if (pick0 == -2 && !home.isEmpty()) return home.get(random.nextInt(home.size()));
         for (File f : home) {
             String n = f.getName().toLowerCase(Locale.ROOT);
             for (String word : clipWords(w.id)) if (n.contains(word)) { fits.add(f); break; }
         }
         List<File> pick = !fits.isEmpty() ? fits : home;
         return pick.isEmpty() ? null : pick.get(random.nextInt(pick.size()));
+    }
+
+    /** The family home's own video wallpapers, by name, so a chosen one keeps its place in the list. */
+    private static List<File> wallpapers() {
+        File movies = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
+        List<File> out = videosIn(new File(movies, "TVWallpapers"));
+        Collections.sort(out, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+        return out;
+    }
+
+    private static String clipName(File f) {
+        String n = f.getName();
+        int dot = n.lastIndexOf('.');
+        return (dot > 0 ? n.substring(0, dot) : n).replace('_', ' ').replace('-', ' ');
     }
 
     private static List<File> videosIn(File dir) {
@@ -477,6 +500,7 @@ public class KidsActivity extends Activity {
         FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
         fl.topMargin = 56; fl.rightMargin = 80;
         stage.addView(card, fl);
+        clockCard = card;
     }
 
     private void buildMiddle() {
@@ -521,7 +545,9 @@ public class KidsActivity extends Activity {
     /** The middle cards sit just under the welcome card, and never run into the dock label. */
     private void fitMiddle() {
         if (charCard == null || wordCard == null || welcomeCard == null) return;
-        int h = Math.max(charCard.getHeight(), wordCard.getHeight());
+        boolean c = charCard.getVisibility() == View.VISIBLE, w = wordCard.getVisibility() == View.VISIBLE;
+        int h = Math.max(c ? charCard.getHeight() : 0, w ? wordCard.getHeight() : 0);
+        if (h == 0) return;
         // both cards take the taller one's height, so the row looks like one piece
         if (charCard.getMinimumHeight() != h || wordCard.getMinimumHeight() != h) { charCard.setMinimumHeight(h); wordCard.setMinimumHeight(h); }
         int top = Math.max(welcomeCard.getBottom() + 16, Math.min(welcomeCard.getBottom() + MID_GAP, MID_BOTTOM - h));
@@ -591,10 +617,8 @@ public class KidsActivity extends Activity {
     }
 
     private void buildTiles() {
-        // the glass dock along the bottom, like the family home screen
-        View dock = new View(this);
-        dock.setBackground(glass(60));
-        place(dock, 80, DOCK_Y, 1760, DOCK_H);
+        // just the apps floating along the bottom, no box around them, like the family home's row:
+        // the bottom shade keeps them and their names readable
 
         tileRow = new LinearLayout(this);
         tileRow.setGravity(Gravity.CENTER);
@@ -739,24 +763,44 @@ public class KidsActivity extends Activity {
             String p = r.activityInfo.packageName;
             if (allowed.contains(p) && !Rules.NEVER.contains(p)) items.add(new String[]{p, r.loadLabel(pm).toString()});
         }
+        sortByOrder(items);
         int n = items.size();
-        int w = Math.min(250, 1460 / n - 52), h = w * 9 / 16; // TV banners are 16:9: nothing gets cropped
+        boolean icons = Rules.prefs(this).getInt("icons", 0) == 0;
+        // app icons are square like on the family home, a little bigger for small hands on the remote;
+        // banners are 16:9 like the TV's own, so nothing gets cropped
+        int w = icons ? Math.min(136, 1340 / n - 44) : Math.min(250, 1460 / n - 52), h = icons ? w : w * 9 / 16;
+        float corner = icons ? w * 0.24f : 26;
         for (int i = 0; i < n; i++) {
             String pkg = items.get(i)[0], label = items.get(i)[1];
             FrameLayout tile = new FrameLayout(this);
             tile.setFocusable(true);
-            tile.setClipToOutline(true);
-            tile.setOutlineProvider(rounded(26));
-            tile.setOutlineAmbientShadowColor(0);
-            tile.setOutlineSpotShadowColor(0);
+            tile.setTag(pkg.isEmpty() ? "cartoons" : pkg);
             ImageView img = new ImageView(this);
-            img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             if (pkg.isEmpty()) {
-                tile.setBackground(grad(GradientDrawable.Orientation.TL_BR, new int[]{world.body, world.bodyDark}));
-                TextView t = text("▶ Cartoons", 32, fHeavy, WHITE);
+                tile.setBackground(roundGrad(new int[]{world.body, world.bodyDark}, corner));
+                TextView t = icons ? text("🎬", w * 0.46f, fMed, WHITE) : text("▶ Cartoons", 32, fHeavy, WHITE);
                 t.setGravity(Gravity.CENTER);
+                t.setIncludeFontPadding(false);
+                if (icons) t.setPadding(0, 0, 0, 0);
                 tile.addView(t, new FrameLayout.LayoutParams(-1, -1));
+            } else if (icons) {
+                // the icon bitmap has its corners rounded already, so nothing is clipped while it animates
+                img.setScaleType(ImageView.ScaleType.FIT_XY);
+                tile.addView(img, new FrameLayout.LayoutParams(-1, -1));
+                Drawable cached = iconCache.get(pkg);
+                if (cached != null) img.setImageDrawable(cached);
+                else {
+                    tile.setBackground(roundGrad(new int[]{appColor(pkg) == 0xFFDDE6FF ? 0xFF3A4766 : appColor(pkg), 0xFF141A2A}, corner));
+                    bg.execute(() -> {
+                        Drawable d;
+                        try { d = Icons.fullBleed(getResources(), getPackageManager().getApplicationIcon(pkg), 0.24f); } catch (Exception e) { return; }
+                        ui.post(() -> { iconCache.put(pkg, d); img.setImageDrawable(d); tile.setBackground(null); });
+                    });
+                }
             } else {
+                tile.setClipToOutline(true);
+                tile.setOutlineProvider(rounded(26));
+                img.setScaleType(ImageView.ScaleType.CENTER_CROP);
                 Drawable art = banner(pkg);
                 if (art != null) {
                     img.setImageDrawable(art);
@@ -768,11 +812,12 @@ public class KidsActivity extends Activity {
                 }
                 tile.addView(img, new FrameLayout.LayoutParams(-1, -1));
             }
-            // a fine light edge on every tile, as on the family home's dock
-            GradientDrawable edge = new GradientDrawable();
-            edge.setCornerRadius(26);
-            edge.setStroke(2, 0x4DFFFFFF);
-            tile.setForeground(edge);
+            tile.setOutlineAmbientShadowColor(0);
+            tile.setOutlineSpotShadowColor(0);
+            // a fine light edge on every tile, as on the family home's row
+            tile.setForeground(edge(corner, 2, 0x4DFFFFFF));
+            tile.setPivotX(w / 2f);
+            tile.setPivotY(h);
 
             final int index = i;
             tileColors.add(pkg.isEmpty() ? world.accent : appColor(pkg));
@@ -780,16 +825,22 @@ public class KidsActivity extends Activity {
                 if (has) {
                     lastTile = index;
                     magnify(index);
-                    v.post(() -> moveLabel(v, label));
+                    v.post(() -> moveLabel(v, arrangeTile == v ? ARRANGE_HINT : label));
                 } else {
                     v.post(() -> { if (!dockFocused()) { magnify(-1); tileLabel.animate().alpha(0).setDuration(150).start(); } });
                 }
             });
             tile.setOnClickListener(v -> {
+                if (arrangeTile != null) return;
                 if (pkg.isEmpty()) openCartoons(); else launch(pkg);
             });
+            // a grown-up holds OK on an app to move it along the row, or take it off (after the PIN)
+            tile.setOnLongClickListener(v -> {
+                if (arrangeTile == null) askPin("check", () -> startArrange(v));
+                return true;
+            });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
-            lp.leftMargin = lp.rightMargin = 16; // neighbours slide aside when one grows, so tiles never overlap
+            lp.leftMargin = lp.rightMargin = icons ? 22 : 16; // neighbours slide aside when one grows, so tiles never overlap
             tileRow.addView(tile, lp);
             tiles.add(tile);
         }
@@ -797,7 +848,7 @@ public class KidsActivity extends Activity {
         // the parent lock: small and quiet at the end of the row
         FrameLayout lock = new FrameLayout(this);
         lock.setFocusable(true);
-        lock.setBackground(glass(60));
+        lock.setBackground(new Glass(44, 0x40000000));
         TextView l = text("🔒", 40, fBold, WHITE);
         l.setGravity(Gravity.CENTER);
         lock.addView(l, new FrameLayout.LayoutParams(-1, -1));
@@ -827,6 +878,146 @@ public class KidsActivity extends Activity {
             if (anyPanelOpen()) return;
             tiles.get(Math.min(lastTile, tiles.size() - 1)).requestFocus();
         }
+    }
+
+    // ================================================================== the parent's own look
+
+    /** Card style: 0 smoky glass like the family home, 1 bright glass, 2 no boxes at all. */
+    private Drawable cardBg(float radius) {
+        switch (Rules.prefs(this).getInt("style", 0)) {
+            case 1: return glass(radius);
+            case 2: return null;
+            default: return new Glass(radius, 0x38000000);
+        }
+    }
+
+    /** Applies the grown-up's choices from the Look section: card style, which cards show, dimming and the app row. */
+    private void applyLook() {
+        for (View v : new View[]{welcomeCard, clockCard, charCard, wordCard}) if (v != null) v.setBackground(cardBg(48));
+        boolean c = Rules.prefs(this).getInt("char_card", 1) == 1, w = Rules.prefs(this).getInt("word_card", 1) == 1;
+        charCard.setVisibility(c ? View.VISIBLE : View.GONE);
+        wordCard.setVisibility(w ? View.VISIBLE : View.GONE);
+        // one card alone takes the whole width
+        FrameLayout.LayoutParams cl = (FrameLayout.LayoutParams) charCard.getLayoutParams();
+        FrameLayout.LayoutParams wl = (FrameLayout.LayoutParams) wordCard.getLayoutParams();
+        cl.width = w ? MID_SPLIT - 80 - 30 : 1760;
+        wl.leftMargin = c ? MID_SPLIT : 80;
+        wl.width = c ? 1840 - MID_SPLIT : 1760;
+        charCard.setLayoutParams(cl);
+        wordCard.setLayoutParams(wl);
+        charCard.setMinimumHeight(0);
+        wordCard.setMinimumHeight(0);
+        applyShade();
+        if (tileRow != null && world != null) refreshTiles();
+        noAlphaLayers(stage);
+    }
+
+    /** Wallpaper dimming (default 8%, like the family home) folded into the top and bottom shades. */
+    private void applyShade() {
+        if (topShade == null) return;
+        float dim = Rules.prefs(this).getInt("dim", 8) / 100f;
+        int mid = withDim(0, dim); // the shades fade into exactly the middle band's dimming, so there is no seam
+        topShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{withDim(0x73, dim), mid}));
+        if (mid == 0) midShade.setBackground(null); else midShade.setBackgroundColor(mid);
+        bottomShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{withDim(0xA6, dim), mid}));
+    }
+
+    /** A black of alpha a, with the dimming added on top: 1 - (1 - a)(1 - dim). */
+    private static int withDim(int a, float dim) {
+        float t = 1 - (1 - a / 255f) * (1 - dim);
+        return Math.round(t * 255) << 24;
+    }
+
+    private static GradientDrawable roundGrad(int[] colors, float radius) {
+        GradientDrawable d = grad(GradientDrawable.Orientation.TL_BR, colors);
+        d.setCornerRadius(radius);
+        return d;
+    }
+
+    private static GradientDrawable edge(float radius, int width, int color) {
+        GradientDrawable d = new GradientDrawable();
+        d.setCornerRadius(radius);
+        d.setStroke(width, color);
+        return d;
+    }
+
+    /** The grown-up's order for the row ("cartoons" and package names); apps not in it yet go at the end. */
+    private void sortByOrder(List<String[]> items) {
+        List<String> order = java.util.Arrays.asList(Rules.prefs(this).getString("order", "").split(","));
+        List<String[]> out = new ArrayList<>(), rest = new ArrayList<>();
+        for (String id : order) for (String[] it : items) if ((it[0].isEmpty() ? "cartoons" : it[0]).equals(id)) out.add(it);
+        for (String[] it : items) if (!out.contains(it)) rest.add(it);
+        out.addAll(rest);
+        items.clear();
+        items.addAll(out);
+    }
+
+    private void saveOrder() {
+        StringBuilder b = new StringBuilder();
+        for (View t : tiles) b.append(t.getTag()).append(',');
+        Rules.prefs(this).edit().putString("order", b.toString()).apply();
+    }
+
+    static final String ARRANGE_HINT = "◀ ▶  move     ▼  take off     OK  done";
+
+    /** After the PIN: the app lifts with a gold edge, the arrows move it, down takes it off the row, OK finishes. */
+    private void startArrange(View tile) {
+        if (tile.getParent() != tileRow) return;
+        arrangeTile = tile;
+        tile.setForeground(edge(cornerOf(tile), 5, 0xFFFFD45A));
+        tile.requestFocus();
+        tile.post(() -> moveLabel(tile, ARRANGE_HINT));
+    }
+
+    private float cornerOf(View tile) {
+        return Rules.prefs(this).getInt("icons", 0) == 0 ? tile.getWidth() * 0.24f : 26;
+    }
+
+    private void endArrange() {
+        View t = arrangeTile;
+        if (t == null) return;
+        arrangeTile = null;
+        t.setForeground(edge(cornerOf(t), 2, 0x4DFFFFFF));
+        saveOrder();
+        refreshTiles();
+    }
+
+    private boolean arrangeKey(KeyEvent e) {
+        int code = e.getKeyCode();
+        boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
+        if (e.getAction() == KeyEvent.ACTION_UP) {
+            if (ok || code == KeyEvent.KEYCODE_BACK) endArrange();
+            return true;
+        }
+        int i = tiles.indexOf(arrangeTile);
+        if (i < 0) { arrangeTile = null; return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            int to = i + (code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+            if (to < 0 || to >= tiles.size()) return true;
+            View t = arrangeTile;
+            ViewGroup.LayoutParams lp = t.getLayoutParams();
+            tileRow.removeView(t);
+            tileRow.addView(t, to, lp);
+            tiles.remove(i);
+            tiles.add(to, t);
+            tileColors.add(to, tileColors.remove(i));
+            t.requestFocus();
+            lastTile = to;
+            ui.post(() -> { magnify(to); if (arrangeTile != null) moveLabel(arrangeTile, ARRANGE_HINT); });
+            return true;
+        }
+        if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
+            String id = String.valueOf(arrangeTile.getTag());
+            if (id.equals("cartoons")) { moveLabel(arrangeTile, "My cartoons always stays"); return true; }
+            Rules.toggleApp(this, id); // no longer allowed: it can be ticked again in Their apps
+            arrangeTile = null;
+            saveOrder();
+            lastTile = Math.max(0, i - 1);
+            refreshTiles();
+            if (!tiles.isEmpty()) tiles.get(Math.min(lastTile, tiles.size() - 1)).requestFocus();
+            return true;
+        }
+        return true; // up and anything else: stay in arranging
     }
 
     private boolean dockFocused() {
@@ -1400,6 +1591,18 @@ public class KidsActivity extends Activity {
         int[] worlds = new int[Worlds.ALL.length + 1];
         for (int i = 0; i < worlds.length; i++) worlds[i] = i - 1;
         choiceRow("World", worlds, "world", -1, v -> v < 0 ? "A new one every day" : Worlds.ALL[v].name);
+        List<File> clips = wallpapers();
+        int[] wp = new int[clips.size() + 2];
+        for (int i = 0; i < wp.length; i++) wp[i] = i - 2;
+        choiceRow("Wallpaper", wp, "wallpaper", -1, v -> v == -2 ? "Any of the family's" : v < 0 || v >= clips.size() ? "Matches the world" : clipName(clips.get(v)));
+        choiceRow("Darken the wallpaper", new int[]{0, 8, 16, 24, 32}, "dim", 8, v -> v == 0 ? "Off" : v + "%");
+        choiceRow("Cards", new int[]{0, 1, 2}, "style", 0, v -> v == 0 ? "Smoky glass" : v == 1 ? "Bright glass" : "No boxes");
+        choiceRow("Apps along the bottom", new int[]{0, 1}, "icons", 0, v -> v == 0 ? "App icons" : "Big banners");
+        choiceRow("Character of the day", new int[]{1, 0}, "char_card", 1, v -> v == 1 ? "Show" : "Hide");
+        choiceRow("Name of Allah or hadith", new int[]{1, 0}, "word_card", 1, v -> v == 1 ? "Show" : "Hide");
+        TextView arrangeHint = text("To move an app along the bottom, or take it off, hold OK on it.", 30, fMed, DIM);
+        arrangeHint.setPadding(28, 6, 28, 6);
+        parentList.addView(arrangeHint);
         parentList.addView(section("Reward stars"));
         TextView starsHint = text("Each star buys " + Rules.STAR_MINUTES + " minutes of extra time when time is up.", 30, fMed, DIM);
         starsHint.setPadding(28, 0, 28, 6);
@@ -1477,6 +1680,8 @@ public class KidsActivity extends Activity {
             draw.run();
             if (key.equals("world")) { applyWorld(); refreshTiles(); }
             if (key.equals("fit")) fitStage();
+            if (key.equals("style") || key.equals("icons") || key.equals("dim") || key.equals("char_card") || key.equals("word_card")) applyLook();
+            if (key.equals("wallpaper")) { stopClip(); playClip(); }
             drawStars();
             if (restPanel.getVisibility() == View.VISIBLE) drawRestStars(Rules.resting(this).equals("bed"));
             tick();
