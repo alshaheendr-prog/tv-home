@@ -495,13 +495,13 @@ public class MainActivity extends Activity {
         playerSurah.setIncludeFontPadding(true);
         playerSurah.setGravity(Gravity.CENTER);
         playerSurah.setPadding(90, 40, 90, 50); // room for the Arabic swashes and the soft shadow, so neither is cut off
-        playerSurah.setShadowLayer(40, 0, 6, 0x80000000);
+        playerSurah.setShadowLayer(8, 0, 4, 0x80000000);
         playerSurah.setLayerType(View.LAYER_TYPE_HARDWARE, null); // the big blurred title is drawn once, not every frame
         playerReciter = text("", 44, fAr, 0xB3FFFFFF);
         playerReciter.setIncludeFontPadding(true);
         playerReciter.setGravity(Gravity.CENTER);
         playerReciter.setPadding(60, 10, 60, 20);
-        playerReciter.setShadowLayer(18, 0, 3, 0x80000000);
+        playerReciter.setShadowLayer(5, 0, 2, 0x80000000);
         playerReciter.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         mid.addView(playerSurah, new LinearLayout.LayoutParams(-2, -2));
         mid.addView(playerReciter, new LinearLayout.LayoutParams(-2, -2));
@@ -778,7 +778,7 @@ public class MainActivity extends Activity {
         t.setTypeface(tf);
         t.setTextColor(color);
         t.setIncludeFontPadding(false);
-        if (px >= 100) t.setShadowLayer(24, 0, 3, 0x4D000000);
+        if (px >= 100) t.setShadowLayer(5, 0, 2, 0x66000000);
         return t;
     }
 
@@ -1006,6 +1006,8 @@ public class MainActivity extends Activity {
     }
 
     /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
+    /** Text shadows stay tight around the letters (a soft drop shadow, no halo box). */
+    static final float TEXT_SHADOW = 4f;
     static final int CLOCK_TOP = 34, LINE_Y = 470, STRIP_Y = 650, STRIP_H = 164;
 
     private static void moveTo(View v, ViewGroup to, ViewGroup.LayoutParams lp) {
@@ -1021,7 +1023,7 @@ public class MainActivity extends Activity {
         clockRow.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         clockText = text("--:--", 230, fThin, 0xF2FFFFFF);
         clockText.setFontFeatureSettings("tnum");
-        clockText.setShadowLayer(40, 0, 4, 0x40000000);
+        clockText.setShadowLayer(6, 0, 3, 0x73000000); // close to the digits, so no faint box shows around them
         ampmText = text("", 50, fLight, 0xB3FFFFFF);
         ampmText.setLetterSpacing(0.08f);
         clockRow.addView(clockText);
@@ -1036,7 +1038,7 @@ public class MainActivity extends Activity {
         skyText.setTextColor(WHITE);
         moveTo(tempText, wxRow, new LinearLayout.LayoutParams(-2, -2));
         moveTo(skyText, wxRow, new LinearLayout.LayoutParams(-2, -2));
-        for (TextView t : new TextView[]{tempText, skyText}) t.setShadowLayer(16, 0, 2, 0x99000000);
+        for (TextView t : new TextView[]{tempText, skyText}) t.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         c.addView(wxRow, new LinearLayout.LayoutParams(-2, -2));
         LinearLayout dayRow = new LinearLayout(this);
         dayRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -1045,7 +1047,7 @@ public class MainActivity extends Activity {
         driveText.setPadding(28, 0, 0, 0);
         moveTo(dayText, dayRow, new LinearLayout.LayoutParams(-2, -2));
         moveTo(driveText, dayRow, new LinearLayout.LayoutParams(-2, -2));
-        for (TextView t : new TextView[]{dayText, driveText}) t.setShadowLayer(14, 0, 2, 0x99000000);
+        for (TextView t : new TextView[]{dayText, driveText}) t.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         c.addView(dayRow, new LinearLayout.LayoutParams(-2, -2));
         LinearLayout.LayoutParams crp = new LinearLayout.LayoutParams(-1, -2);
         crp.topMargin = -62; crp.bottomMargin = -66;
@@ -1061,7 +1063,7 @@ public class MainActivity extends Activity {
         moveTo(dateText, dateRow, new LinearLayout.LayoutParams(-2, -2));
         dateRow.addView(dot);
         moveTo(hijriText, dateRow, new LinearLayout.LayoutParams(-2, -2));
-        for (TextView t : new TextView[]{dateText, dot, hijriText}) t.setShadowLayer(16, 0, 2, 0x99000000);
+        for (TextView t : new TextView[]{dateText, dot, hijriText}) t.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-2, -2);
         c.addView(dateRow, dp);
         topParts[0].setVisibility(View.GONE); // the weather card itself
@@ -1070,7 +1072,7 @@ public class MainActivity extends Activity {
         moveTo(sunLine, dateRow, new LinearLayout.LayoutParams(-2, -2));
         sunLine.setTextSize(TypedValue.COMPLEX_UNIT_PX, 28);
         sunLine.setPadding(0, 0, 0, 0);
-        sunLine.setShadowLayer(16, 0, 2, 0x99000000);
+        sunLine.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         dateRow.addView(text("   ·   ", 30, fMed, DIM), dateRow.getChildCount() - 1);
         stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, CLOCK_TOP)); // layout 1: one centred column, the clock its heart
         centerGroup = c;
@@ -1104,7 +1106,7 @@ public class MainActivity extends Activity {
         lbp.topMargin = 14;
         lineBox.addView(lineBar, lbp);
         // no box around it any more: just the words, with a soft shadow so they read on any wallpaper
-        for (TextView t : new TextView[]{lineKicker, lineAr, lineEn}) t.setShadowLayer(18, 0, 2, 0xB3000000);
+        for (TextView t : new TextView[]{lineKicker, lineAr, lineEn}) t.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         // held in its own frame: the line's own fade moves lineBox, the quiet-mode slide moves the frame, so neither undoes the other
         FrameLayout lineHolder = new FrameLayout(this);
         lineHolder.setClipChildren(false);
@@ -1182,7 +1184,7 @@ public class MainActivity extends Activity {
         // the focused app's name, small and quiet, just under its icon
         dockLabel = text("", 22, fMed, 0xF2FFFFFF);
         dockLabel.setLetterSpacing(0.02f);
-        dockLabel.setShadowLayer(10, 0, 2, 0x99000000);
+        dockLabel.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         dockLabel.setAlpha(0);
         stage.addView(dockLabel, at(-2, -2, Gravity.TOP | Gravity.START, 0, 0));
     }
