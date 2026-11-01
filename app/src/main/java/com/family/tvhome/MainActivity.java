@@ -350,6 +350,14 @@ public class MainActivity extends Activity {
         t.setText(t.getPaint().measureText(one) <= max - 30 ? one : a + "\n" + b);
     }
 
+    /** The strip stays one height: the surah and reciter always take one line each, and the strip widens to fit them.
+     *  Only a name too long for the screen drops its English half (never cut off with "..."). */
+    static final int NOW_LINE_MAX = 640;
+    private static void oneLine(TextView t, String ar, String en) {
+        String both = ar + "  ·  " + en;
+        t.setText(t.getPaint().measureText(both) <= NOW_LINE_MAX ? both : ar);
+    }
+
     private static void fitPair(TextView t, String pair, int max) {
         int i = pair.indexOf(" · ");
         if (i < 0) { t.setText(pair); return; }
@@ -373,8 +381,8 @@ public class MainActivity extends Activity {
         adhanName.setText("Suhoor ends");
         adhanAr.setText("الإمساك · الفجر");
         adhanCountdown.setText("10:59:59");
-        fitPair(nowSurah, "سورة الشعراء", "Ash-Shu'ara", NOW_W);
-        fitPair(nowReciter, "عبدالرحمن السديس", "Abdul Rahman Al-Sudais", NOW_W);
+        oneLine(nowSurah, "سورة الشعراء", "Ash-Shu'ara");
+        oneLine(nowReciter, "محمد صديق المنشاوي", "Mohammed Siddiq Al-Minshawi"); // the longest name, to test the strip
         showNowReciting(true);
         lineFrame.setVisibility(View.VISIBLE);
         lineKicker.setText("VERSE OF THE DAY  ·  آية اليوم   ·   Al-Baqarah 2:286");
@@ -998,7 +1006,7 @@ public class MainActivity extends Activity {
     }
 
     /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
-    static final int CLOCK_TOP = 34, STRIP_Y = 488;
+    static final int CLOCK_TOP = 34, LINE_Y = 470, STRIP_Y = 650, STRIP_H = 164;
 
     private static void moveTo(View v, ViewGroup to, ViewGroup.LayoutParams lp) {
         if (v.getParent() != null) ((ViewGroup) v.getParent()).removeView(v);
@@ -1077,11 +1085,13 @@ public class MainActivity extends Activity {
         lineAr = text("", 38, fQuran, WHITE);
         lineAr.setIncludeFontPadding(true);
         lineAr.setGravity(Gravity.CENTER);
-        lineAr.setMaxWidth(1500);
+        lineAr.setMaxWidth(1700);
+        lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, 36);
         lineAr.setPadding(0, 6, 0, 0);
         lineEn = text("", 32, fSerif, SOFT);
         lineEn.setGravity(Gravity.CENTER);
-        lineEn.setMaxWidth(1500);
+        lineEn.setMaxWidth(1700);
+        lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 30);
         lineEn.setLineSpacing(0, 1.05f);
         lineEn.setPadding(0, 2, 0, 0);
         lineBox.addView(lineKicker, new LinearLayout.LayoutParams(-2, -2));
@@ -1099,7 +1109,8 @@ public class MainActivity extends Activity {
         FrameLayout lineHolder = new FrameLayout(this);
         lineHolder.setClipChildren(false);
         lineHolder.addView(lineBox, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER_HORIZONTAL));
-        stage.addView(lineHolder, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 236));
+        // a long, low band between the clock and the adhan strip
+        stage.addView(lineHolder, at(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, LINE_Y));
         lineFrame = lineHolder;
 
         // A small message pill, used for short notices like "PIN saved".
@@ -2205,7 +2216,8 @@ public class MainActivity extends Activity {
         nowPart.setAlpha(0);
         nowPart.setVisibility(View.GONE);
         oldCard.setVisibility(View.GONE);
-        topParts[1] = glassCard(stage, strip, -1, -1, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 22, STRIP_Y, 34, 22, 0x33FFFFFF, CARD_TINT, false);
+        // a fixed height: it only grows sideways (when a recitation joins it, or for a long name), never taller
+        topParts[1] = glassCard(stage, strip, -1, STRIP_H, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 22, STRIP_Y, 34, 22, 0x33FFFFFF, CARD_TINT, false);
     }
 
     private View stripDivider() {
@@ -2615,9 +2627,9 @@ public class MainActivity extends Activity {
         if (quranReciter.ar.isEmpty()) quranNowReciter.setText(quranReciter.en);
         else fitPair(quranNowReciter, quranReciter.ar, quranReciter.en, QNOW_W);
         quranPlayBtn.setText(quran.getPlayWhenReady() ? "Pause" : "Play");
-        fitPair(nowSurah, "سورة " + Quran.AR[quranSurah - 1], Quran.EN[quranSurah - 1], NOW_W);
+        oneLine(nowSurah, "سورة " + Quran.AR[quranSurah - 1], Quran.EN[quranSurah - 1]);
         drawPlayer();
-        if (quranReciter.ar.isEmpty()) nowReciter.setText(quranReciter.en); else fitPair(nowReciter, quranReciter.ar, quranReciter.en, NOW_W);
+        if (quranReciter.ar.isEmpty()) nowReciter.setText(quranReciter.en); else oneLine(nowReciter, quranReciter.ar, quranReciter.en);
         showNowReciting(true);
         animateBars(quran.getPlayWhenReady());
     }
@@ -2637,8 +2649,8 @@ public class MainActivity extends Activity {
         nowSurah.setIncludeFontPadding(true);
         nowReciter = text("", 24, fAr, SOFT);
         nowReciter.setIncludeFontPadding(true);
-        nowReciter.setMaxWidth(NOW_W); // the card must stay inside the gap between the two top cards
-        nowSurah.setMaxWidth(NOW_W);
+        nowReciter.setMaxLines(1);
+        nowSurah.setMaxLines(1);
         texts.addView(k);
         texts.addView(nowSurah);
         texts.addView(nowReciter);
