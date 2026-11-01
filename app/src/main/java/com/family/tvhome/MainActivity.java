@@ -203,7 +203,7 @@ public class MainActivity extends Activity {
         root.addView(skyTint, new FrameLayout.LayoutParams(-1, -1));
         dimView = new View(this);
         dimView.setBackgroundColor(Color.BLACK);
-        dimView.setAlpha(1 - prefs.getInt("brightness", 100) / 100f);
+        dimView.setAlpha(baseDim());
         root.addView(dimView, new FrameLayout.LayoutParams(-1, -1));
         // Soft dark gradients at the top and bottom keep the text readable on any video.
         topScrim = new View(this);
@@ -214,7 +214,7 @@ public class MainActivity extends Activity {
         bottomScrim = new View(this);
 
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xB3000000, 0x59000000, 0x00000000}));
-        root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, 380, Gravity.BOTTOM));
+        root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, 480, Gravity.BOTTOM)); // reaches up behind the adhan strip
 
         stage = new FrameLayout(this);
         stage.setClipChildren(false);
@@ -1008,7 +1008,7 @@ public class MainActivity extends Activity {
     /** Middle: a large, slightly see-through clock and the rotating verse / hadith line. */
     /** Text shadows stay tight around the letters (a soft drop shadow, no halo box). */
     static final float TEXT_SHADOW = 4f;
-    static final int CLOCK_TOP = 34, LINE_Y = 470, STRIP_Y = 650, STRIP_H = 164;
+    static final int CLOCK_TOP = 34, LINE_Y = 470, STRIP_Y = 690, STRIP_H = 110, RIGHT_EDGE = 110;
 
     private static void moveTo(View v, ViewGroup to, ViewGroup.LayoutParams lp) {
         if (v.getParent() != null) ((ViewGroup) v.getParent()).removeView(v);
@@ -1018,9 +1018,10 @@ public class MainActivity extends Activity {
     private void buildCenter() {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setGravity(Gravity.CENTER_HORIZONTAL);
+        c.setGravity(Gravity.END);
+        c.setPadding(0, 0, RIGHT_EDGE, 0);
         LinearLayout clockRow = new LinearLayout(this);
-        clockRow.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        clockRow.setGravity(Gravity.BOTTOM | Gravity.END);
         clockText = text("--:--", 230, fThin, 0xF2FFFFFF);
         clockText.setFontFeatureSettings("tnum");
         clockText.setShadowLayer(6, 0, 3, 0x73000000); // close to the digits, so no faint box shows around them
@@ -1069,30 +1070,26 @@ public class MainActivity extends Activity {
         topParts[0].setVisibility(View.GONE); // the weather card itself
 
         // the dates and sunrise sit under the clock; the next adhan, the prayer times and the recitation share one strip below
-        moveTo(sunLine, dateRow, new LinearLayout.LayoutParams(-2, -2));
-        sunLine.setTextSize(TypedValue.COMPLEX_UNIT_PX, 28);
-        sunLine.setPadding(0, 0, 0, 0);
-        sunLine.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
-        dateRow.addView(text("   ·   ", 30, fMed, DIM), dateRow.getChildCount() - 1);
+        ((ViewGroup) sunLine.getParent()).removeView(sunLine); // sunrise and sunset are no longer shown on the home screen
         stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, CLOCK_TOP)); // layout 1: one centred column, the clock its heart
         centerGroup = c;
 
         // The verse / hadith card, low on the screen just above the dock: Amiri for the Arabic, an italic serif for the English.
         lineBox = new LinearLayout(this);
         lineBox.setOrientation(LinearLayout.VERTICAL);
-        lineBox.setGravity(Gravity.CENTER_HORIZONTAL);
+        lineBox.setGravity(Gravity.END);
         lineBox.setPadding(56, 6, 56, 10);
         lineKicker = text("", 20, fSemi, DIM);
         lineKicker.setLetterSpacing(0.16f);
         lineAr = text("", 38, fQuran, WHITE);
         lineAr.setIncludeFontPadding(true);
-        lineAr.setGravity(Gravity.CENTER);
-        lineAr.setMaxWidth(1700);
+        lineAr.setGravity(Gravity.END);
+        lineAr.setMaxWidth(1400);
         lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, 36);
         lineAr.setPadding(0, 6, 0, 0);
         lineEn = text("", 32, fSerif, SOFT);
-        lineEn.setGravity(Gravity.CENTER);
-        lineEn.setMaxWidth(1700);
+        lineEn.setGravity(Gravity.END);
+        lineEn.setMaxWidth(1400);
         lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 30);
         lineEn.setLineSpacing(0, 1.05f);
         lineEn.setPadding(0, 2, 0, 0);
@@ -1110,9 +1107,9 @@ public class MainActivity extends Activity {
         // held in its own frame: the line's own fade moves lineBox, the quiet-mode slide moves the frame, so neither undoes the other
         FrameLayout lineHolder = new FrameLayout(this);
         lineHolder.setClipChildren(false);
-        lineHolder.addView(lineBox, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER_HORIZONTAL));
+        lineHolder.addView(lineBox, new FrameLayout.LayoutParams(-2, -2, Gravity.END));
         // a long, low band between the clock and the adhan strip
-        stage.addView(lineHolder, at(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, LINE_Y));
+        stage.addView(lineHolder, at(-2, -2, Gravity.TOP | Gravity.END, RIGHT_EDGE - 56, LINE_Y)); // lineBox has 56 of its own padding
         lineFrame = lineHolder;
 
         // A small message pill, used for short notices like "PIN saved".
@@ -2200,14 +2197,19 @@ public class MainActivity extends Activity {
         LinearLayout adhanCard = (LinearLayout) adhanBar.getParent();
         View kick = adhanCard.getChildAt(0), nameRow = adhanCard.getChildAt(1);
         adhanCard.removeView(kick); // "Fajr  1:07:07" says it on its own; the strip stays slim
-        moveTo(nameRow, colA, new LinearLayout.LayoutParams(-1, -2));
+        moveTo(nameRow, colA, new LinearLayout.LayoutParams(-2, -2));
+        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(-2, -2);
+        nlp.rightMargin = 36; // names, then the countdown, sized to their text
+        ((View) adhanName.getParent()).setLayoutParams(nlp);
+        adhanName.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);
+        adhanName.setTextSize(TypedValue.COMPLEX_UNIT_PX, 38);
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, 3);
         bp.topMargin = 8;
         moveTo(adhanBar, colA, bp);
-        strip.addView(colA, new LinearLayout.LayoutParams(440, -2));
+        strip.addView(colA, new LinearLayout.LayoutParams(-2, -2));
         strip.addView(stripDivider());
         View times = prayerCells[0] == null ? null : (View) prayerCells[0].getParent();
-        moveTo(times, strip, new LinearLayout.LayoutParams(540, -2));
+        moveTo(times, strip, new LinearLayout.LayoutParams(660, -2));
         LinearLayout nowPart = new LinearLayout(this);
         nowPart.setGravity(Gravity.CENTER_VERTICAL);
         nowPart.addView(stripDivider());
@@ -2219,14 +2221,31 @@ public class MainActivity extends Activity {
         nowPart.setVisibility(View.GONE);
         oldCard.setVisibility(View.GONE);
         // a fixed height: it only grows sideways (when a recitation joins it, or for a long name), never taller
-        topParts[1] = glassCard(stage, strip, -1, STRIP_H, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 22, STRIP_Y, 34, 22, 0x33FFFFFF, CARD_TINT, false);
+        // slim: the adhan's two names side by side, prayer columns of name and time, no recitation kicker
+        LinearLayout names = (LinearLayout) adhanName.getParent();
+        names.setOrientation(LinearLayout.HORIZONTAL);
+        names.setGravity(Gravity.CENTER_VERTICAL);
+        adhanAr.setPadding(18, 0, 0, 0);
+        adhanCountdown.setTextSize(TypedValue.COMPLEX_UNIT_PX, 52);
+        for (TextView[] p : prayerTexts) p[1].setVisibility(View.GONE);
+        ((ViewGroup) nowSurah.getParent()).getChildAt(0).setVisibility(View.GONE);
+        shadowAll(strip);
+        // no box: just the row, wide, over the soft dark fade at the bottom of the screen
+        strip.setPadding(0, 0, 0, 0);
+        stage.addView(strip, at(-2, STRIP_H, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, STRIP_Y));
+        topParts[1] = strip;
+    }
+
+    private static void shadowAll(View v) {
+        if (v instanceof TextView) ((TextView) v).setShadowLayer(TEXT_SHADOW, 0, 2, 0xB3000000);
+        if (v instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) v).getChildCount(); i++) shadowAll(((ViewGroup) v).getChildAt(i));
     }
 
     private View stripDivider() {
         View d = new View(this);
         d.setBackgroundColor(0x33FFFFFF);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(2, 120);
-        p.leftMargin = 30; p.rightMargin = 30;
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(2, 70);
+        p.leftMargin = 44; p.rightMargin = 44;
         d.setLayoutParams(p);
         return d;
     }
@@ -2798,6 +2817,10 @@ public class MainActivity extends Activity {
         box.animate().scaleX(1).scaleY(1).alpha(1).setDuration(340).setInterpolator(new DecelerateInterpolator(2.2f)).start();
     }
 
+    /** The wallpaper always sits a little darker (8%) so text reads on bright scenes; the brightness setting adds to it. */
+    static final float WALL_DIM = 0.08f;
+    private float baseDim() { return 1 - (1 - WALL_DIM) * prefs.getInt("brightness", 100) / 100f; }
+
     private void drawParent(int focus) {
         parentList.removeAllViews();
         int bright = prefs.getInt("brightness", 100);
@@ -2807,7 +2830,7 @@ public class MainActivity extends Activity {
         parentRow("Wallpaper brightness", bright + "%", () -> {
             int next = bright == 100 ? 85 : bright == 85 ? 70 : 100;
             prefs.edit().putInt("brightness", next).apply();
-            dimView.animate().alpha(1 - next / 100f).setDuration(300).start();
+            dimView.animate().alpha(baseDim()).setDuration(300).start();
             drawParent(3);
         });
         boolean verse = prefs.getBoolean("verse", true);
@@ -3120,7 +3143,7 @@ public class MainActivity extends Activity {
 
     private void enterNightDim() {
         nightDim = true;
-        float a = Math.max(DIM_LEVEL, 1 - prefs.getInt("brightness", 100) / 100f);
+        float a = Math.max(DIM_LEVEL, baseDim());
         dimView.animate().alpha(a).setDuration(4000).start();
     }
 
@@ -3128,7 +3151,7 @@ public class MainActivity extends Activity {
         ambient = false;
         if (nightDim) {
             nightDim = false;
-            dimView.animate().alpha(1 - prefs.getInt("brightness", 100) / 100f).setDuration(450).start();
+            dimView.animate().alpha(baseDim()).setDuration(450).start();
         }
         lastInput = System.currentTimeMillis();
         bottomGroup.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
