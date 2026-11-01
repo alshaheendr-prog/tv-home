@@ -2191,7 +2191,7 @@ public class MainActivity extends Activity {
             LinearLayout cell = new LinearLayout(this);
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER_VERTICAL);
-            cell.setPadding(22, 8, 22, 14);
+            cell.setPadding(22, 2, 22, 6); // the tile is 146 tall: keep the English name clear of the bottom edge
             cell.setFocusable(true);
             cell.setClickable(true);
             cell.setBackground(glass(24, SURAH_FILL, SURAH_EDGE));
