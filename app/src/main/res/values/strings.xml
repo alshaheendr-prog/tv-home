@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_keys_description">Makes the remote\'s Prime Video button open Stremio, the Apps button open Kodi, and the YouTube button ask for the parent PIN first. It only looks at button presses.</string>
+</resources>

@@ -256,6 +256,8 @@ public class MainActivity extends Activity {
         dockTiles.get(0).requestFocus();
         if (coldStart) showSplash(); else introAnimation();
         tick();
+        // The remote's YouTube button can start the home screen straight onto the PIN pad.
+        if ("pin".equals(getIntent().getStringExtra("panel"))) ui.postDelayed(() -> openPin(false), coldStart ? 1500 : 400);
     }
 
     @Override
@@ -1830,6 +1832,8 @@ public class MainActivity extends Activity {
     }
 
     private void closePanels() {
+        RemoteKeys.stopLearning();
+        ui.removeCallbacks(learnTimeout);
         if (playerPanel != null) playerPanel.setVisibility(View.GONE);
         if (playerVideo) { playerVideo = false; playRandomClip(); } // leave the Quran background, back to a wallpaper
         if (reciterPanel != null) reciterPanel.setVisibility(View.GONE);
@@ -2893,9 +2897,42 @@ public class MainActivity extends Activity {
             if (i == null) i = getPackageManager().getLeanbackLaunchIntentForPackage(AERIAL_PKG);
             if (i != null) { closePanels(); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); try { startActivity(i); } catch (Exception ignored) { } }
         });
+        for (String[] b : RemoteKeys.BUTTONS) {
+            int row = parentList.getChildCount();
+            boolean set = prefs.contains(b[0]) || b[0].equals("rk_apps");
+            String value = remoteNote != null && remoteNoteKey.equals(b[0]) ? remoteNote
+                    : !RemoteKeys.running ? "Run Update TV once first" : set ? b[2] : "Press to set up";
+            parentRow(b[1], value, () -> learnButton(b[0], row));
+        }
+        remoteNote = null;
         parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
         View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
         f.post(f::requestFocus);
+    }
+
+    // Remote buttons (RemoteKeys): each row waits for its button to be pressed once and remembers it.
+    private String remoteNote, remoteNoteKey = "";
+    private final Runnable learnTimeout = () -> {
+        RemoteKeys.stopLearning();
+        remoteNote = "Nothing came through";
+        if (parentPanel.getVisibility() == View.VISIBLE) drawParent(learnRow);
+    };
+    private int learnRow;
+
+    private void learnButton(String key, int row) {
+        if (!RemoteKeys.running) return;
+        remoteNoteKey = key;
+        learnRow = row;
+        remoteNote = "Press that button now…";
+        drawParent(row);
+        ui.removeCallbacks(learnTimeout);
+        ui.postDelayed(learnTimeout, 10000);
+        RemoteKeys.learn(key, code -> {
+            ui.removeCallbacks(learnTimeout);
+            remoteNoteKey = key;
+            remoteNote = "Done ✓";
+            if (parentPanel.getVisibility() == View.VISIBLE) drawParent(row);
+        });
     }
 
     // Screensaver: the home screen itself never sleeps (it is a moving wallpaper already), so this is the
