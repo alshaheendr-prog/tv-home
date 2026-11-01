@@ -1197,7 +1197,7 @@ public class KidsActivity extends Activity {
             card.setOnFocusChangeListener((v, has) -> {
                 v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
                 v.setBackground(has ? solid(WHITE, 26, 0x33) : solid(0x1AFFFFFF, 26, 0x14));
-                t.setTextColor(has ? 0xFF1A1033 : WHITE);
+                ink(t, has ? 0xFF1A1033 : WHITE);
             });
             final int index = i;
             card.setOnClickListener(v -> play(index));
@@ -1280,7 +1280,7 @@ public class KidsActivity extends Activity {
             key.setBackground(solid(0x1AFFFFFF, 28, 0x14));
             key.setOnFocusChangeListener((v, has) -> {
                 key.setBackground(solid(has ? WHITE : 0x1AFFFFFF, 28, has ? 0 : 0x14));
-                key.setTextColor(has ? 0xFF161028 : WHITE);
+                ink(key, has ? 0xFF161028 : WHITE);
                 key.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start();
             });
             key.setOnClickListener(v -> pinPress(k));
@@ -1682,12 +1682,24 @@ public class KidsActivity extends Activity {
         t.setText(s);
         t.setTextSize(TypedValue.COMPLEX_UNIT_PX, size);
         t.setTypeface(tf);
-        t.setTextColor(color);
+        ink(t, color);
         // Baloo's own line height is 1.7 em, with a lot of air above and below the letters.
         // Wrapped lines sit closer (0.8 of it), and each text box gives back some of that air.
         t.setLineSpacing(0, 0.8f);
         trim(t, size);
         return t;
+    }
+
+    /**
+     * Sets a text's colour. Light text gets a soft dark shadow so it stays readable over a bright
+     * wallpaper or tile; dark text (on a focused white or gold button) gets none.
+     * The shadow is drawn with the letters themselves, so it adds no extra layer.
+     */
+    private static void ink(TextView t, int color) {
+        t.setTextColor(color);
+        float light = (0.299f * Color.red(color) + 0.587f * Color.green(color) + 0.114f * Color.blue(color)) / 255f;
+        if (light > 0.45f) t.setShadowLayer(8, 0, 2, 0xB3000000);
+        else t.setShadowLayer(0, 0, 0, 0);
     }
 
     /** Takes back the empty space Baloo leaves above and below its letters, so cards stay compact. */
@@ -1703,7 +1715,7 @@ public class KidsActivity extends Activity {
         b.setBackground(solid(0x26FFFFFF, 40, 0));
         b.setOnFocusChangeListener((v, has) -> {
             b.setBackground(solid(has ? WHITE : 0x26FFFFFF, 40, 0));
-            b.setTextColor(has ? 0xFF161028 : WHITE);
+            ink(b, has ? 0xFF161028 : WHITE);
         });
         return b;
     }
@@ -1749,7 +1761,7 @@ public class KidsActivity extends Activity {
         b.setBackground(solid(0x2EFFC233, 40, 0));
         b.setOnFocusChangeListener((v, has) -> {
             b.setBackground(solid(has ? 0xFFFFD45A : 0x2EFFC233, 40, 0));
-            b.setTextColor(has ? 0xFF2A1A00 : 0xFFFFE08A);
+            ink(b, has ? 0xFF2A1A00 : 0xFFFFE08A);
             b.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).start();
         });
         return b;
