@@ -2912,12 +2912,12 @@ public class MainActivity extends Activity {
 
     // Remote buttons (RemoteKeys): each row waits for its button to be pressed once and remembers it.
     private String remoteNote, remoteNoteKey = "";
+    private int learnRow;
     private final Runnable learnTimeout = () -> {
         RemoteKeys.stopLearning();
         remoteNote = "Nothing came through";
         if (parentPanel.getVisibility() == View.VISIBLE) drawParent(learnRow);
     };
-    private int learnRow;
 
     private void learnButton(String key, int row) {
         if (!RemoteKeys.running) return;
