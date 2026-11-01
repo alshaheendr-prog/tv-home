@@ -2859,7 +2859,7 @@ public class MainActivity extends Activity {
                 : aerial == null ? "Get Aerial Views ›" : aerialOn ? "Aerial Views" : "TV default";
         screensaverNote = null;
         parentRow("Screensaver (in other apps)", saverValue, () -> {
-            if (aerial == null) { openStore(AERIAL_PKG); return; }
+            if (aerial == null) { closePanels(); openStore(AERIAL_PKG); return; }
             screensaverNote = setScreensaver(aerialOn ? null : aerial) ? null : "Run Update TV once first";
             drawParent(11);
         });
@@ -2905,12 +2905,6 @@ public class MainActivity extends Activity {
         } catch (SecurityException e) {
             return false;
         }
-    }
-
-    private void openStore(String pkg) {
-        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg));
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try { closePanels(); startActivity(i); } catch (Exception ignored) { }
     }
 
     /** The weekly family stats page, inside the parent menu: screen time from Kids Corner and the Quran heard this week. */
