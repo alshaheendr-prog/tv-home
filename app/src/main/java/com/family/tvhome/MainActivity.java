@@ -1014,7 +1014,7 @@ public class MainActivity extends Activity {
         applyClockFont();
         c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 290)); // below the top cards, with the whole width to itself
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 278)); // below the top cards, with the whole width to itself
         centerGroup = c;
 
         // The verse / hadith card, low on the screen just above the dock: Amiri for the Arabic, an italic serif for the English.
@@ -1045,8 +1045,12 @@ public class MainActivity extends Activity {
         lineBox.addView(lineBar, lbp);
         // no box around it any more: just the words, with a soft shadow so they read on any wallpaper
         for (TextView t : new TextView[]{lineKicker, lineAr, lineEn}) t.setShadowLayer(18, 0, 2, 0xB3000000);
-        stage.addView(lineBox, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 244));
-        lineFrame = lineBox;
+        // held in its own frame: the line's own fade moves lineBox, the quiet-mode slide moves the frame, so neither undoes the other
+        FrameLayout lineHolder = new FrameLayout(this);
+        lineHolder.setClipChildren(false);
+        lineHolder.addView(lineBox, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER_HORIZONTAL));
+        stage.addView(lineHolder, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 236));
+        lineFrame = lineHolder;
 
         // A small message pill, used for short notices like "PIN saved".
         pillText = text("", 28, fMed, WHITE);
@@ -3009,14 +3013,16 @@ public class MainActivity extends Activity {
     private boolean ambient;
     private long lastInput = System.currentTimeMillis();
 
+    static final float QUIET_DROP = 110; // clock and verse slide down together, by the same amount, keeping their gap
+
     private void enterAmbient() {
         ambient = true;
         bottomGroup.animate().alpha(0).translationY(40).setDuration(1200).setInterpolator(EASE).start();
         dockLabel.animate().alpha(0).setDuration(400).start();
         for (View t : topParts) t.animate().alpha(0.7f).setDuration(1500).start();
         // the clock and the verse card settle lower together, into the dock's space, keeping their gap
-        centerGroup.animate().translationY(70).setDuration(1500).setInterpolator(EASE).start();
-        lineFrame.animate().translationY(190).setDuration(1500).setInterpolator(EASE).start();
+        centerGroup.animate().translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
+        lineFrame.animate().translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
     }
 
     /** After fifteen quiet minutes the whole screen dims; the video and the soft Quran keep playing. */
