@@ -213,7 +213,7 @@ public class MainActivity extends Activity {
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitStage());
         bottomScrim = new View(this);
 
-        bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xA6000000, 0x00000000}));
+        bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xB3000000, 0x59000000, 0x00000000}));
         root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, 380, Gravity.BOTTOM));
 
         stage = new FrameLayout(this);
@@ -928,6 +928,11 @@ public class MainActivity extends Activity {
             times.addView(col, cp);
         }
         card.addView(times, new LinearLayout.LayoutParams(-1, -2));
+        sunLine = text("", 22, fMed, SOFT);
+        sunLine.setGravity(Gravity.CENTER);
+        sunLine.setFontFeatureSettings("tnum");
+        sunLine.setPadding(0, 6, 0, 0);
+        card.addView(sunLine, new LinearLayout.LayoutParams(-1, -2));
         View rightFrame = card(card, CARD_W, CARD_H, Gravity.TOP | Gravity.END, 80, 56);
 
         // The sun card, mirroring the event chip on the left: where the sun is now, with sunrise and sunset.
@@ -942,11 +947,12 @@ public class MainActivity extends Activity {
         sunRow.addView(sunText);
         sunCard = glassCard(stage, sunRow, -1, -1, Gravity.TOP | Gravity.END, 80, 56 + CARD_H + 16, 26, 18, 0x33FFFFFF, CARD_TINT, false);
 
+        sunCard.setVisibility(View.GONE); // folded into the adhan card, to keep the screen calm
         topParts = new View[]{leftFrame, rightFrame};
     }
 
     private View[] topParts;
-    private TextView eventText, sunText;
+    private TextView eventText, sunText, sunLine;
     private SunArc sunArc;
     private View sunCard;
 
@@ -957,6 +963,7 @@ public class MainActivity extends Activity {
         sunArc.set(today[1], today[4], min);
         sunText.setText("Sunrise " + PrayerTimes.clock(today[1]) + "  ·  Sunset " + PrayerTimes.clock(today[4])
                 + "\nالشروق " + PrayerTimes.clock(today[1]) + "  ·  الغروب " + PrayerTimes.clock(today[4]));
+        sunLine.setText("Sunrise " + PrayerTimes.clock(today[1]) + "   ·   Sunset " + PrayerTimes.clock(today[4]));
     }
     private View eventChip;
 
@@ -973,17 +980,18 @@ public class MainActivity extends Activity {
     private View lineFrame;
 
     /** The clock's typefaces, chosen in Parent settings: {name, digits font, AM/PM font}. */
-    static final String[] CLOCK_FONTS = {"Outfit", "Jost", "Cormorant", "Inter"};
+    static final String[] CLOCK_FONTS = {"Fraunces", "Outfit", "Jost", "Cormorant", "Inter"};
 
     private void applyClockFont() {
-        int k = prefs.getInt("clock_font", 0) % CLOCK_FONTS.length;
-        int[] digits = {R.font.outfit_thin, R.font.jost_extralight, R.font.cormorant_light, R.font.inter_extralight};
+        int k = prefs.getInt("clock_face", 0) % CLOCK_FONTS.length;
+        int[] digits = {R.font.fraunces_soft_light, R.font.outfit_thin, R.font.jost_extralight, R.font.cormorant_light, R.font.inter_extralight};
         Typeface tf = getResources().getFont(digits[k]);
         clockText.setTypeface(tf);
-        ampmText.setTypeface(k == 3 ? fLight : tf);
-        // each face sits a little differently on the line: tune size, spacing and the AM/PM baseline to match
-        float[] size = {236, 232, 250, 230}, spacing = {-0.02f, 0f, -0.01f, -0.03f};
-        int[] ampmLift = {40, 40, 46, 38};
+        ampmText.setTypeface(k == 4 ? fLight : tf);
+        // each face sits a little differently on the line: tune size, spacing and the AM/PM baseline to match.
+        // The clock is the centrepiece: as large as fits between the two top cards.
+        float[] size = {300, 290, 286, 310, 284}, spacing = {-0.01f, -0.02f, 0f, -0.01f, -0.03f};
+        int[] ampmLift = {58, 50, 50, 56, 48};
         clockText.setTextSize(TypedValue.COMPLEX_UNIT_PX, size[k]);
         clockText.setLetterSpacing(spacing[k]);
         ampmText.setPadding(16, 0, 0, ampmLift[k]);
@@ -999,21 +1007,21 @@ public class MainActivity extends Activity {
         clockText = text("--:--", 230, fThin, 0xF2FFFFFF);
         clockText.setFontFeatureSettings("tnum");
         clockText.setShadowLayer(40, 0, 4, 0x40000000);
-        ampmText = text("", 44, fLight, 0xB3FFFFFF);
+        ampmText = text("", 50, fLight, 0xB3FFFFFF);
         ampmText.setLetterSpacing(0.08f);
         clockRow.addView(clockText);
         clockRow.addView(ampmText);
         applyClockFont();
         c.addView(clockRow, new LinearLayout.LayoutParams(-1, -2));
 
-        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 236));
+        stage.addView(c, at(1920, -2, Gravity.TOP | Gravity.START, 0, 290)); // below the top cards, with the whole width to itself
         centerGroup = c;
 
         // The verse / hadith card, low on the screen just above the dock: Amiri for the Arabic, an italic serif for the English.
         lineBox = new LinearLayout(this);
         lineBox.setOrientation(LinearLayout.VERTICAL);
         lineBox.setGravity(Gravity.CENTER_HORIZONTAL);
-        lineBox.setPadding(56, 22, 56, 24);
+        lineBox.setPadding(56, 6, 56, 10);
         lineKicker = text("", 20, fSemi, DIM);
         lineKicker.setLetterSpacing(0.16f);
         lineAr = text("", 38, fQuran, WHITE);
@@ -1035,7 +1043,10 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams lbp = new LinearLayout.LayoutParams(220, 2);
         lbp.topMargin = 14;
         lineBox.addView(lineBar, lbp);
-        lineFrame = card(lineBox, -1, -1, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 326);
+        // no box around it any more: just the words, with a soft shadow so they read on any wallpaper
+        for (TextView t : new TextView[]{lineKicker, lineAr, lineEn}) t.setShadowLayer(18, 0, 2, 0xB3000000);
+        stage.addView(lineBox, at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 244));
+        lineFrame = lineBox;
 
         // A small message pill, used for short notices like "PIN saved".
         pillText = text("", 28, fMed, WHITE);
@@ -1095,8 +1106,13 @@ public class MainActivity extends Activity {
             dock.addView(tile, tp);
             dockTiles.add(tile);
         }
-        bottomGroup = glassCard(stage, dock, -1, DOCK_H, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, DOCK_Y,
-                48, 34, 0x40FFFFFF, CARD_TINT, false);
+        // just the icons, no panel around them: the soft dark fade at the bottom of the screen keeps them readable
+        FrameLayout dockWrap = new FrameLayout(this);
+        dockWrap.setClipChildren(false);
+        dockWrap.setClipToPadding(false);
+        dockWrap.addView(dock, new FrameLayout.LayoutParams(-2, DOCK_H, Gravity.CENTER));
+        stage.addView(dockWrap, at(-2, DOCK_H, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, DOCK_Y));
+        bottomGroup = dockWrap;
 
         // the focused app's name, small and quiet, just under its icon
         dockLabel = text("", 22, fMed, 0xF2FFFFFF);
@@ -2729,9 +2745,9 @@ public class MainActivity extends Activity {
             fitStage();
             drawParent(7);
         });
-        int cf = prefs.getInt("clock_font", 0) % CLOCK_FONTS.length;
+        int cf = prefs.getInt("clock_face", 0) % CLOCK_FONTS.length;
         parentRow("Clock font", CLOCK_FONTS[cf], () -> {
-            prefs.edit().putInt("clock_font", (cf + 1) % CLOCK_FONTS.length).apply();
+            prefs.edit().putInt("clock_face", (cf + 1) % CLOCK_FONTS.length).apply();
             applyClockFont();
             drawParent(8);
         });
