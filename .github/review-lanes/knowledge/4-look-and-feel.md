@@ -1,4 +1,4 @@
-# Lane 4 knowledge: Look and feel (Centre stage, typography, glass, readability)
+# Lane 4 knowledge: Visual direction (overall premium look; shared design reference)
 
 ## How to use this file
 - Read this whole file before every review, then read the brief `../4-look-and-feel.md`.
@@ -6,6 +6,7 @@
 - After every review, send the PR thread short, dated additions for: **Past findings**, **Lessons learned**, **Source library** and **Open questions**. The PR thread commits them here in the same PR.
 - Keep entries short. If the file grows past about 400 lines, condense the oldest Past findings and Lessons into one-line summaries. Never delete a source that is still cited.
 - Mark anything you could not verify with **(unverified)**. Move it to "verified" only when you have read the code or seen it on the TV or in a screenshot.
+- **2026-11-05: lane 4 was split.** Lane 4 is now the art-director lane: it judges the whole screen as one picture (Centre stage fidelity, premium feel, hierarchy at a glance, consistency across home, Kids and adhan, scope creep, before/after screenshots) and hands specifics to the new design lanes: 9 Layout and spacing, 10 Typography, 11 Colour and contrast, 12 Motion and animation, 13 App icons and artwork, 14 Wallpaper and backgrounds, 15 UI components and states. This file keeps all its earlier content because those lanes reuse it as the shared design reference (type scale, contrast maths, motion tokens, glass, focus, safe areas, recipes); each new lane has its own knowledge file for its deeper detail. Lane 4 adds here only whole-screen findings and lessons; detailed findings go to the owning lane's file.
 
 ## Core expertise
 
@@ -151,6 +152,7 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Research notes from the original brief: Screen size default 100% is deliberate (6aa9cc2), not a bug; old comments mention sunrise and the sun card; kickers are only 20 px.
 
 ## Lessons learned
+- 2026-11-05: Split into specialist design lanes 9 to 15. Judge the whole picture here, hand details to the owning lane, and say when a detail had no lane to check it.
 - 2026-11-05: Check commit history before calling a spec mismatch a bug: the Screen size default and the right-aligned column were both deliberate changes after the spec text was written.
 - 2026-11-05: Read the helper, not the call site: `kicker()` overrides the colour passed to `text()`.
 - 2026-11-05: Requesting an OpenType feature proves nothing; check the font file has it (`fontTools`, look at GSUB features).
@@ -199,4 +201,5 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [smashing-tv] https://www.smashingmagazine.com/2025/09/designing-tv-principles-patterns-practical-guidance/: practical TV type (24 px body, 5 to 6 sizes), no pure white, focus contrast, safe zones.
 - [a15-behavior] https://developer.android.com/about/versions/15/behavior-changes-15: target-35 text defaults (elegantTextHeight, useBoundsForWidth). Checked 2026-11-05.
 - [inter-v4] https://github.com/rsms/inter/releases/tag/v4.0: Inter v4 changes (UPM 2048). Checked 2026-11-05.
+- [hig-tvos] https://developer.apple.com/design/human-interface-guidelines/designing-for-tvos (read via .../tutorials/data/design/human-interface-guidelines/designing-for-tvos.json): tvOS principles: focus that gently highlights and expands, edge-to-edge artwork, subtle fluid animation, cinematic and legible from across the room. Checked 2026-11-05.
 - To open next: Material 3 motion pages (need a JS-capable reader), Google TV home-screen design references.
