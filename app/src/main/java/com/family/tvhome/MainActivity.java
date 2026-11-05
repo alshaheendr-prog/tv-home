@@ -1939,11 +1939,11 @@ public class MainActivity extends Activity {
     private void focusLayer(View top) {
         block(bottomGroup, top != null);
         for (View p : new View[]{pinPanel, appsPanel, calendarPanel, quranPanel, parentPanel, playerPanel, reciterPanel})
-            if (p != null) block((ViewGroup) p, p != top);
+            block(p, p != top);
     }
 
-    private static void block(ViewGroup g, boolean blocked) {
-        if (g != null) g.setDescendantFocusability(blocked ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
+    private static void block(View v, boolean blocked) {
+        if (v instanceof ViewGroup) ((ViewGroup) v).setDescendantFocusability(blocked ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
     }
 
     private FrameLayout overlay() {
