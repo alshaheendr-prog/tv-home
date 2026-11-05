@@ -702,6 +702,7 @@ public class AdhanService extends Service {
         // Amiri has every Qur'anic mark (small high letters, ﷺ); the rounded Baloo face drops some.
         cardAr = text("", 34, getResources().getFont(R.font.amiri_bold), TEXT);
         cardAr.setTextDirection(View.TEXT_DIRECTION_RTL);
+        cardAr.setIncludeFontPadding(true); // room for Amiri's tall Qur'anic marks
         cardAr.setGravity(Gravity.END);
         cardAr.setLineSpacing(0, 1.15f);
         // No line cap: a verse must never be cut short (the fetch below keeps them short instead).
@@ -709,7 +710,6 @@ public class AdhanService extends Service {
         box.addView(cardAr, new LinearLayout.LayoutParams(-1, -2));
         cardEn = text("", 26, fMedium, TEXT);
         cardEn.setLineSpacing(0, 1.1f);
-        cardEn.setMaxLines(4);
         cardEn.setPadding(0, (int) px(10), 0, 0);
         box.addView(cardEn);
         cardRef = text("", 20, fMedium, MUTED);

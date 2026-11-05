@@ -61,12 +61,12 @@ final class PinLock {
         return false;
     }
 
-    /** "Try again in 30 seconds" style text for the wait left. */
+    /** "Wait 30 seconds" style text for the wait left. */
     static String waitText(long ms) {
         long s = (ms + 999) / 1000;
-        if (s < 60) return "Too many tries. Try again in " + s + " seconds";
+        if (s < 60) return "Too many tries. Wait " + s + " seconds";
         long m = (s + 59) / 60;
-        return "Too many tries. Try again in " + m + (m == 1 ? " minute" : " minutes");
+        return "Too many tries. Wait " + m + (m == 1 ? " minute" : " minutes");
     }
 
     private static String salt(SharedPreferences p) {
