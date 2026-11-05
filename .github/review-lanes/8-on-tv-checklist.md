@@ -40,6 +40,9 @@ Always include **the standard smoke test** (about 5 minutes) and adapt the wordi
 - If the PR touches video or the wallpaper, add "leave it running for 10 minutes and check it is not getting slow". It's a 2 GB box.
 - If the PR changes the look, add "open `C:\TVWallpapers\home.png` on the PC and check nothing overlaps or is cut off at the edges".
 - If a step could lock the kids out or wipe settings, warn him before that step.
+- Before any wrong-PIN test, have the owner enter the right PIN once first, and warn that 5 wrong tries make the pad rest for a while.
+- The adhan app's corner card only shows over another app or launcher, not over the family home, so test it from inside an app like Netflix.
+- For a restart or crash fix, the developer option "Don't keep activities" recreates the home screen every time you leave it; mention it only if the owner already has developer options on.
 
 ## Known risks already in the code
 - Remote buttons are learned per box and saved in the home app's settings (`RemoteKeys.java:21-25,41-43`). After an update they should still work. If they don't, the fix is Parent settings, then learn the buttons again. Say so in the checklist.

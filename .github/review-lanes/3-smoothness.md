@@ -18,6 +18,7 @@ You are an expert in Android rendering performance and memory on low-end TV hard
 
 ## Expert checklist
 **Frame budget (16.6 ms at 60Hz)**
+- [ ] No CPU-heavy work on the UI thread (hashing, key derivation, large parsing, file or network I/O): anything over about 2 ms goes to the background thread.
 - [ ] No new per-frame work on the UI thread: no allocation in `onDraw`/`draw()`, including `new Paint`, `new RectF`, `new LinearGradient`, arrays or lambdas. Shaders are rebuilt only when size or colour changes (follow the `Glass.buildBody` / `BrandGlow.shaderR` pattern).
 - [ ] Animations change only `alpha`, `translationX/Y`, `scaleX/Y` or `rotation`. They never animate margins, padding, text size or `LayoutParams` (each of those forces a layout pass every frame).
 - [ ] Every `postInvalidateOnAnimation()` loop or repeating ValueAnimator stops when its view is GONE, covered, or the activity is paused, and resumes correctly afterwards.

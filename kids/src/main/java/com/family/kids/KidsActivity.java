@@ -166,9 +166,6 @@ public class KidsActivity extends Activity {
             Rules.setOn(this, true);
             Guard.start(this);
         }
-        // Without usage access the lock can't see which app is open, so it can't send him back. Say so plainly.
-        if (!usageAccess())
-            android.widget.Toast.makeText(this, "Kids lock is NOT active: run \"Kids Corner setup\" on the PC once", android.widget.Toast.LENGTH_LONG).show();
         if (checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_AUDIO}, 1);
         tick();
@@ -1745,6 +1742,7 @@ public class KidsActivity extends Activity {
         boolean v = checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED;
         return "Setup:  " + (u ? "✓" : "✗") + " app watching   " + (o ? "✓" : "✗") + " pop-ups   " + (v ? "✓" : "✗") + " videos   ·   "
                 + cartoons.size() + " cartoons found"
+                + (u ? "" : "\nWithout app watching the kids lock can't send him back from other apps.")
                 + (u && o ? "" : "\nRun \"Kids Corner setup\" on the PC once to switch the ✗ items on.");
     }
 

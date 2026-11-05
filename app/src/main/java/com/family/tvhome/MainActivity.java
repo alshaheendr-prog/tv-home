@@ -2215,8 +2215,11 @@ public class MainActivity extends Activity {
         if (PinLock.waitLeft(prefs) > 0) showPinWait(); else pinSub.setText(pinMode.equals("old") ? "Enter the current PIN first" : "Enter the parent PIN");
     };
 
+    private ValueAnimator pinShake;
+
     private void pinWrong() {
-        ValueAnimator a = ValueAnimator.ofFloat(0, -18, 16, -12, 8, -4, 0);
+        if (pinShake != null) pinShake.cancel(); // one shake at a time, however fast keys are pressed
+        ValueAnimator a = pinShake = ValueAnimator.ofFloat(0, -18, 16, -12, 8, -4, 0);
         a.setDuration(420);
         a.addUpdateListener(v -> pinBox.setTranslationX((float) v.getAnimatedValue()));
         a.start();

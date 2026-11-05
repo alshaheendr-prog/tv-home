@@ -7,11 +7,11 @@ import java.security.SecureRandom;
 
 /**
  * The parent PIN: kept only as a salted hash, and after 5 wrong tries the pad rests,
- * 30 seconds at first and doubling up to 15 minutes, so the 10,000 codes can't be tried one by one.
+ * 30 seconds at first and doubling up to 5 minutes, so the 10,000 codes can't be tried one by one.
  */
 final class PinLock {
     private static final int FREE_TRIES = 5;
-    private static final long FIRST_WAIT = 30_000, MAX_WAIT = 15 * 60_000;
+    private static final long FIRST_WAIT = 30_000, MAX_WAIT = 5 * 60_000, FORGET_AFTER = 60 * 60_000;
 
     private PinLock() { }
 
@@ -20,7 +20,7 @@ final class PinLock {
         String plain = p.getString("pin", "");
         if (plain.isEmpty()) return;
         String salt = salt(p);
-        p.edit().putString("pin_h", hash(plain, salt)).remove("pin").commit();
+        p.edit().putString("pin_h", hash(plain, salt)).remove("pin").apply();
     }
 
     static boolean isSet(SharedPreferences p) {
@@ -30,7 +30,7 @@ final class PinLock {
 
     static void set(SharedPreferences p, String pin) {
         String salt = salt(p);
-        p.edit().putString("pin_h", hash(pin, salt)).remove("pin").putInt("pin_fails", 0).putLong("pin_until", 0).commit();
+        p.edit().putString("pin_h", hash(pin, salt)).remove("pin").putInt("pin_fails", 0).putLong("pin_until", 0).apply();
     }
 
     /** Milliseconds left before another try is allowed, or 0. */
@@ -49,11 +49,13 @@ final class PinLock {
             p.edit().putInt("pin_fails", 0).putLong("pin_until", 0).apply();
             return true;
         }
-        int fails = p.getInt("pin_fails", 0) + 1;
-        SharedPreferences.Editor e = p.edit().putInt("pin_fails", fails);
+        long now = System.currentTimeMillis();
+        // An hour with no tries forgets the old wrong ones, so a child's guessing can't keep the pad resting for long.
+        int fails = (now - p.getLong("pin_last", 0) > FORGET_AFTER ? 0 : p.getInt("pin_fails", 0)) + 1;
+        SharedPreferences.Editor e = p.edit().putInt("pin_fails", fails).putLong("pin_last", now);
         if (fails >= FREE_TRIES) {
             long wait = Math.min(MAX_WAIT, FIRST_WAIT << Math.min(fails - FREE_TRIES, 10));
-            e.putLong("pin_until", System.currentTimeMillis() + wait);
+            e.putLong("pin_until", now + wait);
         }
         e.apply();
         return false;
@@ -73,16 +75,16 @@ final class PinLock {
         byte[] b = new byte[16];
         new SecureRandom().nextBytes(b);
         s = hex(b);
-        p.edit().putString("pin_salt", s).commit();
+        p.edit().putString("pin_salt", s).apply();
         return s;
     }
 
     private static String hash(String pin, String salt) {
         try {
             MessageDigest d = MessageDigest.getInstance("SHA-256");
-            byte[] out = d.digest((salt + ":" + pin).getBytes("UTF-8"));
-            for (int i = 0; i < 20000; i++) out = d.digest(out); // slow enough to make guessing a copied file tedious
-            return hex(out);
+            // One salted hash, cheap enough for the UI thread. Extra rounds would not help a 4-digit PIN
+            // (10,000 codes are quick to try even then); the wait after wrong tries is what protects it.
+            return hex(d.digest((salt + ":" + pin).getBytes("UTF-8")));
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
@@ -90,7 +92,7 @@ final class PinLock {
 
     private static String hex(byte[] b) {
         StringBuilder sb = new StringBuilder(b.length * 2);
-        for (byte x : b) sb.append(String.format("%02x", x));
+        for (byte x : b) sb.append(Character.forDigit((x >> 4) & 15, 16)).append(Character.forDigit(x & 15, 16));
         return sb.toString();
     }
 }
