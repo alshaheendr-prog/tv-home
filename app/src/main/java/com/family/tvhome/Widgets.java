@@ -71,7 +71,7 @@ final class Widgets {
         return 0;
     }
 
-    // {Arabic, English, source}. From Hisn al-Muslim; each is a sound narration.
+    // {Arabic, English, source}. From Hisn al-Muslim. Check any new one on dorar.net or sunnah.com first: some (like Hasbiyallah 7 times, Abu Dawud 5081) are a Companion's words, not the Prophet's ﷺ.
     static final String[][] MORNING = {
             {"أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له",
                     "We have reached the morning and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Muslim"},
@@ -82,7 +82,7 @@ final class Widgets {
             {"رضيت بالله رباً وبالإسلام ديناً وبمحمد ﷺ نبياً",
                     "I am pleased with Allah as my Lord, Islam as my religion and Muhammad ﷺ as my Prophet. (3 times)", "Abu Dawud"},
             {"حسبي الله لا إله إلا هو عليه توكلت وهو رب العرش العظيم",
-                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Abu Dawud"},
+                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Abu Dawud 5081, words of Abu al-Darda"},
             {"سبحان الله وبحمده",
                     "Glory be to Allah and praise be to Him. (100 times)", "Muslim"},
     };
@@ -98,7 +98,7 @@ final class Widgets {
             {"رضيت بالله رباً وبالإسلام ديناً وبمحمد ﷺ نبياً",
                     "I am pleased with Allah as my Lord, Islam as my religion and Muhammad ﷺ as my Prophet. (3 times)", "Abu Dawud"},
             {"حسبي الله لا إله إلا هو عليه توكلت وهو رب العرش العظيم",
-                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Abu Dawud"},
+                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Abu Dawud 5081, words of Abu al-Darda"},
     };
 
     private static String ar(int n) { return String.format(new Locale("ar"), "%d", n); }

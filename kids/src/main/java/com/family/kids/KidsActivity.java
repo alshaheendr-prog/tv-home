@@ -159,7 +159,7 @@ public class KidsActivity extends Activity {
         applyLook();
         noAlphaLayers((View) stage.getParent());
 
-        if (Rules.pin(this).isEmpty()) {
+        if (!PinLock.isSet(Rules.prefs(this))) {
             // First time: the parent picks a PIN, then kids mode starts.
             askPin("set", () -> { Rules.setOn(this, true); Guard.start(this); closePanels(); });
         } else {
@@ -268,7 +268,7 @@ public class KidsActivity extends Activity {
 
     private void back() {
         if (pinPanel.getVisibility() == View.VISIBLE) {
-            if (Rules.pin(this).isEmpty()) return; // the first PIN must be chosen
+            if (!PinLock.isSet(Rules.prefs(this))) return; // the first PIN must be chosen
             hide(pinPanel);
             focusAfterPanel();
         } else if (appsPanel.getVisibility() == View.VISIBLE) {
@@ -1498,8 +1498,23 @@ public class KidsActivity extends Activity {
             case "again": pinTitle.setText("Once more"); pinSub.setText("Type the same PIN again"); break;
             default: pinTitle.setText("Grown-ups only"); pinSub.setText("Enter the parent PIN"); break;
         }
+        if (m.equals("check")) showPinWait();
         drawDots(0);
     }
+
+    /** After too many wrong tries, the line under the title counts down the rest. */
+    private void showPinWait() {
+        long left = PinLock.waitLeft(Rules.prefs(this));
+        ui.removeCallbacks(pinWaitTick);
+        if (left <= 0) return;
+        pinSub.setText(PinLock.waitText(left));
+        ui.postDelayed(pinWaitTick, Math.min(left, 1000));
+    }
+
+    private final Runnable pinWaitTick = () -> {
+        if (pinPanel == null || pinPanel.getVisibility() != View.VISIBLE || !pinMode.equals("check")) return;
+        if (PinLock.waitLeft(Rules.prefs(this)) > 0) showPinWait(); else { pinSub.setText("Enter the parent PIN"); drawDots(0); }
+    };
 
     private void drawDots(int filledColorOverride) {
         for (int i = 0; i < 4; i++) {
@@ -1515,6 +1530,7 @@ public class KidsActivity extends Activity {
     private void pinPress(String k) {
         if (k.equals("⌫")) { if (!pinEntry.isEmpty()) pinEntry = pinEntry.substring(0, pinEntry.length() - 1); drawDots(0); return; }
         if (pinEntry.length() >= 4) return;
+        if (pinMode.equals("check") && PinLock.waitLeft(Rules.prefs(this)) > 0) { wrong(); showPinWait(); ui.postDelayed(() -> drawDots(0), 650); return; }
         pinEntry += k;
         drawDots(0);
         if (pinEntry.length() < 4) return;
@@ -1523,11 +1539,11 @@ public class KidsActivity extends Activity {
             switch (pinMode) {
                 case "set": firstPin = entered; setPinMode("again"); return;
                 case "again":
-                    if (entered.equals(firstPin)) { Rules.setPin(this, entered); pinDone(); }
+                    if (entered.equals(firstPin)) { PinLock.set(Rules.prefs(this), entered); pinDone(); }
                     else { wrong(); setPinModeLater("set"); }
                     return;
                 default:
-                    if (entered.equals(Rules.pin(this))) pinDone();
+                    if (PinLock.check(Rules.prefs(this), entered)) pinDone();
                     else { wrong(); setPinModeLater("check"); }
             }
         }, 160);
@@ -1726,6 +1742,7 @@ public class KidsActivity extends Activity {
         boolean v = checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED;
         return "Setup:  " + (u ? "✓" : "✗") + " app watching   " + (o ? "✓" : "✗") + " pop-ups   " + (v ? "✓" : "✗") + " videos   ·   "
                 + cartoons.size() + " cartoons found"
+                + (u ? "" : "\nWithout app watching the kids lock can't send him back from other apps.")
                 + (u && o ? "" : "\nRun \"Kids Corner setup\" on the PC once to switch the ✗ items on.");
     }
 

@@ -37,8 +37,6 @@ final class Rules {
     static boolean on(Context c) { return prefs(c).getBoolean("on", false); }
     static void setOn(Context c, boolean on) { prefs(c).edit().putBoolean("on", on).apply(); }
 
-    static String pin(Context c) { return prefs(c).getString("pin", ""); }
-    static void setPin(Context c, String p) { prefs(c).edit().putString("pin", p).apply(); }
 
     static Set<String> apps(Context c) {
         return new HashSet<>(prefs(c).getStringSet("apps", DEFAULT_APPS));

@@ -63,6 +63,8 @@ You are an expert Android engineer who has shipped Android TV launchers and long
 - [ ] Back, Home, D-pad, OK, volume and power stay in `isEveryday`. Number keys must still reach the PIN pads, so learning a digit as a "button" should be refused.
 - [ ] `swallowUp` is cleared on every path. Otherwise a stuck key leads to a half-press.
 
+- [ ] A saved wall-clock deadline (lockouts, timers) clamps the stored value when the clock jumps, not only the value it returns. Anything that must happen once (adhan, reminders) is remembered across a service restart.
+
 ## Known risks already in the code
 - **Crash after recreation.** `MainActivity.onDestroy` (`:423-430`) shuts down `bg` and `blurThread` but never removes `ui` callbacks. The `tick()` loop keeps running on the dead activity. Within 30 minutes it calls `fetchWeather()`, which calls `bg.execute`, and that throws `RejectedExecutionException`. The 20-second reciter warm-up at `:242` can hit the same crash. *Known. Flag it if the PR touches lifecycle or adds more posts. Suggest adding `ui.removeCallbacksAndMessages(null)` first in `onDestroy`.*
 - **Adhan can be missed.** It fires only on an exact-minute match in a `Handler` loop (`AdhanService.java:459`, `:470`). A sleeping box or a slow minute skips it. *Known. Flag it if the PR makes it worse.*

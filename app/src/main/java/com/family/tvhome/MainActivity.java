@@ -123,6 +123,11 @@ public class MainActivity extends Activity {
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
+
+    /** Hands a job to the background thread, or drops it once the screen has closed (never crashes). */
+    private void runBg(Runnable job) {
+        try { bg.execute(job); } catch (java.util.concurrent.RejectedExecutionException ignored) { }
+    }
     private final Random random = new Random();
     private SharedPreferences prefs;
     private Typeface fMed, fSemi, fBold, fAr, fArSemi, fQuran, fSerif, fLight, fThin;
@@ -239,7 +244,7 @@ public class MainActivity extends Activity {
         noAlphaLayers(root);
         cacheCards(true);
         registerDriveWatcher();
-        ui.postDelayed(() -> bg.execute(() -> Quran.reciters(getCacheDir())), 20000); // warm the reciter list (names in Arabic)
+        ui.postDelayed(() -> runBg(() -> Quran.reciters(getCacheDir())), 20000); // warm the reciter list (names in Arabic)
 
         player = new ExoPlayer.Builder(this).build();
         player.setVideoSurfaceView(video);
@@ -421,6 +426,9 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        // Stop the 1-second tick and every other pending job first: a loop left running after the
+        // screen is recreated would later hand work to the shut-down threads below and crash.
+        ui.removeCallbacksAndMessages(null);
         player.release();
         if (quran != null) quran.release();
         try { unregisterReceiver(driveWatcher); } catch (Exception ignored) { }
@@ -1633,7 +1641,7 @@ public class MainActivity extends Activity {
     }
 
     private void fetchWeather() {
-        bg.execute(() -> {
+        runBg(() -> {
             try {
                 JSONObject all = new JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=29.3759&longitude=47.9774&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=2&timezone=Asia%2FKuwait"));
                 try {
@@ -1687,15 +1695,16 @@ public class MainActivity extends Activity {
     }
 
     private void fetchAyah(int seed) {
-        bg.execute(() -> {
+        runBg(() -> {
             for (int attempt = 0; attempt < 12; attempt++) {
                 int n = (int) (((long) (seed + attempt) * 7919L) % 6236) + 1;
                 try {
                     JSONObject d = new JSONObject(get("https://api.alquran.cloud/v1/ayah/" + n + "/editions/quran-uthmani,en.sahih"));
                     JSONArray arr = d.getJSONArray("data");
                     JSONObject ar = arr.getJSONObject(0), en = arr.getJSONObject(1);
-                    String text = ar.getString("text");
-                    if (text.length() > 120 && attempt < 11) continue;
+                    JSONObject sur = ar.getJSONObject("surah");
+                    String text = withoutBismillah(ar.getString("text"), sur.getInt("number"), ar.getInt("numberInSurah"));
+                    if (text.length() > 120) continue; // never a long one: after 12 tries the built-in verses are used
                     JSONObject surah = ar.getJSONObject("surah");
                     String ref = surah.getString("englishName") + " " + surah.getInt("number") + ":" + ar.getInt("numberInSurah");
                     String[] a = {text, en.getString("text"), ref};
@@ -1708,11 +1717,25 @@ public class MainActivity extends Activity {
         });
     }
 
+    /**
+     * The Qur'an service puts the Bismillah in front of verse 1 of every surah except Al-Fatihah (where it IS verse 1)
+     * and At-Tawbah (which has none). It isn't part of that verse, so it is taken off: its four words.
+     */
+    static String withoutBismillah(String text, int surah, int ayah) {
+        if (ayah != 1 || surah == 1) return text;
+        String t = text.replace("\uFEFF", "").trim();
+        String[] w = t.split("\\s+", 5);
+        // The first word without its vowel marks must be بسم, however the marks are encoded.
+        String first = w[0].replaceAll("[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]", "");
+        if (w.length < 5 || !first.equals("\u0628\u0633\u0645")) return text;
+        return w[4];
+    }
+
     // ================================================================== dock
 
     private void loadDockIcons() {
         final PackageManager pm = getPackageManager();
-        bg.execute(() -> {
+        runBg(() -> {
             for (FrameLayout tile : dockTiles) {
                 Dock d = (Dock) tile.getTag();
                 Drawable icon = null;
@@ -2081,7 +2104,7 @@ public class MainActivity extends Activity {
         pinBox = panelCard(pinPanel, box, 600, -1);
     }
 
-    private String savedPin() { return prefs.getString("pin", ""); }
+    private boolean pinSet() { return PinLock.isSet(prefs); }
 
     /** The parent lock face: a gold padlock on deep night blue, for the parent settings code. */
     private Drawable lockFace() {
@@ -2113,7 +2136,7 @@ public class MainActivity extends Activity {
         show(pinPanel);
         pinBox.setScaleX(0.92f); pinBox.setScaleY(0.92f); pinBox.setAlpha(0); pinBox.setTranslationY(24);
         pinBox.animate().scaleX(1).scaleY(1).alpha(1).translationY(0).setDuration(380).setInterpolator(new DecelerateInterpolator(2.2f)).start();
-        setPinMode(savedPin().isEmpty() ? "set" : change ? "old" : "check");
+        setPinMode(!pinSet() ? "set" : change ? "old" : "check");
         firstPinKey.requestFocus();
     }
 
@@ -2126,6 +2149,7 @@ public class MainActivity extends Activity {
             case "confirm": pinTitle.setText("Choose a parent PIN"); pinSub.setText("Enter the same 4 digits again"); break;
             default: pinTitle.setText("YouTube is locked"); pinSub.setText("Enter the parent PIN");
         }
+        if (!m.equals("set") && !m.equals("confirm")) showPinWait();
         drawDots();
     }
 
@@ -2161,22 +2185,41 @@ public class MainActivity extends Activity {
         if (k.equals("✕")) { closePanels(); return; }
         if (k.equals("⌫")) { if (!pinEntry.isEmpty()) pinEntry = pinEntry.substring(0, pinEntry.length() - 1); drawDots(); return; }
         if (pinEntry.length() >= 4) return;
+        boolean checking = pinMode.equals("check") || pinMode.equals("old");
+        if (checking && PinLock.waitLeft(prefs) > 0) { showPinWait(); pinWrong(); return; }
         pinEntry += k;
         drawDots();
         if (pinEntry.length() < 4) return;
         switch (pinMode) {
-            case "check": if (pinEntry.equals(savedPin())) pinDone(); else pinWrong(); break;
-            case "old": if (pinEntry.equals(savedPin())) ui.postDelayed(() -> setPinMode("set"), 150); else pinWrong(); break;
+            case "check": if (PinLock.check(prefs, pinEntry)) pinDone(); else { pinWrong(); showPinWait(); } break;
+            case "old": if (PinLock.check(prefs, pinEntry)) ui.postDelayed(() -> setPinMode("set"), 150); else { pinWrong(); showPinWait(); } break;
             case "set": newPin = pinEntry; ui.postDelayed(() -> setPinMode("confirm"), 150); break;
             case "confirm":
-                if (pinEntry.equals(newPin)) { prefs.edit().putString("pin", newPin).apply(); toast("PIN saved"); pinDone(); }
+                if (pinEntry.equals(newPin)) { PinLock.set(prefs, newPin); toast("PIN saved"); pinDone(); }
                 else { pinWrong(); ui.postDelayed(() -> setPinMode("set"), 400); }
                 break;
         }
     }
 
+    /** After too many wrong tries, the line under the title says how long the pad rests. */
+    private void showPinWait() {
+        long left = PinLock.waitLeft(prefs);
+        if (left <= 0) return;
+        pinSub.setText(PinLock.waitText(left));
+        ui.removeCallbacks(pinWaitTick);
+        ui.postDelayed(pinWaitTick, Math.min(left, 1000));
+    }
+
+    private final Runnable pinWaitTick = () -> {
+        if (pinPanel == null || pinPanel.getVisibility() != View.VISIBLE) return;
+        if (PinLock.waitLeft(prefs) > 0) showPinWait(); else pinSub.setText(pinMode.equals("old") ? "Enter the current PIN first" : "Enter the parent PIN");
+    };
+
+    private ValueAnimator pinShake;
+
     private void pinWrong() {
-        ValueAnimator a = ValueAnimator.ofFloat(0, -18, 16, -12, 8, -4, 0);
+        if (pinShake != null) pinShake.cancel(); // one shake at a time, however fast keys are pressed
+        ValueAnimator a = pinShake = ValueAnimator.ofFloat(0, -18, 16, -12, 8, -4, 0);
         a.setDuration(420);
         a.addUpdateListener(v -> pinBox.setTranslationX((float) v.getAnimatedValue()));
         a.start();
@@ -2216,7 +2259,7 @@ public class MainActivity extends Activity {
 
     private void refreshApps() {
         final PackageManager pm = getPackageManager();
-        bg.execute(() -> {
+        runBg(() -> {
             List<AppEntry> out = new ArrayList<>();
             Set<String> seen = new HashSet<>();
             seen.add(getPackageName());
@@ -2604,7 +2647,7 @@ public class MainActivity extends Activity {
 
     /** A list of every reciter: "Any" (a new voice every time) first, then the ones stored on the box, then the rest. */
     private void openReciters() {
-        bg.execute(() -> {
+        runBg(() -> {
             List<Quran.Reciter> onBox = Quran.local(1), all = new ArrayList<>();
             Set<String> seen = new HashSet<>();
             for (Quran.Reciter r : onBox) if (seen.add(r.en)) all.add(r);
@@ -2768,7 +2811,7 @@ public class MainActivity extends Activity {
         final Quran.Reciter not = anotherReciter ? quranReciter : null;
         quranNow.setText("Loading · جارٍ التحميل…");
         quranNowReciter.setText("");
-        bg.execute(() -> {
+        runBg(() -> {
             // Recitations stored on the box play first (no internet needed); otherwise stream one.
             Quran.cacheDir = getCacheDir();
             List<Quran.Reciter> all = Quran.local(n);
@@ -2934,7 +2977,7 @@ public class MainActivity extends Activity {
 
     /** A small line in the weather card: the USB drive's free space, or a warning once a known drive is unplugged. */
     private void updateDrive() {
-        bg.execute(() -> {
+        runBg(() -> {
             String label = null;
             try {
                 StorageManager sm = getSystemService(StorageManager.class);
@@ -2983,11 +3026,13 @@ public class MainActivity extends Activity {
         for (int i = 0; i < 4; i++) if (lastKeys[i] != secret[i]) return;
         Arrays.fill(lastKeys, 0);
         ui.post(() -> {
-            if (savedPin().isEmpty()) { openParent(); return; }
+            // With no PIN yet, the pad asks for one to be chosen first, so the settings are never open to anyone.
+            boolean had = pinSet();
             openPin(false);
             pinLaunchAfter = false;
             pinThen = this::openParent;
-            pinTitle.setText("Parent settings");
+            if (had) pinTitle.setText("Parent settings");
+            else pinSub.setText("4 digits for Parent settings and YouTube.");
             pinIcon.setImageDrawable(lockFace());
         });
     }
@@ -3342,7 +3387,7 @@ public class MainActivity extends Activity {
             applyAccent(uri, new int[]{(int) Long.parseLong(p[0]), Integer.parseInt(p[1])});
             return;
         }
-        bg.execute(() -> {
+        runBg(() -> {
             int[] c = null;
             MediaMetadataRetriever r = new MediaMetadataRetriever();
             try {
