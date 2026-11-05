@@ -431,6 +431,11 @@ public class AdhanService extends Service {
 
     // ------------------------------------------------------------------ the clock
 
+    private void markFired(String id) {
+        fired.add(id);
+        prefs.edit().putString("fired_day", cachedDay).putStringSet("fired", new HashSet<>(fired)).apply();
+    }
+
     private void tick() {
         Calendar now = Calendar.getInstance(KUWAIT);
         int y = now.get(Calendar.YEAR), m = now.get(Calendar.MONTH) + 1, d = now.get(Calendar.DAY_OF_MONTH);
@@ -438,6 +443,8 @@ public class AdhanService extends Service {
         if (!key.equals(cachedDay)) {
             cachedDay = key;
             fired.clear();
+            // What already played today survives a restart (an update or reboot), so nothing plays twice.
+            if (key.equals(prefs.getString("fired_day", ""))) fired.addAll(prefs.getStringSet("fired", new HashSet<>()));
             today = PrayerTimes.forDate(y, m, d);
             Calendar tm = (Calendar) now.clone();
             tm.add(Calendar.DAY_OF_MONTH, 1);
@@ -460,7 +467,7 @@ public class AdhanService extends Service {
             if (i == 1) continue;
             String id = "pre_" + PrayerTimes.KEYS[i];
             if (nowMin >= today[i] - REMIND_MIN && nowMin < today[i] - REMIND_MIN + LATE_MIN && nowMin < today[i] && !fired.contains(id)) {
-                fired.add(id);
+                markFired(id);
                 updateForeground();
                 if (!"com.family.tvhome".equals(foreground) && prefs.getBoolean("remind", true)) showReminder(i);
             }
@@ -471,7 +478,7 @@ public class AdhanService extends Service {
             if (i == 1) continue; // sunrise has no adhan
             String id = PrayerTimes.KEYS[i];
             // A late tick (a busy or just-woken box) still fires, as long as it's within a few minutes of the time.
-            if (nowMin >= today[i] && nowMin < today[i] + LATE_MIN && !fired.contains(id)) { fired.add(id); fireAdhan(i); }
+            if (nowMin >= today[i] && nowMin < today[i] + LATE_MIN && !fired.contains(id)) { markFired(id); fireAdhan(i); }
         }
 
         if (panelShown || alertShown) {

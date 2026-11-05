@@ -37,7 +37,11 @@ final class PinLock {
     static long waitLeft(SharedPreferences p) {
         long left = p.getLong("pin_until", 0) - System.currentTimeMillis();
         if (left <= 0) return 0;
-        return Math.min(left, MAX_WAIT); // a clock that jumped back can't lock the pad for longer
+        if (left > MAX_WAIT) { // the clock went back (a box that booted with the wrong time): never rest longer than the cap
+            p.edit().putLong("pin_until", System.currentTimeMillis() + MAX_WAIT).apply();
+            left = MAX_WAIT;
+        }
+        return left;
     }
 
     /** Checks a try. A wrong one counts towards the rest; a right one clears the count. */
