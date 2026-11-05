@@ -40,6 +40,8 @@ You are an expert Android TV engineer. You know the View focus system (focus sea
 - [ ] Anything new is a child of `stage`, so `fitStage()` scales it. Separate windows (the adhan overlay, toasts, dialogs) do not get the Screen size scale and need their own safe margins.
 - [ ] The focused item's scale-up (dock magnify 1.2, cards 1.02) is not clipped by its parent (`clipChildren`/`clipToPadding`) or the screen edge.
 
+- [ ] Nothing the family must read is a Toast: Toasts are system windows (small font, 2-line cap on Android 12+, not scaled by Screen size, gone in about 3.5 s). Put it on-stage instead.
+
 ## Known risks already in the code
 - The Screen size default is 100%, not 94%: `prefs.getInt("fit", 100)` at `MainActivity.java:758` and `:3065`, `KidsActivity.java:225`, and the default `100` in the choice row at `:1590`. A fresh install shows a cropped layout on overscanning TVs.
 - The adhan overlay ignores Screen size. The panel sits at 56px/44px from the corner (`AdhanService.java:254-255`), which is about 2.9% and 4.1% of 1920x1080, inside the 5% zone a cropping TV can cut off.

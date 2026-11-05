@@ -3032,6 +3032,7 @@ public class MainActivity extends Activity {
             pinLaunchAfter = false;
             pinThen = this::openParent;
             if (had) pinTitle.setText("Parent settings");
+            else pinSub.setText("4 digits for Parent settings and YouTube.");
             pinIcon.setImageDrawable(lockFace());
         });
     }

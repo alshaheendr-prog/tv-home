@@ -1513,7 +1513,7 @@ public class KidsActivity extends Activity {
 
     private final Runnable pinWaitTick = () -> {
         if (pinPanel == null || pinPanel.getVisibility() != View.VISIBLE || !pinMode.equals("check")) return;
-        if (PinLock.waitLeft(Rules.prefs(this)) > 0) showPinWait(); else pinSub.setText("Enter the parent PIN");
+        if (PinLock.waitLeft(Rules.prefs(this)) > 0) showPinWait(); else { pinSub.setText("Enter the parent PIN"); drawDots(0); }
     };
 
     private void drawDots(int filledColorOverride) {
@@ -1530,7 +1530,7 @@ public class KidsActivity extends Activity {
     private void pinPress(String k) {
         if (k.equals("⌫")) { if (!pinEntry.isEmpty()) pinEntry = pinEntry.substring(0, pinEntry.length() - 1); drawDots(0); return; }
         if (pinEntry.length() >= 4) return;
-        if (pinMode.equals("check") && PinLock.waitLeft(Rules.prefs(this)) > 0) { wrong(); showPinWait(); return; }
+        if (pinMode.equals("check") && PinLock.waitLeft(Rules.prefs(this)) > 0) { wrong(); showPinWait(); ui.postDelayed(() -> drawDots(0), 650); return; }
         pinEntry += k;
         drawDots(0);
         if (pinEntry.length() < 4) return;
