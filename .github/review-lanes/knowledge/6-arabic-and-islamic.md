@@ -90,6 +90,20 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - "Don't get angry": Bukhari 6116, فردد مرارا, "he repeated it several times" [first review: hadithanswers].
 - A GitHub dataset (AhmedBaset/hadith-json) has the Arabic of the nine books but its `idInBook` numbers do **not** match sunnah.com's (e.g. the لا تغضب narration sits at `idInBook` 5884 there, while sunnah.com numbers it 6116). Use it only to find wording, never for numbers.
 
+### Added by the whole-app audit (2026-11-05)
+- Tirmidhi 1956 تبسمك: Tirmidhi hasan gharib; al-Albani sahih (Sahihah 572) [tohed-t1956].
+- Tirmidhi 1954 من لا يشكر الناس: hasan sahih; al-Albani sahih [tohed-t1954].
+- Tirmidhi 3895 خيركم خيركم لأهله: hasan sahih; also Ibn Majah 1977 [hadithanswers-ahl].
+- Al-Adab al-Mufrad 594 تهادوا تحابوا: hasan per al-Albani [tohed-adab594]. Not sahih, so not for Kids under the owner's rule.
+- Tirmidhi 3604 (second narration): أعوذ بكلمات الله التامات … "حين يمسي ثلاث مرات"; Tirmidhi: hasan [tohed-t3604]. So "3 times" comes from Tirmidhi, not Muslim (answers the open question).
+- Bukhari 6018 opens with فلا يؤذ جاره, so فليقل خيرا أو ليصمت is an extract ("from"). Bukhari 5027 = خيركم من تعلم القرآن وعلمه. Muslim 223 opens الطهور شطر الإيمان (extract). Muslim 2593 = يا عائشة إن الله رفيق يحب الرفق. Bukhari 5376 = يا غلام سم الله وكل بيمينك وكل مما يليك. Bukhari 6464 opens سددوا وقاربوا [tohed pages].
+- Hisn al-Muslim numbers differ by edition: the Mukhtasar numbering on tohed gives 89 اللهم بك أصبحنا, 94 حسبي الله (7), 97 بسم الله الذي لا يضر (3), 98 رضيت بالله (3), 100 أصبحنا وأصبح الملك لله, 102 سبحان الله وبحمده (100), 107 أعوذ بكلمات الله (3, evening); sunnah.com/hisn uses other numbers. Always name the edition [tohed-hisn].
+- As-Saboor: comes only from the Tirmidhi list of names, judged mudraj; its status as a Name is ijtihad (counted by al-Khattabi, al-Bayhaqi, Ibn al-Qayyim and others) [islamqa-191329].
+- Ar-Rahman vs Ar-Raheem: Ibn al-Qayyim: الرحمن is the attribute, الرحيم is that mercy reaching its recipients; 33:43 "وكان بالمؤمنين رحيما" [islamonline-rahim].
+- Umm al-Qura (JDK HijrahDate): 1 Ramadan 1448 = Mon 8 Feb 2027; 1 Shawwal = Tue 9 Mar 2027; 9/10 Dhul Hijjah = 15/16 May 2027; 1 Muharram 1449 = Sun 6 Jun 2027; 10 Muharram = Tue 15 Jun 2027. The Saudi Hijri calendar forecast agrees on 8 Feb [jordannews-r1448].
+- Kuwait timetables (secondary site) print suhoor ~10 min before Fajr [khaleejcalc-imsak]; Awqaf's own column is unverified.
+- The verse seed `(seed+attempt)*7919 % 6236` with `seed = doy + year*400` overlaps day to day: day N attempt k = day N+1 attempt k−1.
+
 ## This box and this code
 - **The owner's own rules** (project skill `islamic-content-check`, read 2026-11-05), which reviews apply on top of the above:
   - Kids content uses only sahih hadith, short and simple; drop anything da'if or mawdu' from what the kids see.
@@ -118,9 +132,15 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - The Friday reminder runs from Thursday Maghrib to Friday Maghrib; Jumu'ah sunnahs show Friday before Dhuhr; the Jumu'ah line shows the Dhuhr time (`Widgets.java:31-39`).
 
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22 (audit update 1): Must: the `badge()` reorder put "Eid al-Adha tomorrow" ahead of today's "Day of Arafah" on 9 Dhul Hijjah (`Events.java:45`). Should: "Eid al-Fitr tomorrow" on 29 Ramadan states Umm al-Qura's prediction as fact, but Kuwait sights the moon that evening (`:44`). Nice: a trailing "…" after Arabic in LTR strings (`MainActivity.java:2824`, `:2977`). Fine: the Quran pauses only when the next prayer changes (`nextPrayer` skips sunrise); adhan banner LIFT 56 px in a 136 px band, Plex Arabic 50 px; the chime fallback; the new Arabic strings.
+
 - **2026-11-05, PR #20 (merged):** no Must fix. Should fix: adhan-card English cut at 4 lines (fixed); hadith numbers on edited lines (fixed: Bukhari 6116, Abu Dawud 5081 as words of Abu al-Darda). `withoutBismillah` verified on 2:1, 9:1, 1:1, 95:1, 2:2. Amiri Bold covers all Quranic marks and ﷺ; Baloo lacks U+06DF, U+06E5, U+06E6, ﷺ. `OFFSETS` checked against published Kuwait times (Al-Anba's Ramadan 1447 timetable "according to the Al-Ajairi calendar", awgatalsalat.com for 6 Nov 2026): exact most days, else ±1 min, so they stay 0; summer unchecked; awqaf.gov.kw unreachable. Kuwait doesn't shift Isha in Ramadan. Left open: `Content.AYAH` partial verses labelled whole; ﷺ in Kids Baloo; no Hijri offset; 9 Muharram labelled "Ashura fast"; Latin digits in Arabic (`Events.java:59`); grade of رضيت بالله ربا; missing hadith numbers elsewhere.
 - **2026-11-05, PR #21 (docs):** Should fix (docs): `badge()` shows "Fast of Ashura tomorrow" only on 8 Muharram; 13 Dhul Hijjah shows Eid and 14-15 do show White Days; the رضيت … نبياً risk now gives its grade and why. Added: Kahf and Shawwal sources, Eid 1447 in Kuwait, four new known risks (kids grades, يوم grammar, White Days in Ramadan/Shawwal, the 3-times label).
 - **2026-11-05, knowledge build (no PR):** رضينا بالله ربا = Abu Dawud 5072, Da'if per al-Albani (sunnah.com); 9 Muharram is Tasu'a (Muslim 1134a); Tashreeq ban (Muslim 1141a); 1 Muharram 1448 in Kuwait = 16 June 2026 = Umm al-Qura; Plex Arabic covers every Quranic mark and ﷺ, so it's a valid fallback for Kids' ﷺ; CLDR 46 makes plain `ar` use Western digits.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit (main d772bcc): Must: random verse of the day shows out-of-context short ayat (seed math: 77:30 on 9 Nov 2026, 100:2 on 13 Nov 2026) → curated ayah-number list. Should: Hijri offset before Ramadan 1448 (Umm al-Qura 8 Feb 2027); Tasu'a label; weak رضيت dhikr ungraded; hadith numbers (table in audit-2026-11/lane-6.md); offline verses plain/partial; same verse two days running (seed overlap); evening adhkar Maghrib (home) vs Asr (adhan card); digits/grammar (AdhanService:400 Western "10", يوم); kids تهادوا hasan, Ar-Raheem meaning, As-Saboor not established; "الإمساك" label on the Fajr time. Nice: API surah spellings, 120 vs 170 limit, ﴿ ﴾ for Quran only, ﷺ in Baloo, half hadith in Kids, midnight Hijri.
+
 
 ## Lessons learned
 - 2026-11-05: Compare computed prayer times with the Kuwaiti published calendar, not with another app; apps share the same algorithm and agree with each other.
@@ -130,6 +150,14 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - 2026-11-05: A hadith dataset's own numbering can differ from sunnah.com's. Numbers come only from sunnah.com or dorar.net pages.
 - 2026-11-05: sunnah.com returns client errors to WebFetch. Dorar sharh pages (found by search), hadithanswers and abuaminaelias work instead. Name the site with every number, because Tirmidhi editions number differently.
 - 2026-11-05: The fetch budget is shared with other lanes. Fetch the religious sources first; AOSP, CLDR, ICU and Unicode files are on raw.githubusercontent.com and don't use it.
+- 2026-11-05: en.tohed.com hadith pages (`/hadith/<book>/<n>`) load with WebFetch and show Tirmidhi's and al-Albani's grades. Use them when sunnah.com and dorar.net fail.
+- 2026-11-05: A random "verse of the day" is a content risk, not just a design choice: short ayat are often fragments or quoted speech. Simulate the seed for the coming weeks and check what it will show.
+- 2026-11-05: Check both modules' copies of shared logic (adhkar windows, verse limits, digits): they drift.
+- 2026-11-05: pip install fonttools works in the container (pypi is reachable).
+
+- 2026-11-05: When badge or label priority is reordered, walk every Islamic day from the 8th to the 10th of Dhul Hijjah and the 28th to the 30th of Ramadan. A "tomorrow" check can hide today's bigger day.
+- 2026-11-05: The end of Ramadan is known only after the sighting on the evening of the 29th, so any "tomorrow" text on the 29th must be tentative. Dhul Hijjah is fixed when the month starts, so Eid al-Adha lines can be definite.
+- 2026-11-05: A neutral character (… : ·) at the end of an Arabic run in an LTR line takes the line's direction (UBA rules N1/N2), so it is drawn where the Arabic begins.
 
 ## Open questions to research next
 - Kuwait Awqaf: the official method statement and a summer-month timetable (June-August) to extend the OFFSETS check. Try awqaf.gov.kw again, or a dated Kuwaiti newspaper table.
@@ -146,6 +174,14 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - ICU/CLDR version on this box (Android 14) and whether `Locale("ar")` gives Arabic-Indic digits there.
 - An adab source on displaying Quran text (e.g. not on a screen that is cut off or used as decoration).
 - Magnetic declination for Kuwait City from NOAA WMM, only if a Qibla feature is ever proposed.
+- Kuwait's sighting committee date for Ramadan 1448 (expected Umm al-Qura 8 Feb 2027). Check in late January 2027.
+- Sunnah.com numbers to confirm: the eight Bukhari/Muslim pairs in the S4 table, the Muslim number for أحب الأعمال أدومها, the hadith numbers for the five morning adhkar, and the Jumu'ah sunnahs.
+- The fiqh source for when the evening adhkar start (after Asr vs after Maghrib), and which one Hisn al-Muslim's author follows.
+- Awqaf Kuwait's own imsak column (minutes before Fajr) and a summer prayer timetable from an authoritative Kuwaiti source.
+- Owner decision: hasan hadith in Kids (تهادوا تحابوا), As-Saboor, and the curated verse list.
+
+- Which committee announces Eid al-Fitr in Kuwait, and at what time that evening. Name the Kuwait Sharia Crescent Sighting Committee from a Kuwaiti source such as KUNA.
+- Umm al-Qura years where Ramadan has 29 days in 1448-1450, to test the day-29 wording. 1448 has 29 days: 1 Ramadan is 8 Feb 2027 and 1 Shawwal is 9 Mar 2027.
 
 ## Source library
 Tags used above. Opened 2026-11-05 unless marked.
@@ -176,3 +212,13 @@ Tags used above. Opened 2026-11-05 unless marked.
 - [hadithanswers-radhitu] hadithanswers.com, رضيت بالله ربا: Tirmidhi 3389 and its grade. Checked 2026-11-05.
 - [kalimah-numbers] kalimah-center.com/arabic-numbers-grammar : number-noun agreement (أيام for 3-10, يوماً for 11-99). Checked 2026-11-05.
 - Not reachable on 2026-11-05: awqaf.gov.kw (first review); tanzil.net, sunnah.com and aladhan.com by curl (proxy only allows GitHub raw); the WebFetch budget ran out before tanzil.net/docs/text_updates and the GCC Eid al-Adha 2026 reports.
+- [tohed-t1956] https://en.tohed.com/hadith/tirmidhi/1956 ; [tohed-t1954] https://en.tohed.com/hadith/tirmidhi/1954 ; [tohed-t3604] https://en.tohed.com/hadith/tirmidhi/3604 ; [tohed-adab594] https://en.tohed.com/hadith/al-adab-al-mufrad/594 ; tohed Bukhari 6018, 5027, 6464, 5376 and Muslim 223, 2593 (same URL pattern) ; [tohed-hisn] https://en.tohed.com/hadith/hisnul-muslim/chapter/862/sub/25214/
+- [hadithanswers-ahl] https://hadithanswers.com/another-hadith-stating-the-best-of-you-is-the-best-to-his-wife-family/
+- [islamqa-191329] https://islamqa.info/ar/answers/191329 (As-Saboor)
+- [islamonline-rahim] https://fiqh.islamonline.net/ (من أسماء الله الحسنى الرحمن الرحيم)
+- [jordannews-r1448] https://www.jordannews.jo/Section-20/Middle-East/Date-of-the-First-Day-of-Ramadan-2027-According-to-Astronomical-Calculations-52316
+- [khaleejcalc-imsak] https://khaleejcalculators.com/ramadan-imsakiyah/kuwait (secondary; it names both Umm al-Qura and "Kuwait Awqaf" as its method, so it is not an authority)
+- Not reachable 2026-11-05: dorar.net/hadith/sharh pages (client error), api.alquran.cloud by curl (proxy), GitHub API for nuqayah/quran-text (not in session scope).
+
+- [mwn-eid1447] https://www.moroccoworldnews.com/2026/03/283198/kuwait-confirms-eid-al-fitr-2026-for-march-20/ : the Shawwal moon was not seen on 29 Ramadan 1447, Ramadan ran 30 days, Eid was Fri 20 Mar 2026 in Kuwait. Checked 2026-11-05.
+- [tohed-t3604] re-checked 2026-11-05: حين يمسي ثلاث مرات, hasan per Tirmidhi.

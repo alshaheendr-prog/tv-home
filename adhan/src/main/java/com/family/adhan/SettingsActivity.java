@@ -104,6 +104,13 @@ public class SettingsActivity extends Activity {
         list.addView(t);
     }
 
+    /** The panel and the card only ever show over Google TV's own home, never over the family home (it has them built in). */
+    private void onlyOtherHome() {
+        TextView t = text("Only shows over Google TV's own home, not the family home.", 24, fMedium, 0xB8F6F3FF);
+        t.setPadding(px(28), 0, px(28), px(4));
+        list.addView(t);
+    }
+
     private boolean usageAllowed() {
         AppOpsManager ops = getSystemService(AppOpsManager.class);
         return ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), getPackageName()) == AppOpsManager.MODE_ALLOWED;
@@ -124,15 +131,16 @@ public class SettingsActivity extends Activity {
         boolean overlay = AdhanService.canOverlay(this), usage = usageAllowed();
         if (!overlay || !usage) {
             header("SETUP NEEDED");
-            TextView help = text("Run these once from your computer, then open this app again:\n"
-                    + (overlay ? "" : "adb shell appops set com.family.adhan SYSTEM_ALERT_WINDOW allow\n")
-                    + (usage ? "" : "adb shell appops set com.family.adhan GET_USAGE_STATS allow\n"),
+            TextView help = text("Run Update TV on the PC once, then open this app again."
+                    + (overlay ? "" : "\n(It needs to show the adhan over other apps.)")
+                    + (usage ? "" : "\n(It needs to see which app is in front.)"),
                     26, fMedium, 0xFFFF8F8F);
             help.setPadding(px(28), 0, px(28), 0);
             list.addView(help);
         }
 
         header("HOME SCREEN PANEL");
+        onlyOtherHome();
         boolean panel = prefs.getBoolean("panel", true);
         row("Show prayer times on the home screen", panel ? "On" : "Off", () -> {
             prefs.edit().putBoolean("panel", !prefs.getBoolean("panel", true)).apply();
@@ -146,6 +154,7 @@ public class SettingsActivity extends Activity {
         row("Panel position", names[ci], () -> { prefs.edit().putString("position", pos[next]).apply(); refreshService(); });
 
         header("WIDGET CARD");
+        onlyOtherHome();
         row("Show the widget card (verse, hadith, reminders, character)", prefs.getBoolean("card", true) ? "On" : "Off", () -> {
             prefs.edit().putBoolean("card", !prefs.getBoolean("card", true)).apply();
             refreshService();
@@ -155,26 +164,6 @@ public class SettingsActivity extends Activity {
         for (int i = 0; i < 4; i++) if (pos[i].equals(ccur)) cci = i;
         final int cnext = (cci + 1) % 4;
         row("Card position", names[cci], () -> { prefs.edit().putString("card_position", pos[cnext]).apply(); refreshService(); });
-
-        header("WALLPAPER");
-        String[] wm = {"return", "hourly", "off"}, wn = {"Every time I return home", "Every hour", "Off"};
-        String wcur = prefs.getString("wallpaper_mode", "return");
-        int wi = 0;
-        for (int i = 0; i < 3; i++) if (wm[i].equals(wcur)) wi = i;
-        final int wnext = (wi + 1) % 3;
-        row("New random wallpaper", wn[wi], () -> prefs.edit().putString("wallpaper_mode", wm[wnext]).apply());
-        java.io.File[] clips = AdhanService.clipsDir().listFiles((d, n) -> n.toLowerCase(java.util.Locale.ROOT).endsWith(".mp4"));
-        int count = clips == null ? 0 : clips.length;
-        row("Swap the wallpaper now (" + count + " clips in Movies/TVWallpapers)", "▶", () ->
-                startForegroundService(new Intent(this, AdhanService.class).setAction("swap")));
-        TextView wnote = text("In Projectivy, set the video wallpaper to Movies/Projectivy/wallpaper.mp4 once. This app swaps a random clip into that file.", 24, fMedium, 0xB8F6F3FF);
-        wnote.setPadding(px(28), px(10), px(28), 0);
-        list.addView(wnote);
-        if (!android.os.Environment.isExternalStorageManager()) {
-            TextView need = text("Needs file access: adb shell appops set com.family.adhan MANAGE_EXTERNAL_STORAGE allow", 24, fMedium, 0xFFFF8F8F);
-            need.setPadding(px(28), px(6), px(28), 0);
-            list.addView(need);
-        }
 
         header("ADHAN SOUND");
         for (int i = 0; i < 6; i++) {

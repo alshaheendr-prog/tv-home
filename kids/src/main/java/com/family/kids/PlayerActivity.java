@@ -97,6 +97,7 @@ public class PlayerActivity extends Activity {
             int at = spots.getInt(paths[index], 0);
             if (at > 10_000 && at < mp.getDuration() - 30_000) video.seekTo(at);
             video.start();
+            paused.setVisibility(View.GONE);
             showBar();
         });
         video.setOnCompletionListener(mp -> {
@@ -153,21 +154,29 @@ public class PlayerActivity extends Activity {
         ui.postDelayed(hideBar, 3500);
     }
 
+    /** A held arrow repeats every 50 ms: skip on the first press, then only every 8th repeat (about 2.5 jumps a second). */
+    private static boolean skipHeld(KeyEvent e) { return e.getRepeatCount() == 0 || e.getRepeatCount() % 8 == 0; }
+
     @Override
     public boolean onKeyDown(int code, KeyEvent e) {
         switch (code) {
-            case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-            case KeyEvent.KEYCODE_MEDIA_PLAY: case KeyEvent.KEYCODE_MEDIA_PAUSE:
-                if (video.isPlaying()) { video.pause(); save(); paused.setVisibility(View.VISIBLE); }
-                else { video.start(); paused.setVisibility(View.GONE); }
+            case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_NUMPAD_ENTER:
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE: case KeyEvent.KEYCODE_MEDIA_PLAY: case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                // a held OK repeats every 50 ms: only the first press counts, so holding it never flickers pause on and off.
+                // The TV remote's own Play only plays and Pause only pauses.
+                if (e.getRepeatCount() == 0) {
+                    boolean pause = code == KeyEvent.KEYCODE_MEDIA_PAUSE || (code != KeyEvent.KEYCODE_MEDIA_PLAY && video.isPlaying());
+                    if (pause && video.isPlaying()) { video.pause(); save(); paused.setVisibility(View.VISIBLE); }
+                    else if (!pause && !video.isPlaying()) { video.start(); paused.setVisibility(View.GONE); }
+                }
                 showBar();
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT: case KeyEvent.KEYCODE_MEDIA_REWIND:
-                video.seekTo(Math.max(0, video.getCurrentPosition() - (e.getRepeatCount() > 0 ? 30_000 : 10_000)));
+                if (skipHeld(e)) video.seekTo(Math.max(0, video.getCurrentPosition() - (e.getRepeatCount() > 0 ? 30_000 : 10_000)));
                 showBar();
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT: case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
-                video.seekTo(Math.min(video.getDuration() - 1000, video.getCurrentPosition() + (e.getRepeatCount() > 0 ? 30_000 : 10_000)));
+                if (skipHeld(e)) video.seekTo(Math.max(0, Math.min(video.getDuration() - 1000, video.getCurrentPosition() + (e.getRepeatCount() > 0 ? 30_000 : 10_000))));
                 showBar();
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_DPAD_DOWN:
@@ -184,6 +193,7 @@ public class PlayerActivity extends Activity {
     protected void onPause() {
         save();
         video.pause();
+        paused.setVisibility(View.VISIBLE); // back from a system dialog it is still paused, so show the sign
         super.onPause();
     }
 

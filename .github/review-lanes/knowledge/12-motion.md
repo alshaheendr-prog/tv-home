@@ -124,8 +124,23 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Adhan (`AdhanService.java:337-430`): band translationY in 750 ms, line scaleX from 180 ms over 900 ms, row from 420 ms over 700 ms with `withLayer()`, all `Decelerate(2.2f)`; exit row 0 ms/350, line 150/500, whole 300/550 with `Accelerate(1.5f)`, `setStartDelay(0)` set explicitly. Reminder in/out 500 ms default curve. Small cards 250 in / 150 out.
 
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22 (audit update 1):
+  - Fixed: the audit Should on delayed focus restore. `closePanels`, `closeReciters`, `closePlayer` and `drawQuranState` now move focus at once.
+  - Must: moving focus at once widened the inherited-delay gap. After a panel closes, the dock label now shows about 600 ms before the dock (`bottomGroup` keeps the intro's 600 ms delay).
+  - Should: the calendar to All apps step is a hard cut both ways. Going back, `bringToFront` plus `setAlpha(1)` cuts it. Going in, All apps goes `GONE` before the calendar has faded in.
+  - Nice:
+    - The reciters loading line can flash (it appears after 300 ms and has no minimum display time).
+    - The toast pill jumps when it changes position.
+    - `nudge()` and `pinWrong()` could be one shake helper.
+    - Kids' key dip is 0.96 and home's is 0.94.
+    - A Parent settings row re-zooms on every toggle.
+
 - 2026-11-05, PR #21 (docs only): corrected the curve labels for `goldLift` (inherits `EASE`), lane 3's 0.5x animator claim (the scripts set 1.0) and lane 4's panel curves; added motion to the coverage map (Verse, Wallpaper, Quran player, PIN pads, Kids rows; new Ambient mode row).
 - Baseline audit at creation (not a PR review): inherited start delays from `introAnimation()` and the All apps fade-in (see This box); five decelerate factors plus the default curve in use; held-key restarts of `magnify()`/`BrandGlow`; lane 4's note that undecorated `animate()` calls "get AccelerateDecelerate" is true only for views that never set an interpolator.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit on `main` d772bcc: Must were the intro's inherited delays (label shows over an empty dock after closing a panel or waking, and the clock and dock linger under a new panel) and the All apps focus inheriting an 80 to 320 ms delay (moved up from Should). Should were the delayed focus restore after close (`postDelayed` 120/200 ms), IntroView and the splash timed on the wall clock, the Kids PIN shake (3×60 ms) unlike home's 420 ms keyframes, exits on decelerate curves and short fades on the default curve, and the verse cross-fade (opacity only, 250/400). Nice were the hidden `lineTimer` running all day, the BrandGlow colour snap, the prayer highlight snap, skipping unchanged tiles in `magnify()`, IntroView at scale 0, Kids hide/focus curves, and the magnify Javadoc.
+
 
 ## Lessons learned
 - 2026-11-05: `View.animate()` is stateful. Before calling an animation "default", check every earlier `animate()` on the same view for `setStartDelay` or `setInterpolator`.
@@ -134,6 +149,14 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: Copy the adhan overlay's pattern: set `setStartDelay(0)` explicitly on exit animations of views that had delayed entrances.
 - 2026-11-05: Check the owner's scripts in project files before marking a box setting as unverified.
 - 2026-11-05: When another lane's file states a motion fact, check it against this file.
+- 2026-11-05: Inherited delays show up as wrong order, not just lateness. Look for any view animated with no delay (like `dockLabel`) next to one carrying an old delay (like `bottomGroup`).
+- 2026-11-05: Time custom-drawn animations (`onDraw` + `postInvalidateOnAnimation`) with `SystemClock.uptimeMillis()` or `getDrawingTime()`, never `System.currentTimeMillis()`. The home starts at boot, when the wall clock is most likely to jump.
+- 2026-11-05: Look for animators that drive hidden views (`GONE` targets). They cost frames and show nothing.
+- 2026-11-05: Restoring focus with `postDelayed` after a fade is a responsiveness bug if the target is already focusable. Move focus at once and let the fade play.
+
+- 2026-11-05: Fixing a late focus restore can make an inherited start delay more visible. When focus moves sooner, check what is still waiting (the dock label against `bottomGroup`).
+- 2026-11-05: Among panels that share one elevation, `bringToFront()` decides which fade the family sees. Animate the panel in front, or the other panel's fade plays hidden.
+- 2026-11-05: A loading state should wait about 500 ms before showing and then stay up at least about 200 ms, or it flashes.
 
 ## Open questions to research next
 - Record the panel open/close and ambient wake on the TV to confirm the inherited delays (expected: dock lingers 600 ms).
@@ -146,6 +169,13 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Should the verse cross-fade drop its 8 px movement (opacity only is calmer and not "motion" under WCAG 2.3.3)?
 - How do premium TV launchers (Apple TV, Google TV) time focus moves? Measure from screen recordings at 60 fps.
 - Open Val Head / A List Apart on motion sensitivity and Google's "Making motion meaningful" (fetch budget ran out this session).
+- Does the box's wall clock jump at boot? Check with `adb logcat -b events | grep -i time` or by comparing `date` right after a cold boot with a later reading.
+- After M1 is fixed, record panel close and ambient wake at 60 fps to confirm that the dock leads and the label never shows alone.
+- Is the M1 alternative (a deliberate 0/40/80 ms return cascade) nicer than everything at once? Compare on the TV.
+- Ask lane 3: frame cost of N1 (hidden `lineTimer`) and of N4 (skipping unchanged dock tiles).
+
+- After the Must 1 fix, record Back from All apps at 60 fps and confirm the dock and its label arrive together.
+- Should the toast pill's position follow panel open/close (lane 9), or should it stay fixed at the bottom centre?
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -181,3 +211,10 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [aosp-disable-anim] https://git.replicant.us/replicant-next/packages_apps_Settings/plain/src/com/android/settings/accessibility/DisableAnimationsPreferenceController.java: "Remove animations" sets all three scales. Checked 2026-11-05.
 - [gd-motion-not-hard] https://medium.com/google-design/33089196e6c2: Google Design's practical durations and easing. Checked 2026-11-05.
 - To open next: A List Apart "Designing Safer Web Animation for Motion Sensitivity" (blocked by proxy), Google Design "Making motion meaningful", m3.material.io motion pages (JS-only), Android TV "Remove animations" help page.
+- [systemclock] https://chromium.googlesource.com/android_tools/+/HEAD/sdk/sources/android-25/android/os/SystemClock.java: wall clock can jump; `uptimeMillis` is monotonic, for intervals. Checked 2026-11-05.
+- [anim-time] https://learn.microsoft.com/en-us/dotnet/api/android.views.animations.animationutils.currentanimationtimemillis?view=net-android-37.0: the animation clock is not the wall clock. Checked 2026-11-05.
+- [gd-meaningful] https://design.google/library/making-motion-meaningful: clear focal point, respond without missing a beat, avoid overlapping paths. Checked 2026-11-05 (no durations given).
+
+- [aosp-animhandler] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/animation/AnimationHandler.java: when no window is visible, Android 14 pauses only infinite-duration animators, after `Animator.getBackgroundPauseDelay()`. Finite fades started in `onStop` still finish and run their end actions. Checked 2026-11-05.
+- [spin-delay] https://docsearch.algolia.com/mcp/docs/repo/smeijer/spin-delay: defaults are a 500 ms delay and a 200 ms minimum duration, so a spinner doesn't flash. Checked 2026-11-05.
+- [adobe-progress] https://developer.adobe.com/commerce/admin-developer/pattern-library/feedback-to-user/progress-indicator: delay a spinner 500 ms to avoid flicker; skip it for tasks under 500 ms. Checked 2026-11-05.

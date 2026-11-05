@@ -107,8 +107,23 @@ Verified by reading the code and measuring files on 2026-11-05 (line numbers dri
 - `characterPhoto()` (`KidsActivity.java` ~`:338`): matches `Pictures/KidsCorner/<name>.*`, decodes with `inSampleSize = max/600` (so a 4000 px photo is decoded at 1000 px; not a power of two).
 - Built-in "world" sample clips on the share (`/mnt/project-files/tv-box/wallpapers/`) contain drawn look-alikes of Kirby, Mario hills and pipes, Sonic loops and dragon balls. They are not in the repo and the setup script deletes the old ones from the TV (`Kids Corner setup.ps1:61`). Keep it that way.
 
+Added by the whole-app audit (2026-11-05):
+- Inter Bold, SemiBold and Medium have × U+00D7, • U+2022, · and … but not ⋯ U+22EF or ✕ U+2715 (fontTools, 2026-11-05).
+- The Adhan banner gradient runs `#121E3D` (top) to `#243A61` (bottom). The crescent cut disc is a flat `#1A2A4C`. The icon colours are exactly `#FFBE3C` and `#182850`.
+- `C-happy-star-banner.png` on the share has the same inner rounded tile as the bundled Kids banner.
+- The adaptive banner's layer sizes are still not given in text on [tv-icon] (re-checked 2026-11-05). Its manifest sample uses `@mipmap/ic_launcher` and `@mipmap/ic_banner`.
+
+Added by the PR #22 review (2026-11-05):
+- Baloo ExtraBold has ◀ U+25C0 and ▶ U+25B6. Inter and Baloo lack ❚ U+275A and ⭐ (checked with fontTools, 2026-11-05).
+
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22 (no asset changes): no Must. S1: the Kids settings end arrows dim to the hint colour 0xB3, so use 0x66FFFFFF. N1: ⭐ now means "shown first in All apps", but the stats panel still uses ⭐ for Kids stars. N2: ❚❚ now also shows on onPause. N3: OK wraps past a dimmed ▶.
+
 - 2026-11-05, PR #21 (docs only): no art changes. Fixed four fact errors in the lane's own files: ⏮⏭⏸ are drawn by `PlayerIcon`, not text; "❚❚" is in the Kids player, not the home; bare `drawable/` means runtime ×2 upscaling, not just "minimum size"; the Kids no-banner panel is rounded (26), only the icon inside is raw.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit (main `d772bcc`): no Must fix. Should fix: launcher art in bare `drawable/` (S1); the 2-colour Adhan icon with notched tips (S2); a ghost disc in the Adhan banner from a flat "cut" circle over a gradient (S3); three logos with three typefaces and no shared system (S4); "⋯" and "✕" not in Inter (S5); the inner tile in the Kids banner (S6); the raw-icon Kids no-banner fallback (S7); All apps double rounding of 28.2 vs 30 px (S8). Nice: FE0F on the home `skyIcon` (N1), calendar corner 18→23 (N2), 4K `fullBleed` size (N3).
+
 
 ## Lessons learned
 - 2026-11-05: Measure assets, don't trust their look in a thumbnail: counting colours and zooming showed the adhan icon has no anti-aliasing at all.
@@ -116,6 +131,11 @@ Verified by reading the code and measuring files on 2026-11-05 (line numbers dri
 - 2026-11-05: A symbol in a string is an icon with an unknown font. Check the bundled font's cmap before approving it.
 - 2026-11-05: Check whether a symbol string is drawn or only used as a key (`PlayerIcon` uses "⏮" only to pick a shape).
 - 2026-11-05: A bare `drawable/` asset is mdpi, so its problem is runtime scaling, not just its pixel size.
+- 2026-11-05: Our own Kids Corner icon is shown on the home **dock** (via `getApplicationIcon("com.family.kids")`), and the Adhan icon in All apps. "Launcher art only shows in Settings" is wrong. Our launcher art is part of the dock set.
+- 2026-11-05: A crescent made by painting a background-coloured disc only works on a flat background. On a gradient it leaves a ghost circle. Draw crescents as one path with a hole. Check by sampling pixels inside and outside the cut.
+- 2026-11-05: Check for U+FE0F consistency across all three apps. The same weather glyph was written with FE0F in Kids and Adhan and without it on the home.
+
+- 2026-11-05: An end-of-list or disabled mark must be clearly dimmer (about 38 to 40%) than the secondary text around it, or it reads as ordinary grey text.
 
 ## Open questions to research next
 - Is the box UI composed at 1080p or 4K (`adb shell wm size`, `dumpsys SurfaceFlinger`)? If 4K, raise `fullBleed` to about 320 px (lane 3 to weigh the memory).
@@ -127,6 +147,11 @@ Verified by reading the code and measuring files on 2026-11-05 (line numbers dri
 - Adaptive banner XML format for TV: partly answered 2026-11-05. [tv-icon] says "two layers" like adaptive launcher icons, but gives no layer sizes and no XML sample. Sizes still unknown.
 - Material 3 icon and shape guidance (m3.material.io was blocked by the proxy on 2026-11-05).
 - Nintendo, Sega, Toei and Mojang fan-content policies: what exactly do they allow for private, non-commercial use?
+- Does the box draw text-default weather glyphs without FE0F (☀ ☁ ⛈ 🌫 🌧) in colour or in monochrome? Screenshot the "Tomorrow" line on a clear day and on a cloudy one.
+- Does the Google TV "Your apps" row on this box show our icon or our banner, and with which mask? (still open)
+- Unicode's `emoji-data.txt` was blocked by the proxy (unicode.org 403) on 2026-11-05. The text-default status of ☀ ☁ ⛈ 🌫 🌧 is from memory of the Unicode data, so it is **(unverified)**.
+
+- Does the box's fallback font have U+275A? android.googlesource.com is blocked by the proxy, so check on the box, or draw it with a Path.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -151,3 +176,9 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [circ14] https://wpclipart.com/USC_circ14_as_html.html: HTML copy of US Copyright Office Circular 14 (derivative works; only the owner may authorise; unlawful material unprotected).
 - Also relied on (opened by lane 3/4, same day): lane 3 [romain-guy-deck] for mipmaps and filtering; lane 4 [tv-focus] for focus scale 1.025 to 1.1 and glow 2 to 32 dp.
 - To open next: m3.material.io icon and shape pages, Google TV launcher screenshots/teardowns, a franchise fan-content policy page, AOSP `config_icon_mask` for TV.
+- [tv-icon] re-checked 2026-11-05: the density tables put banners and icons in `mipmap-*`, and the manifest sample uses `@mipmap`. It says "Avoid adding any border around the logo". There are still no numeric banner safe-area or layer sizes.
+- [emoji-pres] https://unicodefyi.com/glossary/emoji-presentation/ (opened 2026-11-05): Emoji_Presentation=No means text by default; VS16 U+FE0F forces emoji, VS15 U+FE0E forces text.
+- [emojicompat-default] https://review.blissroms.org/plugins/gitiles/platform_frameworks_support/+/ca429f4bd64320e424b2e984c2e9d615679fa9cd (opened 2026-11-05): an AndroidX EmojiCompat commit. Characters like U+2639 and U+26F9 default to text unless followed by U+FE0F, and TR51 leaves the default to the app.
+
+- [disabled-38] https://api.flutter.dev/flutter/material/ButtonThemeData/getDisabledTextColor.html : Material disabled text is at 0.38 opacity. Opened 2026-11-05.
+- [cp-275a] https://codepoints.net/U+275A : not an emoji; the glyph comes from Noto Sans Symbols 2. Opened 2026-11-05.

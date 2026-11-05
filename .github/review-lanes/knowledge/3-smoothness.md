@@ -206,6 +206,17 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Box: Mali-G310 V2, 2 GB, Google TV 14 (32-bit), about 1 GB free (from review, unverified on this unit). Whether the UI is composed at 1080p or 4K on this unit is **unverified**.
 
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- No Must/Should. The wallpaper player now calls stop() in onStop, which releases the decoder (verified in the 1.4.1 source). Home pressed on the home screen resumes the same clip without listFiles.
+- Nice: restKeys re-animates every second while the pad rests (home and Kids); toast() setLayoutParams relayouts the stage; Kids refreshTiles runs in onStop; videoCover is not raised in onStop.
+- Still open: LoadControl, onTrimMemory, lineTimer.
+
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit (lane 3):
+  - Must: the Quran page and player redraw about 5.6x the screen per frame (`overlay()` scrim + 3 full-screen `StarField` rects + path, over the dim and the scrims) while the hidden wallpaper keeps decoding.
+  - Should: wallpaper player not stopped in `onStop`, no `LoadControl`, no `onTrimMemory`; all icons rebuilt on every resume; All apps grid rebuilt on each open, with redundant `clipToOutline` and elevation on about 40 icons; `lineTimer` feeds a GONE bar 60 times a second, also in the background; `tick()` does view work while hidden; Kids `refreshTiles` + `banner()` on the UI thread every resume.
+  - Nice: `drawSky` animates every minute; overlay dither; adhan `queryEvents` every second; leftover Projectivy wallpaper copy; Kids thumbs LRU by count; interpolator allocation per key; layers under a <100% stage scale.
+
 ### PR #21 (docs, 2026-11-05)
 - Corrected the 1.4.1 buffer values, the compressed-buffer wording, the hidden-API status of `fullLengthAnimations()` and added the `StarField` risk.
 - Corrected from lane 12's review: the box's animator scale is 1.0 (only window and transition are 0.5), so `fullLengthAnimations()` does nothing today.
@@ -224,6 +235,14 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: An invisible view can still cost frames if an animator keeps feeding it (`lineTimer`). Check what a GONE view's animators are doing.
 - 2026-11-05: Check library facts against the repo's pinned tag (1.4.1), not the release branch.
 - 2026-11-05: Read hidden-API status from `@UnsupportedAppUsage(maxTargetSdk)` in AOSP source.
+- 2026-11-05: Android 14's background animator pausing (`AnimationHandler`, `framework.pause_bg_animations.enabled`, default true) pauses **infinite animators only**. Finite ones, like a 29 s `lineTimer` restarted every 30 s, keep running behind other apps [aosp-animationhandler].
+- 2026-11-05: HWUI skips the GPU work for a RenderNode with alpha ≤ 0 (`nothingToDraw()`), but a view that re-posts from `onDraw` still costs main-thread recording every frame. Set it INVISIBLE/GONE, not just alpha 0 [hwui-rendernode].
+- 2026-11-05: An opaque full-screen panel doesn't hide the cost of the layers under it. HWUI doesn't cull covered draws, and Mali FPK is a best-effort queue, not a guarantee. Hide what is underneath [arm-hsr].
+- 2026-11-05: A whole-app audit should also check `onResume` work (icon rebuilds, tile rebuilds), not only per-frame drawing. Repeated "return home" work is the stutter people notice.
+- 2026-11-05: Look at the adhan app too: it runs every second, all day, beside Netflix.
+
+- 2026-11-05: In Media3 1.4.1, pause() keeps the codec (on a placeholder surface when the SurfaceView goes). stop() resets the renderers (foregroundMode is off by default), and MediaCodecRenderer.onReset() calls releaseCodec(). Disabling a renderer alone only calls flushOrReleaseCodec().
+- 2026-11-05: Watch for "set state" helpers called from a once-a-second tick that start animate() each time even when nothing changes. Guard them with a state flag.
 
 ## Open questions to research next
 - Is the UI composed at 1080p or 4K on this box? Check `adb shell wm size`, `adb shell dumpsys display | grep -i mode`, `dumpsys SurfaceFlinger --display-id`. If 4K, every full-screen fill costs 4x and the overdraw budget is tighter.
@@ -237,6 +256,14 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Measure `StarField` with `dumpsys gfxinfo` while the Quran panel is open.
 - Does HWUI cache an unchanged, translated stroked `Path`, or re-rasterise it every frame?
 - Baseline Profiles for a launcher: worth it for cold start on a 32-bit A55 box?
+- Is the `StarField` lattice re-rasterised each frame on Android 14 HWUI/Skia, or cached under translation? (Partly answered: older Skia CCPR ignored sub-pixel translation on Android. Check with a Perfetto trace on the Quran page.)
+- Does Amlogic put the wallpaper on the dedicated video plane (HWC DEVICE) while the UI is above it? (`dumpsys SurfaceFlinger`)
+- Does a hardware layer under `stage` scale 0.94 look visibly softer on the TV? (Compare at Screen size 94% with and without `cacheCards`.)
+- How much PSS does the paused wallpaper player hold behind Netflix? (Measure for S1.)
+- Is the adhan overlay band over Netflix forcing GPU composition of the film? (`dumpsys SurfaceFlinger` during an adhan.)
+
+- Measure `dumpsys meminfo com.family.tvhome` behind Netflix before and after PR #22 to size the freed decoder and buffer memory.
+- Does the stopped SurfaceView wallpaper flash black for one frame on return from another app? (Watch on the TV, or use a screen recording.)
 
 ## Source library
 All checked 2026-11-05 unless noted. Tags are used in Core expertise.
@@ -270,3 +297,12 @@ All checked 2026-11-05 unless noted. Tags are used in Core expertise.
 - [arm-mali-g310] https://arm.com/products/silicon-ip-multimedia/gpu/mali-g310: Arm's G310 positioning (TVs, STBs), AFBC.
 - [androidpctv-review] https://androidpctv.com/xiaomi-tv-box-s-3rd-gen-review: this exact box: 2 GB, ~1 GB free, 32-bit Google TV 14, UI said to be 4K.
 - To open next: the `View` reference for `hasOverlappingRendering` (page too long for one fetch; read with an offset), `RenderEffect` reference, Perfetto command-line recording, `dumpsys gfxinfo` docs, "Drawn out: how Android renders" (Google I/O 2018 talk).
+- [aosp-animationhandler] git.aicp-rom.com mirror of `frameworks/base/core/java/android/animation/AnimationHandler.java`: `requestAnimatorsEnabled`, `mPauser` pauses only `DURATION_INFINITE` animators, property `framework.pause_bg_animations.enabled` default true. Checked 2026-11-05.
+- [hwui-rendernode] https://android.googlesource.com/platform/frameworks/base/+/main/libs/hwui/RenderNode.h: `nothingToDraw()` returns true when alpha ≤ 0, scale 0, or an empty clipping outline. Checked 2026-11-05.
+- [arm-hsr] https://developer.arm.com/community/arm-community-blogs/b/mobile-graphics-and-gaming-blog/posts/hidden-surface-graphics-removal-methods-in-mali-gpus: Forward Pixel Kill is a limited queue, disabled by late-Z; no promise for blended layers. Checked 2026-11-05.
+- [skia-ccpr-subpixel] https://skia.googlesource.com/skia/+/644341af03d22dfe10e8e6c47e0aa21f5346031b: on Android, Skia's (CCPR) path cache ignores sub-pixel translation "to match HWUI", so a translated, unchanged `Path` can hit the cache. CCPR is an older path renderer, so this is unverified for Android 14's renderer. Checked 2026-11-05.
+- [media3-hello] https://developer.android.com/media/media3/exoplayer/hello-world: release the player to free video decoders for other apps. Checked 2026-11-05.
+
+- [media3-exoimplinternal-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/ExoPlayerImplInternal.java: stopInternal resets renderers unless foregroundMode. Checked 2026-11-05.
+- [media3-mediacodecrenderer-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/mediacodec/MediaCodecRenderer.java: onDisabled calls flushOrReleaseCodec, onReset calls releaseCodec. Checked 2026-11-05.
+- [media3-player-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/common/src/main/java/androidx/media3/common/Player.java: stop() releases the loaded media and playback resources. Checked 2026-11-05.

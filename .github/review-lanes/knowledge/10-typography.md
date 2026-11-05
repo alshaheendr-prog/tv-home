@@ -115,8 +115,24 @@ Verified on 2026-11-05 (line numbers drift; re-grep).
 - All 3 apps: compileSdk/targetSdk 35 (`*/build.gradle.kts`). The box runs Android TV 14, so Android 15 text defaults don't apply.
 - Adhan (`AdhanService.java`): countdown and times in Chivo Mono Bold (`:209`, `:228`), clock Baloo ExtraBold 64 px, alert 46 px Inter Medium + 50 px Plex SemiBold gold (Arabic +4 px), verse card Amiri Bold 34 px RTL, padding on, line spacing 1.15 (`:710-716`), English Baloo Medium 26 px line spacing 1.1, kicker 20 px Baloo Bold tracking 0.08.
 
+Corrections from the whole-app audit (2026-11-05):
+- `fraunces_soft_light.ttf` **is** the right instance: its digit advances match an instance of the upstream variable font at **opsz 144, SOFT 100, wght 300** exactly (opsz 9 or 72 give wider digits). The "9pt Black" name is only a stale name record. No re-instance needed.
+- `setLineSpacing(add, mult)` multiplies the font's own line height (hhea ascent + descent), not the text size. Effective leading: `lineEn` Cormorant 1.211 em × 1.05 = **1.27 em** (inside 1.2 to 1.45, so not "below the floor"); Kids Baloo 1.712 × 0.8 = 1.37 em; adhan `cardEn` 1.712 × 1.1 = 1.88 em (too loose); `pinSub` Inter 1.21 × 1.15 = 1.39 em; Amiri `cardAr` 1.758 × 1.15 = 2.02 em. (From framework behaviour in StaticLayout; the TextView docs page could not be read this session.)
+- Baloo Bold: Arabic mark stacks reach 1.15 em above the baseline (HarfBuzz, GoodWords strings), above the hhea ascent of 1.08 em. Any negative top padding on Baloo Arabic risks clipping.
+- Baloo ExtraBold digits: "11:11" 1848, "12:58" 2280, "10:00" 2469 units by default; 2682 for all with `tnum`.
+- Inter (all bundled files): no ✕ (U+2715) or ⋯ (U+22EF); has × • − ★ ✓ ● ⌫. Baloo: no ★ ✓ ✗ ⌫ ● ﷺ. Plex Arabic: has ✓ ∞ × •. Amiri: no symbols, Western digits, colon or °.
+- Home Arabic-fallback views (Inter, no Arabic): every `kicker()`, `lineKicker`, `skyText` (via `skyName()`), `eventText`, `pillText` toasts, `IntroView` WELCOME (Paint).
+- Western digits inside Amiri lines: `Content.java` character facts (years), `Widgets.java:27` heat alert, `:38` Jumu'ah time.
+- Surah names: Amiri in the grid and strip, Plex in `quranNow` and `playerSurah`.
+
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22: no Must. S1: on the reciter loading line, the "…" sat on the wrong side of the Arabic, and the Arabic is in an Inter view. Fixed by moving the "…" to the English side; the separate fAr view waits for the visual batch. Nice: the home PIN message orphaned "again." (fixed with a line break), ⭐ comes from the emoji font (use ★), and the adhan row is 80 px for an 84.8 px Plex line (the ink fits).
+
 - 2026-11-05, PR #21 (docs only): first lane 10 review. No Must fix. Should fix: Android 15 text defaults were described as if they apply on the Android 14 box; the Plex Arabic-Indic digit width claim was wrong; the tracking inventory was missing 0.22/0.14/0.1. Nice: Chivo character count, unused fonts, Fraunces width note, SF wording, missing size 50.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit (main `d772bcc`): no confirmed Must fix. Should fix: Arabic in Inter views drawn by the system Naskh (kickers, weather words, toasts, splash), Kids Arabic marks likely clipped by `trim()` (computed: marks reach 1.15 em vs a 1.08 em line top minus 0.2 em trim), Kids/adhan Baloo clocks without `tnum` (AM/PM jumps about 70 px), 20 px and 18 px text (kickers, Arabic prayer names, surah numbers, calendar Arabic, adhan panel), strip Arabic 26 vs English 32, 8 caps tracking values, adhan `cardEn` 1.88 em leading, Western digits in Amiri lines, ⋯ and ✕ missing from Inter, surah names in two faces. Nice: Fraunces has no `tnum` upstream, Inter v3 Light, 440 KB unused fonts, Kids symbols missing from Baloo, Hijri weight, size count, weather emoji presentation, toast digits.
+
 
 ## Lessons learned
 - 2026-11-05: Shape the text to learn what a feature does: Cormorant's `tnum` gives old-style tabular digits, which reading the feature list alone would not reveal.
@@ -126,6 +142,14 @@ Verified on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: Check digit widths for every numeral system a face has. Plex's Western digits are tabular, its Arabic-Indic digits aren't.
 - 2026-11-05: To find every tracking value, grep `setLetterSpacing` across all three apps and Canvas views (`IntroView` uses `Paint.setLetterSpacing`).
 - 2026-11-05: Apple's tracking table is in pt. Convert it to em before comparing (+0.40 pt at 29 pt = 0.014 em).
+- 2026-11-05: Before saying a font "lacks a feature, re-instance it", check the upstream source. Fraunces has no tabular figures in any instance.
+- 2026-11-05: Read `setLineSpacing` multipliers against the font's line height, not the size. Tall fonts (Baloo 1.71 em, Amiri 1.76 em) turn a harmless-looking 1.1 into very loose leading.
+- 2026-11-05: Negative padding "trims" must be checked against the tallest shaped string (HarfBuzz extents over the real content), not against the font's ascent.
+- 2026-11-05: Grep every non-ASCII character in the code and check it against the cmap of the face that draws it. That finds fallback glyphs (⋯, ✕, ★) that look fine on a PC mock.
+
+- 2026-11-05: Arabic followed by a neutral (… ! . :) in an LTR line needs an RLM after it, or the neutral moved to the Latin side. Check with python-bidi `get_display(s, base_dir='L')`.
+- 2026-11-05: A temporary message must keep the line count of the text it replaces, at the real column width (PIN 472 px on the home, 440 px in Kids, parent rows 728 px).
+- 2026-11-05: When a row shrinks (adhan LIFT 56 and BAND 136 leave 80 px), check the shaped ink of every string against it. Plex Arabic at 50 px has ink from +39.1 to −13.5 px.
 
 ## Open questions to research next
 - Which system Arabic font draws the kicker Arabic on this Android TV 14 box (Noto Naskh Arabic or the UI cut), and does it clash with Plex? Screenshot a kicker.
@@ -139,6 +163,13 @@ Verified on 2026-11-05 (line numbers drift; re-grep).
 - Should the strip's Arabic adhan name match or exceed its English (26 vs 32 px)?
 - Update Amiri to 1.003, and check whether "Amiri Quran" handles pause marks better than Amiri Bold at 32 to 38 px (with lane 6).
 - Open the Google Fonts knowledge pages on pairing, x-height and optical size (they need JavaScript; not opened this session).
+- Screenshot the Kids hadith card to confirm or rule out S2 clipping.
+- Which Arabic fallback face (Naskh or Naskh UI) does the box really use in kickers? Answered in practice once S1 lands, but record it.
+- After S1, do Plex spans in a 22 px Inter kicker need a size bump of +2 px for the Arabic (Apple +2 pt rule beside caps)?
+- Inter v4 Display at 44 to 60 px vs Inter Light: mock on the TV.
+
+- Screenshot the reciter loading line on the box after the fix.
+- unicode.org (UAX #9) is blocked by the proxy here, so cite rules N1/N2 from a mirror.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -175,3 +206,11 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [bertolus-2017] https://consensus.app/papers/details/83b177020ed25ffaaf9cae70fc30193b/ (Bertolus et al. 2017): household TV distances vs UI text size (abstract only).
 - [tomioka-2007] https://consensus.app/papers/details/1d637990012f56319bf7cca8b0be5c0d/ (Tomioka 2007, J. Physiol. Anthropol.): thinner characters in negative mode for older viewers (abstract only).
 - To open next: Google Fonts knowledge (pairing, optical size, x-height), Amiri documentation page, OpenType feature registry pages on learn.microsoft.com, Noto Naskh Arabic metrics.
+- [aosp-fonts-xml] https://android.googlesource.com/platform/frameworks/base/+/2a0135d19cab/data/fonts/fonts.xml: fallback order; `und-Arab` elegant NotoNaskhArabic first, then compact NotoNaskhArabicUI; symbols in NotoSansSymbols, emoji in NotoColorEmoji (older revision; the box's own list is unverified).
+- [typefacespan-28] https://developer.android.com/sdk/api_diff/28/changes/android.text.style.TypefaceSpan: `TypefaceSpan(Typeface)` added in API 28.
+- [fraunces-gh] https://github.com/arrowtype/Fraunces: axes (opsz 9 to 144, wght, SOFT, WONK), static instance naming (9pt/72pt/144pt); no figure-set features documented.
+- [gf-fraunces-vf] Google Fonts `ofl/fraunces/Fraunces[SOFT,WONK,opsz,wght].ttf` (raw.githubusercontent.com/google/fonts/main/…): v1.000, GSUB `case liga rvrn ss01`, fvar default opsz 9 / wght 900 / SOFT 0.
+- [inter-site] https://rsms.me/inter/: opsz text-to-display, Display "cleaner lines … for large text", `tnum` same width across weights, `zero`, `case`.
+
+- [w3c-h34] https://www.w3.org/WAI/WCAG21/Techniques/html/H34 : an RLM after punctuation that ends an RTL phrase in LTR text.
+- [w3c-inline-bidi] https://w3c.github.io/i18n-drafts/articles/inline-bidi-markup/index.en : neutrals at the edge of a phrase.

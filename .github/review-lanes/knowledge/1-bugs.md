@@ -136,6 +136,28 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 
 ## Past findings
 
+### PR #22 (2026-11-05, audit update 1)
+- Must: none.
+- Should:
+  - The Kids Corner wallpaper retry (`clipAgain`) is cancelled in onPause and not restarted on a short pause. A short pause happens when Guard's SINGLE_TOP pull delivers a new intent while Kids Corner is already on top. `applyWorld` only plays a clip when the world changed, and `surfaceCreated` doesn't fire again. Fix: `if (player == null) playClip();` in onResume.
+  - Events.badge reorder: on 9 Dhul Hijjah, "Eid al-Adha tomorrow" beats today's "Day of Arafah".
+- Nice:
+  - The playRandomClip `!resumed` early return leaves the cover opaque after a pause without a stop.
+  - A pending `retryClips` causes a double clip change.
+  - The cold-start missing-app note hides under the splash (elevation 60 over 50, splash at least 5.9 s).
+  - There is no floor on the urgent Guard pull.
+  - On-TV check: the takbir still plays with only READ_MEDIA_AUDIO now that MANAGE_EXTERNAL_STORAGE is removed.
+
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- Must: none.
+- Should: quiet Quran starts after leaving home and pauses Netflix (no `resumed` check after the bg hop); wallpaper retry and
+  fade end-action restart the decoder in the background; home keeps its ExoPlayer decoder in onStop (placeholder surface);
+  midnight passedMask change pauses the Quran with "Paused for the adhan"; Events.badge "Eid/Arafah tomorrow" unreachable;
+  adhan sound decode error hides the banner with no chime fallback; Kids Corner wallpaper never retries after boot.
+- Nice: Projectivy copier still runs; wall-clock throttles (line switch, weather, ambient, card, swap); adhan updateForeground
+  begin>end; Quran.reciters caches the fallback; lastDock -1; kids player paused without ❚❚; tile width <= 0 at 30+ apps.
+- Checked and NOT a bug: KidsActivity.onPause player.pause() on a preparing/failed MediaPlayer (no exception, error -38 via onError).
+
 ### PR #21 (2026-11-05, docs only)
 - Must: none.
 - Should: the README ready rule contradicted step 4 and CLAUDE.md; a tick throw is a process crash, not a silent stop; the Guard wall-clock throttles were missing from Known risks.
@@ -154,6 +176,16 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 - 2026-11-05: For every elapsed-time calculation, check both bounds (a `min()` with no `max(0, …)` goes negative on a backwards jump) and which clock it uses. Throttles on `currentTimeMillis` freeze after a backwards jump.
 - 2026-11-05: On docs PRs, check the README, briefs and CLAUDE.md for contradictions.
 - 2026-11-05: Recheck the brief's "Known risks" against the code before citing them. Several were fixed in #20 (onDestroy, exact-minute adhan, Kids PIN with no limit).
+- 2026-11-05: Any work that hops to `bg` and comes back with `ui.post` must check `resumed` (or `isDestroyed()`) again before it starts sound or video. The check done before the hop doesn't count, because the single `bg` thread can queue it behind 20 s or more of network calls.
+- 2026-11-05: Every "pause or alert when X changes" condition: list everything that can change X. A day rollover recomputes the arrays and changes masks without any real event.
+- 2026-11-05: In "today wins, else tomorrow" logic, check whether the day before each "tomorrow" event already has its own event. If it does, the branch can never be reached.
+- 2026-11-05: MediaPlayer `start()`, `pause()` and `stop()` in the wrong state don't throw. Native code returns INVALID_OPERATION and Java reports it as `onError(-38, 0)`. Only calls on a released player, and the `seekTo`/`prepare`-type calls, throw `IllegalStateException`. So a stray `pause()` is not a crash, but an `onError` that hides the UI may fire.
+- 2026-11-05: Pausing ExoPlayer doesn't free the decoder. On API 23 and later it keeps the codec on a placeholder surface. To free it, call `stop()` (or `release()`).
+- 2026-11-05: Every media error path should have a fallback and a retry: the adhan sound falls back to the chime, and a wallpaper retries like the home's 12 tries.
+
+- 2026-11-05: A retry or loop cancelled in onPause must be restarted in onResume. Delivering a new intent to a resumed SINGLE_TOP or singleTask activity pauses and resumes it, and the surface is not recreated, so `surfaceCreated` can't be relied on.
+- 2026-11-05: When a fix reorders "today wins / tomorrow wins" logic, walk through every day just before a tomorrow event, not only the day the fix targets.
+- 2026-11-05: When an early return skips work in an animation end-action, also leave a flag (for example `wallStopped = true`) so the next onResume redoes it. Otherwise the UI stays half-done.
 
 ## Open questions to research next
 - Does the Xiaomi TV Box S 3rd Gen suspend the CPU in standby (screen off by the remote)? If it does, `Handler` ticks stop and an adhan due while the box is in standby is missed, as the 3-minute window shows. Check with the owner (lane 8) and `dumpsys deviceidle` and `dumpsys power`.
@@ -162,6 +194,12 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 - Does YouTube or Kodi on Android TV use picture-in-picture, so that it can keep playing with no new `ACTIVITY_RESUMED`?
 - media3 1.4.1 compared with the latest release: are there known `SurfaceView` or loop bugs on Amlogic decoders?
 - `Rules.extra_until` and a wall-clock jump: is clamping needed, in the same way as `pin_until`?
+- Does the home's paused ExoPlayer really hold a hardware decoder on this Amlogic box? Check with `adb shell dumpsys media.resource_manager` and `dumpsys media.player` while Netflix plays over the home.
+- The home sets `FLAG_KEEP_SCREEN_ON`. If the TV is switched off with its own remote while the home is in front, does the box ever go to standby (HDMI-CEC "auto power off")? If it doesn't, the wallpaper and the soft Quran run all night. With Kids Corner, `pm.isInteractive()` stays true, so screen time keeps counting while the TV is off.
+- Should `Events.badge` follow Kuwait's moon-sighting announcement rather than Umm al-Qura? (Lane 6.)
+
+- Does `File.canRead()` on an adb-pushed `Download/takbir.mp3` work with only READ_MEDIA_AUDIO, before MediaStore has scanned the file? It needs a test on the TV.
+- How long after a bringBack does ACTIVITY_RESUMED for KidsActivity show up in queryEvents on this box? That decides how many repeat urgent pulls happen.
 
 ## Source library
 
@@ -199,3 +237,8 @@ All checked 2026-11-05 unless noted. The short tags in [brackets] are used above
 - [CommonsWare stopped] https://commonsware.com/blog/2011/07/13/boot-completed-regression-confirmed.html: force-stop and BOOT_COMPLETED (secondary). Checked 2026-11-05.
 - Rechecked 2026-11-05: FGS troubleshooting, ANR, Alarms, Doze and B15-all.
 - From the brief, not reopened this round: https://dev.to/rexa/how-to-block-apps-on-android-without-an-accessibilityservice-5gog (UsageStats polling pitfalls) and https://www.androidauthority.com/google-tv-update-blocks-projectivy-override-3649445 (a Google TV update broke custom HOME overrides).
+- [ExoPlayer #677] https://github.com/google/ExoPlayer/issues/677: when the surface goes away, ExoPlayer keeps the codec on a DummySurface (API 23+) instead of releasing it. Checked 2026-11-05.
+- [MP -38] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/20072786/android-mediaplayer-unknow-error-38: error -38 means INVALID_OPERATION, an invalid state transition (secondary source, Stack Overflow archive). Checked 2026-11-05. The JNI route (NULL exception, so `notify(MEDIA_ERROR)`) is from memory of `android_media_MediaPlayer.cpp` *(unverified this round)*.
+
+- [onNewIntent] https://learn.microsoft.com/dotnet/api/android.app.activity.onnewintent: a mirror of the Android reference text. It says "If the activity was resumed, it will be paused and new intent will be delivered, followed by onResume()", and that getIntent() still returns the original intent.
+- [MediaPlayer state] https://developer.android.com/media/platform/mediaplayer/state-resources: release the player in onStop, create it again on resume, and stop() needs prepare() before start().

@@ -62,6 +62,8 @@ import java.util.concurrent.Executors;
  */
 public class KidsActivity extends Activity {
     static final int WHITE = 0xFFFFFFFF, SOFT = 0xE6FFFFFF, DIM = 0xB3FFFFFF;
+    // a list end that can't go further: dimmer than hint text, like the resting PIN keys
+    private static final int ENDED = 0x59FFFFFF;
     static final String[] VIDEO_EXT = {".mp4", ".mkv", ".m4v", ".webm", ".avi", ".mov", ".ts"};
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -174,8 +176,11 @@ public class KidsActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        resumed = true;
+        clipTries = 0;
         hideBars();
         applyWorld();
+        if (player == null) playClip(); // a short pause cancelled the retry; the world may not have changed to start one
         refreshTiles();
         loadCartoons();
         if (Rules.on(this)) Guard.start(this);
@@ -184,6 +189,8 @@ public class KidsActivity extends Activity {
 
     @Override
     protected void onPause() {
+        resumed = false;
+        ui.removeCallbacks(clipAgain);
         if (player != null) player.pause();
         super.onPause();
     }
@@ -193,6 +200,7 @@ public class KidsActivity extends Activity {
         // Another app (Netflix, a cartoon) needs the video decoder: let ours go until we come back.
         stopClip();
         stopSurah();
+        closeParentMenus(); // a grown-up's menu never stays open behind another app
         super.onStop();
     }
 
@@ -254,6 +262,7 @@ public class KidsActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         int code = e.getKeyCode();
+        if (vis(parentPanel) || vis(appsPanel)) { ui.removeCallbacks(parentIdle); ui.postDelayed(parentIdle, PARENT_IDLE_MS); }
         if (arrangeTile != null && !vis(pinPanel)) return arrangeKey(e);
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) back();
@@ -282,6 +291,20 @@ public class KidsActivity extends Activity {
             hide(cartoonsPanel);
             focusAfterPanel();
         }
+    }
+
+    /** The grown-ups' menu closes by itself after 90 seconds with no key press, so a child handed the remote can't change the rules. */
+    static final long PARENT_IDLE_MS = 90_000;
+    private final Runnable parentIdle = this::closeParentMenus;
+
+    private void closeParentMenus() {
+        ui.removeCallbacks(parentIdle);
+        if (!vis(parentPanel) && !vis(appsPanel)) return;
+        if (vis(pinPanel) && PinLock.isSet(Rules.prefs(this))) { hide(pinPanel); pinThen = null; }
+        hide(appsPanel);
+        hide(parentPanel);
+        refreshTiles();
+        focusAfterPanel();
     }
 
     private void focusAfterPanel() {
@@ -404,18 +427,28 @@ public class KidsActivity extends Activity {
     private void playClip() {
         if (!surfaceReady || player != null || world == null) return;
         File f = clipFor(world);
-        if (f == null) { cover.setAlpha(1); return; }
+        if (f == null) { cover.setAlpha(1); retryClip(); return; }
+        MediaPlayer p = new MediaPlayer();
         try {
-            MediaPlayer p = new MediaPlayer();
             p.setDataSource(f.getPath());
             p.setDisplay(video.getHolder());
             p.setLooping(true);
             p.setVolume(0, 0);
-            p.setOnPreparedListener(mp -> { mp.start(); cover.animate().alpha(0).setDuration(700).start(); });
-            p.setOnErrorListener((mp, a, b) -> { cover.setAlpha(1); return true; });
+            p.setOnPreparedListener(mp -> { clipTries = 0; mp.start(); cover.animate().alpha(0).setDuration(700).start(); });
+            p.setOnErrorListener((mp, a, b) -> { stopClip(); retryClip(); return true; });
             p.prepareAsync();
             player = p;
-        } catch (Exception e) { cover.setAlpha(1); }
+        } catch (Exception e) { p.release(); cover.setAlpha(1); retryClip(); }
+    }
+
+    /** Right after the box turns on the files may not be readable yet: look again every few seconds, as the family home does. */
+    private int clipTries;
+    private boolean resumed;
+    private final Runnable clipAgain = this::playClip;
+
+    private void retryClip() {
+        ui.removeCallbacks(clipAgain);
+        if (resumed && ++clipTries < 40) ui.postDelayed(clipAgain, 3000);
     }
 
     private void stopClip() {
@@ -768,7 +801,7 @@ public class KidsActivity extends Activity {
         boolean icons = Rules.prefs(this).getInt("icons", 0) == 0;
         // app icons are square like on the family home, a little bigger for small hands on the remote;
         // banners are 16:9 like the TV's own, so nothing gets cropped
-        int w = icons ? Math.min(136, 1340 / n - 44) : Math.min(250, 1460 / n - 52), h = icons ? w : w * 9 / 16;
+        int w = Math.max(60, icons ? Math.min(136, 1340 / n - 44) : Math.min(250, 1460 / n - 52)), h = icons ? w : w * 9 / 16;
         float corner = icons ? w * 0.24f : 26;
         for (int i = 0; i < n; i++) {
             String pkg = items.get(i)[0], label = items.get(i)[1];
@@ -1474,8 +1507,13 @@ public class KidsActivity extends Activity {
                 ink(key, has ? 0xFF161028 : WHITE);
                 key.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start();
             });
-            key.setOnClickListener(v -> pinPress(k));
+            key.setOnClickListener(v -> {
+                v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(70).withEndAction(() ->
+                        v.animate().scaleX(v.isFocused() ? 1.06f : 1f).scaleY(v.isFocused() ? 1.06f : 1f).setDuration(140).start()).start();
+                pinPress(k);
+            });
             pad.addView(key, lp);
+            if (Character.isDigit(k.charAt(0))) pinKeys.add(key);
             if (k.equals("1")) firstPinKey = key;
         }
         box.addView(pad);
@@ -1494,27 +1532,50 @@ public class KidsActivity extends Activity {
         pinMode = m;
         pinEntry = "";
         switch (m) {
-            case "set": pinTitle.setText("Choose a parent PIN"); pinSub.setText("4 numbers. You'll need it to leave Kids Corner."); break;
-            case "again": pinTitle.setText("Once more"); pinSub.setText("Type the same PIN again"); break;
-            default: pinTitle.setText("Grown-ups only"); pinSub.setText("Enter the parent PIN"); break;
+            case "set": pinTitle.setText("Choose a parent PIN"); break;
+            case "again": pinTitle.setText("Once more"); break;
+            default: pinTitle.setText("Grown-ups only"); break;
         }
-        if (m.equals("check")) showPinWait();
+        setPinSub(m);
+        if (m.equals("check")) showPinWait(); else restKeys(false);
         drawDots(0);
+    }
+
+    private void setPinSub(String m) {
+        ui.removeCallbacks(pinNoteEnd);
+        pinSub.setText(m.equals("set") ? "4 numbers. You'll need it to leave Kids Corner." : m.equals("again") ? "Type the same PIN again" : "Enter the parent PIN");
     }
 
     /** After too many wrong tries, the line under the title counts down the rest. */
     private void showPinWait() {
         long left = PinLock.waitLeft(Rules.prefs(this));
         ui.removeCallbacks(pinWaitTick);
+        restKeys(left > 0);
         if (left <= 0) return;
+        ui.removeCallbacks(pinNoteEnd);
         pinSub.setText(PinLock.waitText(left));
         ui.postDelayed(pinWaitTick, Math.min(left, 1000));
     }
 
     private final Runnable pinWaitTick = () -> {
-        if (pinPanel == null || pinPanel.getVisibility() != View.VISIBLE || !pinMode.equals("check")) return;
-        if (PinLock.waitLeft(Rules.prefs(this)) > 0) showPinWait(); else { pinSub.setText("Enter the parent PIN"); drawDots(0); }
+        if (pinPanel == null || pinPanel.getVisibility() != View.VISIBLE || !pinMode.equals("check")) { restKeys(false); return; }
+        if (PinLock.waitLeft(Rules.prefs(this)) > 0) showPinWait(); else { restKeys(false); pinSub.setText("Enter the parent PIN"); drawDots(0); }
     };
+
+    /** While the pad rests after too many wrong tries, its number keys dim (they stay reachable, the countdown says why). */
+    private final List<View> pinKeys = new ArrayList<>();
+    private void restKeys(boolean resting) {
+        for (View k : pinKeys) k.animate().alpha(resting ? 0.4f : 1f).setDuration(200).start();
+    }
+
+    /** A short message under the title for two seconds (wrong PIN, PINs that didn't match), then the usual line again. */
+    private void pinNote(String msg) {
+        if (PinLock.waitLeft(Rules.prefs(this)) > 0) return; // the rest countdown says more
+        pinSub.setText(msg);
+        ui.removeCallbacks(pinNoteEnd);
+        ui.postDelayed(pinNoteEnd, 2000);
+    }
+    private final Runnable pinNoteEnd = () -> { if (vis(pinPanel) && PinLock.waitLeft(Rules.prefs(this)) <= 0) setPinSub(pinMode); };
 
     private void drawDots(int filledColorOverride) {
         for (int i = 0; i < 4; i++) {
@@ -1530,7 +1591,8 @@ public class KidsActivity extends Activity {
     private void pinPress(String k) {
         if (k.equals("⌫")) { if (!pinEntry.isEmpty()) pinEntry = pinEntry.substring(0, pinEntry.length() - 1); drawDots(0); return; }
         if (pinEntry.length() >= 4) return;
-        if (pinMode.equals("check") && PinLock.waitLeft(Rules.prefs(this)) > 0) { wrong(); showPinWait(); ui.postDelayed(() -> drawDots(0), 650); return; }
+        // resting: a soft dip on the key is the only answer (no shake, no red), and the countdown stays
+        if (pinMode.equals("check") && PinLock.waitLeft(Rules.prefs(this)) > 0) { showPinWait(); return; }
         pinEntry += k;
         drawDots(0);
         if (pinEntry.length() < 4) return;
@@ -1540,16 +1602,19 @@ public class KidsActivity extends Activity {
                 case "set": firstPin = entered; setPinMode("again"); return;
                 case "again":
                     if (entered.equals(firstPin)) { PinLock.set(Rules.prefs(this), entered); pinDone(); }
-                    else { wrong(); setPinModeLater("set"); }
+                    else { wrong(); setPinModeLater("set", "The two PINs were different. Choose one again."); }
                     return;
                 default:
                     if (PinLock.check(Rules.prefs(this), entered)) pinDone();
-                    else { wrong(); setPinModeLater("check"); }
+                    else { wrong(); setPinModeLater("check", "That PIN didn't match. Try again."); }
             }
         }, 160);
     }
 
-    private void setPinModeLater(String m) { ui.postDelayed(() -> setPinMode(m), 650); }
+    private void setPinModeLater(String m, String note) {
+        pinNote(note);
+        ui.postDelayed(() -> { setPinMode(m); pinNote(note); }, 650);
+    }
 
     private void wrong() {
         drawDots(0xFFFF5A5A);
@@ -1660,6 +1725,8 @@ public class KidsActivity extends Activity {
 
         show(parentPanel);
         parentFirst.requestFocus();
+        ui.removeCallbacks(parentIdle);
+        ui.postDelayed(parentIdle, PARENT_IDLE_MS);
     }
 
     interface Label { String of(int v); }
@@ -1682,16 +1749,28 @@ public class KidsActivity extends Activity {
         value.setPadding(24, 2, 24, 4);
         value.setBackground(solid(0x1AFFFFFF, 30, 0));
         row.addView(value);
-        Runnable draw = () -> value.setText("◀  " + label.of(Rules.prefs(this).getInt(key, def)) + "  ▶");
+        Runnable draw = () -> {
+            int cur = Rules.prefs(this).getInt(key, def), at = 0;
+            for (int i = 0; i < values.length; i++) if (values[i] == cur) at = i;
+            // the arrow that can't go any further dims, so the ends of the list are clear
+            String mid = "  " + label.of(cur) + "  ";
+            android.text.SpannableString sp = new android.text.SpannableString("◀" + mid + "▶");
+            if (at == 0) sp.setSpan(new android.text.style.ForegroundColorSpan(ENDED), 0, 1, 0);
+            if (at == values.length - 1) sp.setSpan(new android.text.style.ForegroundColorSpan(ENDED), sp.length() - 1, sp.length(), 0);
+            value.setText(sp);
+        };
         draw.run();
         row.setOnFocusChangeListener((v, has) -> row.setBackground(has ? solid(0x26FFFFFF, 22, 0) : null));
         row.setOnKeyListener((v, code, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
-            int dir = code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 0;
+            boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
+            if (ok && e.getRepeatCount() > 0) return true;
+            int dir = code == KeyEvent.KEYCODE_DPAD_RIGHT || ok ? 1 : code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 0;
             if (dir == 0) return false;
             int cur = Rules.prefs(this).getInt(key, def), at = 0;
             for (int i = 0; i < values.length; i++) if (values[i] == cur) at = i;
-            at = Math.max(0, Math.min(values.length - 1, at + dir));
+            // OK steps forward like the family home's settings, going round to the first value after the last
+            at = ok ? (at + 1) % values.length : Math.max(0, Math.min(values.length - 1, at + dir));
             Rules.prefs(this).edit().putInt(key, values[at]).apply();
             draw.run();
             if (key.equals("world")) { applyWorld(); refreshTiles(); }

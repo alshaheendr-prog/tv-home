@@ -166,7 +166,27 @@ Verified on 2026-11-05 at commit 47e8c57 unless marked otherwise.
 - `.gitignore` covers `local.properties`, `build/`, `.gradle/` and `.idea/`.
 - Grep found no `Log.*` call that prints a PIN.
 
+Added by the whole-app audit (2026-11-05):
+- Guard: TICK 1.5 s; `bringBack` throttled to once per 2 s; empty foreground counts as allowed; only ACTIVITY_RESUMED events are tracked.
+- TV Home `openSettings` uses `NEW_TASK` only. The All apps grid always has a Settings tile with no PIN (outside kids mode this is a known YouTube route).
+- Kids `openParent` has no idle timeout. The extra-time buttons leave the menu open.
+- Adhan `swapWallpaper` writes `Movies/Projectivy/wallpaper.mp4`; `wallpaper_mode` defaults to `return`. MANAGE_EXTERNAL_STORAGE is used for nothing else.
+- `Quran.reciters` builds playback URLs from the API's `server` field without checking the scheme.
+
 ## Past findings
+
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22 (ecdab40): no Must. Should S1: Parent settings could come back without the PIN. closePanels() hid parentPanel only in withEndAction; an openPin() within the 180 ms fade cancelled that fade (dropping the end action), set pinOverParent from visibility, and Back or ✕ then called backToParent(). Fixed with a parentOpen flag. Nice: accept only known names in the `missing` extra. Audit S1-S4 are all fixed. The CI SHAs were verified against their tags, and `run:` uses env vars.
+
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- **Whole-app audit (2026-11-05, main d772bcc).**
+  - Must: none.
+  - Should:
+    - S1: the parent menus never auto-close (Kids `openParent`, TV Home `openParent` with KEEP_SCREEN_ON).
+    - S2: Settings keeps its page between Home-button trips, so a child can creep to Force stop or Clear storage on Kids Corner (fix: `FLAG_ACTIVITY_CLEAR_TASK` in `openSettings`, and recheck NEVER apps sooner in Guard).
+    - S3: TV Home's "Add to Kids Corner ⭐" only marks the app in TV Home and doesn't change Kids Corner's allow list.
+    - S4: Adhan's `MANAGE_EXTERNAL_STORAGE` exists only for the dead Projectivy wallpaper swap.
+  - Nice: check the scheme of the reciter `server` URL; `filterTouchesWhenObscured` on the PIN pads; known items unchanged.
 
 ### PR #20 (merged 2026-11-05): PIN limits, crash after restart, missed adhan, Quran text
 - Must and Should: none.
@@ -189,6 +209,13 @@ Verified on 2026-11-05 at commit 47e8c57 unless marked otherwise.
 - 2026-11-05: On targetSdk 31+, `adb backup` no longer exposes app data. Weigh allowBackup findings against cloud and device-to-device backup only.
 - (PR #21) On a docs-only PR, grep the added lines for secrets and personal data, and diff the removed brief lines so no check gets dropped. Briefs are reviewer instructions; dropping a check is a regression.
 - (PR #21) PinLock uses `apply()` (memory now, disk later), so a power cut right after a wrong try could lose that count. Negligible; if hardened, `commit()` the fail count before comparing.
+- 2026-11-05: Look at what happens when a panel is left open. A PIN gate means little if the screen behind it stays unlocked forever, so check for an idle timeout and for `onStop` closing it.
+- 2026-11-05: A bounce-back lock leaks state between bounces. Ask whether the blocked app resumes where the child left it (tasks restore their last state), because that turns a 2 s window into steady progress.
+- 2026-11-05: Every parental-looking control must change the real rule. Grep where its pref is read. TV Home's `kids` set is read only by TV Home.
+- 2026-11-05: When a feature is removed (Projectivy), check which permissions existed only for it.
+
+- 2026-11-05: Never use view visibility as the "unlocked" signal. ViewPropertyAnimator cancels a running animation on the same property and drops its withEndAction, so a faded panel can stay VISIBLE at alpha 0. Keep an explicit open flag.
+- 2026-11-05: Verify action SHAs with `git ls-remote` on refs/tags/vX and vX^{} (gradle/actions uses annotated tags).
 
 ## Open questions to research next
 - The 2025 tj-actions/changed-files tag-rewrite incident: a primary write-up was not opened this round (it is the classic example for SHA pinning).
@@ -201,6 +228,12 @@ Verified on 2026-11-05 at commit 47e8c57 unless marked otherwise.
 - (2026-11-05) tj-actions incident: answered, see Source library [tj-actions]; SHA-pin actions.
 - (2026-11-05) Network ADB: the owner uses paired wireless debugging, so the open port-5555 worry mostly falls away. Still to ask: is wireless debugging left on after Update TV, and was "always allow on this network" ticked?
 - (2026-11-05) Restricted settings: Update TV turns RemoteKeys on over ADB, which likely bypasses the UI block (unverified). Check on the box only if the service ever fails to turn on.
+- Does `READ_MEDIA_AUDIO` alone let Adhan read `Download/takbir.mp3` (pushed over adb) by raw path on Android TV 14? Test on the box before dropping all-files access.
+- On Google TV 14, is the quick-settings side panel (long-press Home or the gear) in `com.android.systemui`, which Guard lets through, or in launcherx? Can a child reach Settings pages from it without Settings coming to the front?
+- Prime Video's profile PIN on Android TV, and whether Shahid has a profile lock (for lane 8).
+- Does Android TV Settings use launch modes that ignore `CLEAR_TASK`? Check on the box when S2 is fixed.
+
+- On TV 14, does READ_MEDIA_AUDIO alone play an adb-pushed Download/takbir.mp3? The chime fallback covers safety, and lane 8 should check that the takbir plays.
 
 ## Source library
 
@@ -243,3 +276,11 @@ All checked 2026-11-05 unless noted. The [tags] are used above.
 - [adb] https://developer.android.com/studio/command-line/adb.html: wireless debugging pairs with a code and the port shown on the device; stays paired until revoked; "always allow on this network" auto-allows on that Wi-Fi; legacy `adb tcpip 5555` has no pairing. Checked 2026-11-05.
 - [tj-actions] https://thehackernews.com/2025/03/github-action-compromise-puts-cicd.html: CVE-2025-30066 (March 2025): a bot PAT was stolen, all version tags repointed to a malicious commit, secrets dumped into public build logs; SHA-pinned users were not hit. Checked 2026-11-05.
 - [Restricted settings] https://www.esper.io/blog/android-13-sideloading-restriction-harder-malware-abuse-accessibility-apis and https://bayton.org/android/android-13-restricted-permissions/: Android 13+ blocks turning on accessibility services (bayton: also notification access, overlays) for apps from non-session installers; session installs and stores exempt; unlock via App info, menu, "Allow restricted settings". Neither covers adb. Checked 2026-11-05.
+- [Tasks] https://developer.android.com/guide/components/activities/tasks-and-back-stack: an existing task comes back "with its last state restored"; `clearTaskOnLaunch` needs `FLAG_ACTIVITY_RESET_TASK_IF_NEEDED`.
+- [MASWE-0030] https://mas.owasp.org/MASWE/MASVS-AUTH/MASWE-0030/: re-authentication on timeout and on returning from background (placeholder page, no mitigations yet; points to ASVS V3.3).
+- [MASWE-0024] https://mas.owasp.org/MASWE/MASVS-AUTH/MASWE-0024/: sensitive data accessible after the session ends (only the outline loaded).
+- [All files] https://developer.android.com/training/data-storage/manage-all-files: MANAGE_EXTERNAL_STORAGE only as a last resort, for core features.
+- [Media] https://developer.android.com/training/data-storage/shared/media: raw File paths on 11+; another app's Downloads entries need the Storage Access Framework.
+- [Netflix lock] https://help.netflix.com/en/node/114277: 4-digit Profile Lock, set from the phone app or the web.
+
+- [VPA] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/main/core/java/android/view/ViewPropertyAnimator.java : a running animation on the same property is cancelled, and onAnimationCancel removes its end action. Checked 2026-11-05.

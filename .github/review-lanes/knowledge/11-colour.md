@@ -122,9 +122,39 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - `Worlds.java` accents: Power `FFC233`, Mushroom `FFD84A`, Speed `FFD21F`, Dream `FFE066`, Block `7CFC6A` (same as bonus green). `sky` arrays are defined but not read by `KidsActivity` (grep `.sky`: none).
 - **Adhan** (`AdhanService.java:59`): `GOLD 0xFFFFC24A` (hue 40, sat 71%), `TEXT 0xFFF6F3FF`, `MUTED 0xB8F6F3FF`, `INK 0xFF0B0D14`. Alert band `0x00080B14`->`0xE6080B14`->`0xF5080B14` with `setDither(true)` (`:294-302`); gold line `F1D58A` (`:310`); title `0xF2FFFFFF`, Arabic sub `0xFFF1D58A` (`:322`), dot `0xCCF1D58A` (`:326`); `GOLD FFC24A` on the Hijri, countdown, reminder title, next-prayer row and card kicker (`:203/209/386/496/706`); shadows 10 px `0x80000000`. Cards `0xE00A0C16`/`0xD90A0C16`. Computed: `MUTED` on the card is about Lc 61, 9.4:1.
 
+Added by the whole-app audit (2026-11-05):
+- Quran player: `playerShade` `{0x66,0x1A,0x1A,0x99}` black (`:505`), shown only with a Quran video. `playerSurah` `D9` white 168 px with shadow (8, 0, 4, `0x80000000`); `playerReciter` `B3` white 44 px with shadow (5, 0, 2, `0x80000000`). `StarField` is the default background: bg `0B1124/0A0F1F/070A15`, glow `0x30F1D58A` r 900, fade `0xCC/0/0/0xB3` `070A15`. No dither.
+- `Quran Backgrounds.ps1` does no brightness or contrast change: scale, crop and crossfade only.
+- `driveText` is 20 px, moved into the day row (`:1069`), green `0xCC9BE7B4`, red `0xFFFF9A8F`.
+- `eventText` is `GOLD` 22 px with no shadow (`:901`).
+- Kids `PlayerActivity`: pause "❚❚" `E6` white 120 px with no shadow; bottom bar `{0xCC000000, 0}`; title white 48 px with no shadow; progress `FFC233` on `0x40FFFFFF`; time `B3` white 30 px.
+- Kids `Guard` warm tint `FF8A2A` up to alpha `0x3A`. Kids rules marks: `8CFF7A` on `0x2E7CFC6A`, or `DIM`, with words.
+- Adhan `SettingsActivity`: bg `0B0D14`, label `F6F3FF`, value `FFC24A`, muted `B8F6F3FF`, warning `FF8F8F`, focus `0x26` white + 3 px `FFC24A` stroke.
+- `IntroView`: own `GOLD`/`GOLD_DEEP B8893A`, title gold gradient with a 36 px glow, kicker `B3` white 22 px (Lc 64 on `101A36`). Backdrops are radial gradients on an undithered Paint.
+
+Added by the PR #22 review (2026-11-05):
+- Over snow, the panel background blends to about `#1B2038` (`PanelBg` mid `0xE0121731` over the overlay scrim `0x8C050810` over the dimmed clip).
+- Home PIN keys: off `0x1FFFFFFF` with a `0x2EFFFFFF` ring (1.78:1, so focus is the gold ring plus the 1.12 scale). On: `0x59`->`0x26` white with a 3 px `0xE6F1D58A` ring (9.3:1).
+- `WHITE` on the top of `focusGlass` is 5.9:1 / Lc 81; `DIM` there is 3.8:1 / Lc 52.
+
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05 PR #22: no new palette colours or gradients. The new disabled/resting states use view alpha and `DIM`:
+  - Should: the focused PIN key at 0.4 alpha while the pad rests has a gold ring of 2.6:1 / Lc 19 (it is 9.3:1 / Lc 69 normally).
+  - Should: the wrong-PIN note is `DIM` 24 px, Lc 58.
+  - Should: the Kids end arrow, `DIM 0xB3` vs `WHITE`, is only 1.87:1.
+  - Nice: the dimmed learn-button rows are Lc 52 on the focused row.
+  - Fine: the toast at bottom centre over panels; "Loading reciters" in `SOFT` (Lc 78 over snow); a wrong PIN now has words as well as the red dots.
+
 - Baseline audit at creation (not a PR review): kicker gold is APCA-weak (Lc 59 max); verse band relies on the shadow on bright clips; three golds across apps; some gradients undithered (corrected by PR #21: the overlay scrim and Kids `grad()` do dither); Block World accent equals the bonus green; lane 4's "warm off-white" note for `WHITE` is inaccurate (it is slightly cool; fixed in PR #21).
 - 2026-11-05 PR #21 (docs only): corrected the dither inventory (home overlay scrim `:1878` and Kids `grad()` dither; `PanelBg`, `Glass`, home top/bottom scrims, Kids `panel()`/shades don't). Added the verse-band `lineKicker` (`DIM`, 20 px, `:1101`) as the weakest text on the home screen (1.64:1 / Lc 28 over sky, Lc 16 over snow). Fixed the kicker WCAG claim (2.9:1 on grey 107). Aligned the banding advice with lane 4. Added lane 11 to five rows of the coverage map.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05 whole-app audit (main `d772bcc`):
+  - Must: Quran player text over Quran background clips sits on only 10% shade, so the reciter is Lc 20 to 32 over sky or snow (`MainActivity.java:505/519`).
+  - Must: the verse band still has no local protection.
+  - Should: drive status line in coloured 20 px text (Lc 18 to 37); Kids player pause glyph and title without shadows (Lc 13 over a bright frame); StarField near-black ramp undithered (15/7/4 code steps over 1,110 px); scrims, PanelBg and Kids panel still undithered; kicker gold Lc 59 max; `DIM` Lc 54 on black; event chip text without shadow; adhan gold `FFC24A` vs home `F1D58A`.
+  - Fine: PIN dots, Kids allowed marks, Kids buttons, adhan settings, focus edge, flashing.
+
 
 ## Lessons learned
 - 2026-11-05: Blend alpha colours before measuring: `SOFT`, `DIM` and the 85% kicker gold are much weaker than their hex suggests on a light backdrop.
@@ -133,6 +163,13 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: Don't assume Android dithers gradients: on Android 14 in Default colour mode it doesn't unless you ask.
 - 2026-11-05: Grep `setDither` before claiming nothing dithers, because helpers like Kids `grad()` hide it.
 - 2026-11-05: Check which colour each label really uses. Not every kicker goes through `kicker()` (the verse kicker is plain `DIM`).
+- 2026-11-05: Audit every full-screen panel that has its own background (Quran player, Kids player), not just the home screen. They don't get the home dim and scrims, and the PC scripts that make their clips don't darken them.
+- 2026-11-05: A colour-coded status line should colour the dot or icon, not the words. Saturated mid-light reds and greens lose about Lc 20 against `SOFT` over bright video.
+- 2026-11-05: Count the 8-bit code steps of every dark full-screen ramp. Fewer than about 20 steps over 1,000 px means bands of 50 px or more, which you will see in a dark room.
+
+- 2026-11-05: View alpha dims everything on the view, including the focus ring. Leave the focused view out, or dim only the text colour.
+- 2026-11-05: A lightness-only state cue between `WHITE` and `SOFT`/`DIM` is under 3:1 (`WHITE` vs `SOFT` 1.24:1, vs Kids `DIM` 1.87:1). An "off" glyph needs about 35% white (`0x59FFFFFF`: 5.0:1 step, still 3.2:1 on a `0x1A` chip).
+- 2026-11-05: Error or status text that temporarily replaces a `DIM` line should switch to `SOFT` while it shows.
 
 ## Open questions to research next
 - Measure real contrast behind the verse band and strip on the brightest clip in `Movies/TVWallpapers` (shared with lane 4). Does `screencap` include the SurfaceView video on this box?
@@ -144,6 +181,12 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Would HCT `harmonize()` (≤15° hue shift, tone kept) look better than RGB `Accent.mix()` for glow colours?
 - Find a primary source on TV limited/full range (ITU-R BT.709 / CTA-861) and on picture-mode colour temperature defaults.
 - Open BBC or Netflix subtitle style guides for text-over-video edge/shadow norms. The BBC colour guidance is still unread (the clevercast summary has none).
+- Does a 40% local fade behind the verse band look like a box on the TV? Mock it with lane 4 at 0x59, 0x66 and 0x80 on the brightest wallpaper.
+- What does `setDither(true)` on `StarField`, `PanelBg` and the scrims cost in frame time on this Mali GPU (lane 3)?
+- How bright are the user's actual Quran background clips? Sample frames from `C:\TVWallpapers` sources, or `Movies/QuranBackgrounds` on the box.
+- Should Kids `PlayerActivity` reuse `ink()` (move it to a shared helper) so every Kids text gets the same shadow rule?
+
+- Which single alpha should every "disabled" state use across the three apps (home keys 0.4, passed prayers 0.55, Kids `DIM` arrows)? Pick one documented value and find Material's figure in the MDC-Android source.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -179,3 +222,11 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [cvd-riyadh-1996] Osuobeni, "Prevalence of congenital red-green color vision defects in Arab boys from Riyadh", Ophthalmic Epidemiology 1996, https://consensus.app/papers/details/857ce11d704f5ec5bc5efa2aaca8aab1/: 2.93% (abstract).
 - [cvd-nablus-2021] Shehadeh et al., male teenagers in Nablus, 2021, https://consensus.app/papers/details/5044e737c6d8507c845890d26e15f335/: 8.0%, deutan 5.4% (abstract).
 - To open next: Smashing "The Realities And Myths Of Contrast And Color" (A. Somers, 2022; fetch budget ran out), BBC subtitle guidelines (blocked), Material 3 colour-contrast page, ITU-R BT.709/BT.1886, rtings picture-mode and gradient tests (blocked by proxy).
+- [bbc-w3c-captions-2014] https://lists.w3.org/Archives/Public/public-pfwg-comments/2014OctDec/0003.html: BBC (Nigel Megitt) comments on W3C media accessibility. Outlines and drop shadows "should not be presented as a suitable general alternative to displaying text on a non-transparent background". White text with drop shadows over bright video such as snow can become unreadable. A background box should extend past the text edges.
+- [flutter-dither-13868] https://github.com/flutter/engine/pull/13868: Flutter added an opt-in gradient dither flag. Banding was obvious without it and essentially gone with it. Expected cost: "shouldn't have noticeable performance impacts", with a possible slight cost on weak devices, and dithering is a hint the renderer may ignore.
+- [blitzcut-captions] https://blitzcutai.com/blog/caption-background-vs-outline-vs-shadow: secondary source from a caption-tool vendor. Ranks box over outline over shadow; a 70 to 80% box keeps most of the contrast; shadow alone is unreliable on light backgrounds. Its numbers aren't sourced, so use it for the ranking only.
+- Tried, no colour content: Netflix Timed Text Style Guide, General Requirements (https://partnerhelp.netflixstudios.com/hc/en-us/articles/215758617), covers positioning only.
+
+- [wcag-143-inactive] https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html: inactive components ("visible but not currently operable") have no contrast requirement. Keys that still take focus and answer a press are not inactive.
+- [tv-focus-system] https://developer.android.com/design/ui/tv/guides/styles/focus-system: default focus scales 1.025, 1.05 and 1.1x; mix scale and colour cues; disabled shows "lower prominence". It gives no focus-contrast ratio.
+- Couldn't read: m3.material.io and m2.material.io need JavaScript. Next time, get Material's disabled opacity (38%?) from the material-components-android source.

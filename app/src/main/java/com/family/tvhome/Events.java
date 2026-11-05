@@ -32,21 +32,27 @@ final class Events {
     /** Day of Ramadan (1 to 30), or 0 outside Ramadan. */
     static int ramadanDay(Calendar now) { return isRamadan(now) ? hijri(now)[1] : 0; }
 
-    /** {English, Arabic} for today's badge, or null on an ordinary day. Today's event wins; otherwise a fast that starts tomorrow. */
+    /** {English, Arabic} for today's badge, or null on an ordinary day. The two Eids and the Fast of Arafah are named the day before (the Day of Arafah keeps its own name with the Eid after it); otherwise today's event wins, then a fast that starts tomorrow. */
     static String[] badge(Calendar now) {
         int[] h = hijri(now);
-        String[] today = on(h[0], h[1]);
-        if (today != null) return today;
         Calendar t = (Calendar) now.clone();
         t.add(Calendar.DAY_OF_MONTH, 1);
         int[] n = hijri(t);
         hijri(now); // put today back in the cache
+        // The days before the two Eids and Arafah already have their own badge (the last ten nights, the first ten
+        // days, the Day of Arafah), so tomorrow's great day is checked first or it could never show.
+        // On 29 Ramadan the moon is only sought that evening, so Kuwait may still fast a 30th day.
+        if (n[0] == IslamicCalendar.SHAWWAL && n[1] == 1) return h[1] == 29
+                ? new String[]{"Eid may be tomorrow", "قد يكون العيد غداً"} : new String[]{"Eid al-Fitr tomorrow", "عيد الفطر غداً"};
+        // The Day of Arafah itself stays named on its day, with the Eid after it.
+        if (h[0] == IslamicCalendar.DHU_AL_HIJJAH && h[1] == 9) return new String[]{"Day of Arafah · Eid tomorrow", "يوم عرفة · العيد غداً"};
+        if (n[0] == IslamicCalendar.DHU_AL_HIJJAH && n[1] == 10) return new String[]{"Eid al-Adha tomorrow", "عيد الأضحى غداً"};
+        if (n[0] == IslamicCalendar.DHU_AL_HIJJAH && n[1] == 9) return new String[]{"Fast of Arafah tomorrow", "صيام عرفة غداً"};
+        String[] today = on(h[0], h[1]);
+        if (today != null) return today;
         String[] tomorrow = on(n[0], n[1]);
         if (tomorrow == null) return null;
         if (n[0] == IslamicCalendar.RAMADAN && n[1] == 1) return new String[]{"Ramadan starts tomorrow", "رمضان يبدأ غداً"};
-        if (n[0] == IslamicCalendar.SHAWWAL && n[1] == 1) return new String[]{"Eid al-Fitr tomorrow", "عيد الفطر غداً"};
-        if (n[0] == IslamicCalendar.DHU_AL_HIJJAH && n[1] == 10) return new String[]{"Eid al-Adha tomorrow", "عيد الأضحى غداً"};
-        if (n[0] == IslamicCalendar.DHU_AL_HIJJAH && n[1] == 9) return new String[]{"Fast of Arafah tomorrow", "صيام عرفة غداً"};
         if (n[0] == IslamicCalendar.MUHARRAM && (n[1] == 9 || n[1] == 10)) return new String[]{"Fast of Ashura tomorrow", "صيام عاشوراء غداً"};
         if (n[1] == 13 && n[0] != IslamicCalendar.DHU_AL_HIJJAH) return new String[]{"White Days start tomorrow", "الأيام البيض تبدأ غداً"};
         return null;
