@@ -52,10 +52,8 @@ You are an expert Android TV engineer. You know the View focus system (focus sea
 - [ ] The focused item's scale-up (dock 1.2, cards 1.02) has padding and isn't clipped by its parent (`clipChildren`/`clipToPadding`) or the screen edge.
 - [ ] Nothing the family must read is a Toast. Text Toasts are capped at 2 lines (target 31+), last 2 or 3.5 s, ignore `setGravity`/margins so they can't be moved into the safe area, are not scaled by Screen size, and only 5 queue per app. Put messages on-stage.
 
-- [ ] Nothing the family must read is a Toast: Toasts are system windows (small font, 2-line cap on Android 12+, not scaled by Screen size, gone in about 3.5 s). Put it on-stage instead.
-
 ## Known risks already in the code
-- The Screen size default is 100%, not 94%: `prefs.getInt("fit", 100)` at `MainActivity.java:766` and `:3110`, `KidsActivity.java:225`, and the default `100` in the choice row at `:1606`. A fresh install shows a cropped layout on overscanning TVs.
+- The Screen size default is 100% on purpose (changed deliberately from 94% in commit 6aa9cc2). Not a bug; flag only if a PR changes it without saying why. `prefs.getInt("fit", 100)` at `MainActivity.java:766` and `:3110`, `KidsActivity.java:225`.
 - The adhan overlay ignores Screen size. It sits 56/44 px from the corner (`AdhanService.java:254-255`, `:738-739`), about 2.9% and 4.1% of 1920x1080, inside the zone a cropping TV can cut off.
 - The YouTube PIN path starts `MainActivity` with `SINGLE_TOP` from the service (`RemoteKeys.java:92-94`). `onNewIntent` closes panels and then opens the pad. Check that Back from the pad returns to the app the user was in, not the home screen, and that the swallowed key doesn't leak into YouTube.
 - When Stremio or Kodi isn't installed, `run()` returns silently (`RemoteKeys.java:100`) after the key was eaten. The button looks dead with no message.
