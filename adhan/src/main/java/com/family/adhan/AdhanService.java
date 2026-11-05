@@ -369,6 +369,8 @@ public class AdhanService extends Service {
     // ------------------------------------------------------------------ the 10-minute reminder
 
     static final int REMIND_MIN = 10;
+    /** How many minutes after its time an adhan (or reminder) may still start, if a tick came late. */
+    static final int LATE_MIN = 3;
     private FrameLayout reminder;
     private TextView reminderTitle, reminderSub;
     private boolean reminderShown;
@@ -451,12 +453,13 @@ public class AdhanService extends Service {
         }
         int h = now.get(Calendar.HOUR_OF_DAY), mi = now.get(Calendar.MINUTE), s = now.get(Calendar.SECOND);
         int nowSec = h * 3600 + mi * 60 + s;
+        int nowMin = h * 60 + mi;
 
         // Ten minutes before each adhan, a gentle reminder in the corner, over any app (the home screen shows its own).
         for (int i = 0; i < 6; i++) {
             if (i == 1) continue;
             String id = "pre_" + PrayerTimes.KEYS[i];
-            if (today[i] - REMIND_MIN == h * 60 + mi && !fired.contains(id)) {
+            if (nowMin >= today[i] - REMIND_MIN && nowMin < today[i] - REMIND_MIN + LATE_MIN && nowMin < today[i] && !fired.contains(id)) {
                 fired.add(id);
                 updateForeground();
                 if (!"com.family.tvhome".equals(foreground) && prefs.getBoolean("remind", true)) showReminder(i);
@@ -467,7 +470,8 @@ public class AdhanService extends Service {
         for (int i = 0; i < 6; i++) {
             if (i == 1) continue; // sunrise has no adhan
             String id = PrayerTimes.KEYS[i];
-            if (today[i] == h * 60 + mi && !fired.contains(id)) { fired.add(id); fireAdhan(i); }
+            // A late tick (a busy or just-woken box) still fires, as long as it's within a few minutes of the time.
+            if (nowMin >= today[i] && nowMin < today[i] + LATE_MIN && !fired.contains(id)) { fired.add(id); fireAdhan(i); }
         }
 
         if (panelShown || alertShown) {
@@ -695,11 +699,12 @@ public class AdhanService extends Service {
         cardKicker = text("", 20, fBold, GOLD);
         cardKicker.setLetterSpacing(.08f);
         box.addView(cardKicker);
-        cardAr = text("", 34, fBold, TEXT);
+        // Amiri has every Qur'anic mark (small high letters, ﷺ); the rounded Baloo face drops some.
+        cardAr = text("", 34, getResources().getFont(R.font.amiri_bold), TEXT);
         cardAr.setTextDirection(View.TEXT_DIRECTION_RTL);
         cardAr.setGravity(Gravity.END);
         cardAr.setLineSpacing(0, 1.15f);
-        cardAr.setMaxLines(4);
+        // No line cap: a verse must never be cut short (the fetch below keeps them short instead).
         cardAr.setPadding(0, (int) px(12), 0, 0);
         box.addView(cardAr, new LinearLayout.LayoutParams(-1, -2));
         cardEn = text("", 26, fMedium, TEXT);
@@ -775,8 +780,9 @@ public class AdhanService extends Service {
                     JSONObject d = new JSONObject(get("https://api.alquran.cloud/v1/ayah/" + n + "/editions/quran-uthmani,en.sahih"));
                     org.json.JSONArray arr = d.getJSONArray("data");
                     JSONObject ar = arr.getJSONObject(0), en = arr.getJSONObject(1);
-                    String text = ar.getString("text");
-                    if (text.length() > 170 && attempt < 11) continue;
+                    JSONObject sur = ar.getJSONObject("surah");
+                    String text = withoutBismillah(ar.getString("text"), sur.getInt("number"), ar.getInt("numberInSurah"));
+                    if (text.length() > 170) continue; // never a long one: after 12 tries the built-in verses are used
                     JSONObject surah = ar.getJSONObject("surah");
                     String ref = surah.getString("englishName") + " " + surah.getInt("number") + ":" + ar.getInt("numberInSurah")
                             + "  ·  " + surah.getString("name");
@@ -788,6 +794,20 @@ public class AdhanService extends Service {
                 }
             }
         }).start();
+    }
+
+    /**
+     * The Qur'an service puts the Bismillah in front of verse 1 of every surah except Al-Fatihah (where it IS verse 1)
+     * and At-Tawbah (which has none). It isn't part of that verse, so it is taken off: its four words.
+     */
+    static String withoutBismillah(String text, int surah, int ayah) {
+        if (ayah != 1 || surah == 1) return text;
+        String t = text.replace("\uFEFF", "").trim();
+        String[] w = t.split("\\s+", 5);
+        // The first word without its vowel marks must be بسم, however the marks are encoded.
+        String first = w[0].replaceAll("[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]", "");
+        if (w.length < 5 || !first.equals("\u0628\u0633\u0645")) return text;
+        return w[4];
     }
 
     private static String weatherIcon(int code, boolean day) {
