@@ -56,7 +56,7 @@
 - versionCode must be a positive integer. Android refuses to install a lower versionCode over a higher one. The Play maximum is 2100000000. versionName is shown to people and nothing enforces it. [versioning]
 - `GITHUB_RUN_NUMBER` is "a unique number for each run of a particular workflow". It starts at 1 and does **not** change when a run is re-run. `GITHUB_RUN_ATTEMPT` is the one that counts re-runs. [gha-vars]
 - Consequences for this repo:
-  - Renaming or recreating the workflow restarts the run number at 1, which gives `INSTALL_FAILED_VERSION_DOWNGRADE` (-25) on the TV.
+  - Changing the workflow file's path or its `name:` line can restart the run number at 1, which gives `INSTALL_FAILED_VERSION_DOWNGRADE` (-25) on the TV. Treat either as Must fix. [gha-name-reset]
   - Re-running an **older** main run republishes `latest` with an older versionCode, so Update TV fails with VERSION_DOWNGRADE.
   - `claude/**` runs use up numbers too. That is harmless, because the numbers only go up.
 - Install codes that matter here (number and meaning from PackageManager [pm-codes], cause and fix from [install-errors]):
@@ -72,10 +72,10 @@
 | INSTALL_FAILED_TEST_ONLY | -15 | `android:testOnly` / debug-from-IDE APK |
 | INSTALL_FAILED_MISSING_FEATURE | -17 | a `uses-feature` without `required="false"` |
 | INSTALL_FAILED_VERSION_DOWNGRADE | -25 | lower versionCode |
-| INSTALL_FAILED_DUPLICATE_PERMISSION | n/a | custom permission defined by an app with a different key |
+| INSTALL_FAILED_DUPLICATE_PERMISSION | -112 [so-112] | custom permission defined by an app with a different key |
 | INSTALL_PARSE_FAILED_NO_CERTIFICATES | -103 | unsigned APK |
-| INSTALL_FAILED_PERMISSION_MODEL_DOWNGRADE | n/a | targetSdk dropped below 23 |
-| INSTALL_FAILED_DEPRECATED_SDK_VERSION | n/a | targetSdk < 23 on Android 14 (bypass: `--bypass-low-target-sdk-block`) |
+| INSTALL_FAILED_PERMISSION_MODEL_DOWNGRADE | -26 (unverified) | targetSdk dropped below 23 |
+| INSTALL_FAILED_DEPRECATED_SDK_VERSION | -29 (unverified) | targetSdk < 23 on Android 14 (bypass: `--bypass-low-target-sdk-block`) |
 
   [android14-minsdk] covers the last row.
 
@@ -87,7 +87,8 @@
   - `mediaPlayback` needs `FOREGROUND_SERVICE_MEDIA_PLAYBACK`.
   - `systemExempted` throws `ForegroundServiceTypeNotAllowedException` unless the app meets its criteria, for example exact-alarm apps.
   [fgs-types]
-- **Android 15 (target 35) BOOT_COMPLETED.** Receivers may not start `dataSync`, `camera`, `mediaPlayback`, `phoneCall`, `mediaProjection` or `microphone` FGS: the start throws `ForegroundServiceStartNotAllowedException`. `specialUse` is not on that list. [a15]
+- **Android 15 (target 35) BOOT_COMPLETED.** Receivers may not start `dataSync`, `camera`, `mediaPlayback`, `phoneCall`, `mediaProjection` or `microphone` FGS: the start throws `ForegroundServiceStartNotAllowedException`. `specialUse` is not on that list. [a15] Test it with `adb shell am compat enable FGS_BOOT_COMPLETED_RESTRICTIONS <pkg>`.
+- **`MY_PACKAGE_REPLACED`** is a listed exemption from the background FGS start limits, and the Android 15 type block names only `BOOT_COMPLETED`, so the `specialUse` starts from our BootReceivers are OK. [fgs-bg-start]
 - **Android 15, starting an FGS while holding SYSTEM_ALERT_WINDOW.** A background FGS start that relies on the overlay permission now also needs a *visible* `TYPE_APPLICATION_OVERLAY` window. Test with `adb shell am compat enable FGS_SAW_RESTRICTIONS <pkg>`. [a15]
 - **Android 15 time limit.** `dataSync` and `mediaProcessing` FGS get 6 hours per 24 hours, after which the system calls `Service.onTimeout`. [a15]
 - **Android 15 audio focus.** `requestAudioFocus` fails with `AUDIOFOCUS_REQUEST_FAILED` unless the app is on top or running an FGS. [a15]
@@ -120,7 +121,7 @@ Sort every new `<uses-permission>` into one of these buckets. Every bucket excep
 
 - `enabled_accessibility_services` is a list of services separated by colons. `put` replaces the whole list. [a11y-gist] [tvlauncher-noroot]
 - Some OEMs, Xiaomi among them, need "USB debugging (Security settings)" turned on in Developer options before `pm grant WRITE_SECURE_SETTINGS` works. [fmd]
-- On a Xiaomi remote the Home button can send `KEYCODE_ALL_APPS` instead of `KEYCODE_HOME`. That is why RemoteKeys exists. [tvlauncher-noroot]
+- [tvlauncher-noroot] says a Xiaomi Home button can send `KEYCODE_ALL_APPS`. That is not verified on this box: our RemoteKeys passes `KEYCODE_HOME` through and treats `KEYCODE_ALL_APPS` as the Apps button (opens Kodi). Home reaches Family TV Home only because Update TV sets the home activity.
 - `pm clear` deletes all of an app's data. Never put it in a script or checklist casually. [adb-gist]
 
 ### 8. Manifest merger
@@ -169,6 +170,7 @@ Sort every new `<uses-permission>` into one of these buckets. Every bucket excep
   - `gradle-version` takes a fixed version.
   - The current docs show `setup-gradle@v6`. The repo is on `@v4`.
   [setup-gradle]
+- **Checkout:** `actions/checkout` v6.0.0 exists; the repo is on `@v5`.
 
 ## This box and this code (verified 2026-11-05)
 - **Box:** Xiaomi TV Box S 3rd Gen, Android TV 14 (API 34), 2 GB RAM, no root. Updated by the owner's PowerShell "Update TV" script over wireless ADB. **The script is on his PC, not in the repo.** It installs the three APKs with `-r`, grants permissions, enables RemoteKeys, sets the home activity and saves screenshots to `C:\TVWallpapers`.
@@ -209,6 +211,7 @@ Sort every new `<uses-permission>` into one of these buckets. Every bucket excep
     - app and kids both declare READ_STATS.
     - Renaming MainActivity or RemoteKeys breaks Update TV's setup.
     - README.md is outdated.
+- **2026-11-05, PR #21** (docs only): CI #130 passed; no Must; Should: run_number resets on a `name:` change; all code line refs verified correct.
 
 ## Lessons learned
 - 2026-11-05: Ask for the CI run by head SHA. Don't take "it built" from the PR text.
@@ -216,14 +219,16 @@ Sort every new `<uses-permission>` into one of these buckets. Every bucket excep
 - 2026-11-05: Re-running an old main run is not harmless. It republishes an older versionCode to `latest`.
 - 2026-11-05: adhan also needs usage access (PACKAGE_USAGE_STATS) and MANAGE_EXTERNAL_STORAGE, not just kids. When a grant goes missing, check both apps.
 - 2026-11-05: The keystore stays in the repo. Don't re-raise it as a finding.
+- 2026-11-05: A docs-only PR still publishes `latest` on merge. Check main has no app-code drift, then tell the owner Update TV is optional.
 
 ## Open questions to research next
-- Does `adb install -r -d` (allow downgrade) work for a non-debuggable release APK on Android 14 user builds? (Unverified. The fetch budget ran out.) Until it's confirmed, assume it doesn't.
-- Are `MY_PACKAGE_REPLACED` receivers exempt from the background FGS start limits the way BOOT_COMPLETED is? Exact list for targetSdk 35.
+- `adb install -r -d`: commit f1d44db allows a downgrade only on a debuggable build or app (for system apps). Confirm the rule applies to normal release APKs; until then assume `-d` fails. [aosp-f1d44db]
+- Answered 2026-11-05: `MY_PACKAGE_REPLACED` is a listed bg-FGS exemption; the Android 15 block names only BOOT_COMPLETED; `specialUse` is OK. [fgs-bg-start]
+- Does a file-only rename of the workflow (same `name:`) reset run_number?
 - What compileSdk and AGP minimum do media3 1.10 and 1.11 declare? Is there any `.so` in media3-exoplayer (16 KB)?
 - Does Xiaomi's Android TV 14 build keep `appops` and accessibility grants across `adb install -r`? (Update TV re-applies them anyway.)
 - The exact `lint` DSL property descriptions (the page text was cut off). Does `lintVitalRelease` run `NewApi` as fatal by default?
-- Is `actions/checkout@v5` / `setup-java@v5` / `upload-artifact@v4` still current? Find the SHAs for each tag in case the owner wants them pinned.
+- Is `actions/checkout@v5` / `setup-java@v5` / `upload-artifact@v4` still current? checkout v6.0.0 exists. Still open: the latest setup-java and upload-artifact majors, and the SHAs for each tag in case the owner wants them pinned.
 
 ## Source library
 All checked 2026-11-05 unless noted.
@@ -253,6 +258,10 @@ All checked 2026-11-05 unless noted.
 - [hexnode] https://www.hexnode.com/mobile-device-management/help/grant-permissions-for-hexnode-apps-using-android-debug-bridge-adb/: `appops set` lines for SAW, GET_USAGE_STATS and MANAGE_EXTERNAL_STORAGE.
 - [fmd] https://fmd-foss.org/docs/fmd-android/granting-secure-settings-access: `pm grant WRITE_SECURE_SETTINGS`, and the "USB debugging (Security settings)" tip.
 - [a11y-gist] https://gist.github.com/mrk-han/67a98616e43f86f8482c5ee6dd3faabe: `settings put secure enabled_accessibility_services`, which takes a colon-separated list.
-- [tvlauncher-noroot] https://mustafa.net/2026/11/01/replace-google-tv-launcher-without-root/: set-home-activity plus how to verify it, an accessibility Home catcher, the Xiaomi remote sending KEYCODE_ALL_APPS, and the undo steps.
+- [tvlauncher-noroot] https://mustafa.net/2026/11/01/replace-google-tv-launcher-without-root/: set-home-activity plus how to verify it, an accessibility Home catcher, and the undo steps. Its Xiaomi KEYCODE_ALL_APPS claim is not verified on this box.
 - [adb-gist] https://gist.github.com/Pulimet/5013acf2cd5b28e55036c82c91bd56d8: an adb cheat sheet (pm grant/clear, keyevents, screencap, logcat).
 - [so-dup-perm] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/a/27090838: DUPLICATE_PERMISSION. Cited by the first reviewer, not reopened in this session.
+- [fgs-bg-start] https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start: the background FGS start exemption list (MY_PACKAGE_REPLACED). Checked 2026-11-05.
+- [gha-name-reset] https://github.com/orgs/community/discussions/26709: run_number restarts when the workflow's `name:` changes. Checked 2026-11-05.
+- [so-112] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/41257994/what-does-error-code-112-mean-in-android: -112 is DUPLICATE_PERMISSION. Checked 2026-11-05.
+- [aosp-f1d44db] https://android.googlesource.com/platform/frameworks/base/+/f1d44db88067%5E%21/: downgrade allowed only on a debuggable build or app, for system apps. Checked 2026-11-05.

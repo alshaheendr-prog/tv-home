@@ -9,11 +9,11 @@ You are an expert in Android rendering performance and memory on low-end TV hard
 ## What this app does that matters for this lane
 Line numbers drift; re-grep before you cite them.
 - `app/.../MainActivity.java` (~3500 lines) builds every view in code on a fixed 1920x1080 `stage` scaled by `fitStage()` (~`:763`). The design is 1080p over a 4K output. Whether this box composes the UI at 1080p or 4K is not yet verified (see the knowledge file).
-- Wallpaper: a muted, looping ExoPlayer 1.4.1 clip on a `SurfaceView` (`:205`, `:249`). It is its own layer behind the window, so it costs no UI-thread time, and on TVs that upscale the UI it plays at full display resolution. `drift()` (~`:3423`) moves it with `translationX` over 1.4s. No `LoadControl` is set. `onPause` pauses it; `onStop` does not release it.
+- Wallpaper: a muted, looping ExoPlayer 1.4.1 clip on a `SurfaceView` (`:206`, `:249`). It is its own layer behind the window, so it costs no UI-thread time, and on TVs that upscale the UI it plays at full display resolution. `drift()` (~`:3423`) moves it with `translationX` over 1.4s. No `LoadControl` is set. `onPause` pauses it; `onStop` does not release it.
 - A second ExoPlayer, `quran` (~`:2838`), plays recitation, with volume fades driven by ValueAnimators.
 - Layers over the video: `videoCover` (alpha 0 once the clip shows), `skyTint` (alpha 0 except near Fajr and Maghrib), `dimView` (black at 8%, `WALL_DIM`), `topScrim` (380px), `bottomScrim` (480px).
-- Glass: `Glass.java` draws a gradient body plus a stroke per frame, with no bitmap when `glow <= 0`. `GlassFrame.Glow` draws 7 stroked round-rects. The frosted backdrop (`BackdropView` + CPU `Blur.java`) is off because PixelCopy of a SurfaceView comes back black (~`:285`).
-- `Accent.java` picks a colour from a 64x36 frame, then animates 1.6s and calls `invalidateSelf()` on every registered drawable each frame.
+- Glass: `Glass.java` draws a gradient body plus a stroke per frame, with no bitmap when `glow <= 0`. `GlassFrame.Glow` draws 7 stroked round-rects. The frosted backdrop (`BackdropView` + CPU `Blur.java`) is off because PixelCopy of a SurfaceView comes back black (~`:287`).
+- `Accent.java` picks a colour from a 64x36 frame (`sampleAccent` ~`:3364`: one PixelCopy per clip, falling back to `MediaMetadataRetriever` on `bg` when the copy is black), then animates 1.6s and calls `invalidateSelf()` on every registered drawable each frame.
 - Hardware layers on purpose: `cacheCards()` (~`:332`) keeps `topParts[0]`, `eventChip`, `sunCard`, `lineFrame` and `centerGroup` (the 1920-wide clock column) on `LAYER_TYPE_HARDWARE`. `playerSurah`/`playerReciter` too. `noAlphaLayers()` (~`:1890`) sets `forceHasOverlappingRendering(false)` on whole trees.
 - Loops: `tick()` once a second. `lineTimer`, a 29s ValueAnimator per 30s verse. `EqualizerView` and `StarField` use `postInvalidateOnAnimation()`. `IntroView` redraws every frame during the splash (and allocates shaders per frame). `BrandGlow` 420ms per focus move. Dock `magnify()` animates every tile at each key press.
 - Text shadows: `setShadowLayer` on almost every home TextView (`TEXT_SHADOW = 4`).
@@ -62,11 +62,12 @@ Line numbers drift; re-grep before you cite them.
 - `Accent.glideTo` invalidates every Glass/Glow for 1.6s; it overlaps clip changes and dock moves.
 - `GlassFrame.Glow`: 7 anti-aliased stroked round-rects per card per frame when not cached.
 - `cacheCards()` keeps 5 permanent layers (two of them on GONE views, so never drawn). The 1920-wide `centerGroup` layer is the large one (~3MB+).
-- Neither player sets a `LoadControl`; 1.4.1 defaults aim for 50s of buffer. The wallpaper player keeps its buffers while paused behind another app.
+- Neither player sets a `LoadControl`; 1.4.1 defaults aim for 50s of buffer (start after 2.5s, 5s after a rebuffer, video target 125 MiB; no local-playback values in 1.4.1). The buffer holds compressed samples, not decoded frames. The wallpaper player keeps its buffers while paused behind another app.
 - No `onTrimMemory` in either app.
 - `playRandomClip()` lists the clip folder on the UI thread at every resume.
 - `IntroView` allocates shaders per frame during the splash.
-- `fullLengthAnimations()` relies on hidden-API reflection; if blocked, every duration halves quietly.
+- `fullLengthAnimations()` (~`:3349`) calls the hidden `ValueAnimator.setDurationScale`, which is greylisted and works at target 35. Its `sDurationScale` field fallback is blocked, so it is dead code. If the method is ever blocked, every duration halves quietly.
+- `StarField` (`MainActivity.java:500`, `:2516`) draws 3 full-screen rects plus a full-screen `drawPath` every frame while the Quran or player background shows. It stops itself when GONE (no `onDraw`, no repost).
 
 ## How to report
 Write in plain language: the owner is a beginner. Group findings under **Must fix** (will visibly stutter, leak, or crash), **Should fix** (measurable cost or a risk on this box), and **Nice to have**. For each finding give `file:line`, what goes wrong on the TV in one sentence ("the clock card repaints 60 times a second while a verse is showing"), and a fix (a short code hint is fine). If you could measure, say how (`dumpsys gfxinfo <pkg> reset` then `dumpsys gfxinfo <pkg>`, Profile GPU rendering bars, a Perfetto trace with FrameTimeline, `dumpsys meminfo`) and give numbers. If you could not run it on the box, say so. Flag scope creep (features rather than polish). If nothing is wrong, write "Nothing found" and list what you checked. End with the knowledge-file additions for the PR thread.

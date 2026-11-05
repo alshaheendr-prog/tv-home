@@ -19,7 +19,7 @@ Every pull request on this repo gets eight Claude reviews, one per lane. Each la
 2. Each reviewer reads its brief and **its whole knowledge file first**, then **researches online** whatever the PR touches that the knowledge file doesn't already cover, before it reviews. It cites the sources it used.
 3. Each reviewer posts one comment on the PR headed `Review lane N: <name>`, with findings ranked **Must fix**, **Should fix**, **Nice to have** (or "nothing found"), and sends the same findings to the PR's thread.
 4. The PR's thread fixes every Must fix and Should fix, and pushes. Lane 8's checklist goes to the owner as-is.
-5. The PR is ready to merge only after all eight lanes have reported and the Must fixes are done.
+5. The PR is ready to merge only after all eight lanes have reported and every Must fix and Should fix is done.
 
 If review threads can't be started, the PR's thread runs the eight lanes itself as separate subagents, one per brief, with the same rules.
 

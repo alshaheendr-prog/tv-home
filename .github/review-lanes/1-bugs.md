@@ -15,19 +15,19 @@ You are an expert Android engineer who has shipped Android TV launchers and long
 - **Network calls.** Weather comes from open-meteo and the verse from alquran.cloud, through `get()` with 8-second timeouts (`MainActivity.java:1629`). Quran audio comes from cdn.mp3quran.net.
 - **Screensaver switch.** `setScreensaver` writes `Settings.Secure` and returns false on `SecurityException` (`MainActivity.java:3207-3220`).
 - **Videos come from shared storage.** The wallpapers are in `Movies/TVWallpapers` and `Movies/QuranBackgrounds`. Right after boot these files may not be readable yet, so the player retries up to 12 times (`onPlayerError`, `:259-264`).
-- **`kids/` (com.family.kids).** `KidsActivity.java` (about 2,000 lines) turns kids mode on whenever it opens, after a first PIN is chosen (`:162-168`). `Guard.java` is a `specialUse` foreground service. Every 1.5 s it reads `UsageEvents`, counts screen time, and brings `KidsActivity` back if a disallowed app is in front. It also shows overlay warnings and a bedtime warm-tint overlay, and lowers the volume (`Guard.java:103-190`).
+- **`kids/` (com.family.kids).** `KidsActivity.java` (about 2,000 lines) turns kids mode on whenever it opens, after a first PIN is chosen (`:162-168`). `Guard.java` is a `specialUse` foreground service. Every 1.5 s it reads `UsageEvents`, counts screen time, and brings `KidsActivity` back if a disallowed app is in front. It also shows overlay warnings and a bedtime warm-tint overlay, and lowers the volume (`Guard.java:103-190`). Kids Corner plays its videos and surahs with `MediaPlayer` (`KidsActivity.java:409`, `:1217`), so the MediaPlayer state and release rules apply there.
 - **Kids rules.** `Rules.java` keeps all rules in the `kids` prefs and uses the Kuwait time zone. The weekend is Friday and Saturday. Bedtime ends at 07:00. Extra time is stored as a wall-clock `extra_until` (not clamped).
 - **PINs.** `PinLock.java` (the same in `app/` and `kids/`) holds a salted SHA-256 hash and the lockout state, with a wall-clock `pin_until` that is clamped when read.
 - **Kids stats.** `StatsProvider` serves a week of stats to the home app. `BootReceiver` restarts `Guard` on `BOOT_COMPLETED` and `MY_PACKAGE_REPLACED`.
 - **`adhan/` (com.family.adhan).** `AdhanService.java` is a `specialUse` foreground service with a 1-second `Handler` tick. It fires the adhan when a tick lands in the 3 minutes after the time (`LATE_MIN`, `:373`, `:481`). The `fired` set is saved per day in prefs, so a restart doesn't replay it (`:435-447`).
-- **Adhan sound and overlays.** The sound comes from `Download/takbir.mp3` or `adhan.*`, with a raw chime as the fallback (`:546`). It plays with `AUDIOFOCUS_GAIN_TRANSIENT`. The overlays use `TYPE_APPLICATION_OVERLAY`. The panels hide over the home launcher, which the service detects with `UsageEvents`.
+- **Adhan sound and overlays.** The sound comes from `Download/takbir.mp3` or `adhan.*`, with a raw chime as the fallback (`:562`). It plays with `AUDIOFOCUS_GAIN_TRANSIENT`. The overlays use `TYPE_APPLICATION_OVERLAY`. The panels hide over the home launcher, which the service detects with `UsageEvents`.
 - **`PrayerTimes.java` is duplicated** in `app/` and `adhan/`. The two copies are identical apart from the package line, so a fix in one must go in the other.
 
 ## Expert checklist
 
 **Lifecycle (launcher and Kids Corner)**
 - [ ] Every `ui.postDelayed` loop is stopped in `onDestroy` (`removeCallbacksAndMessages(null)` first). Both activities do this since #20, so keep it that way.
-- [ ] A self-reposting `tick()` can't die from an exception thrown before its `postDelayed`. Posts back from `bg` check that the activity and views still exist.
+- [ ] A self-reposting `tick()` can't throw before its `postDelayed`. On the main looper an uncaught throw kills the whole process, so the home screen (or Kids Corner) crashes; the loop only stops silently if the throw is caught above the repost. Posts back from `bg` check that the activity and views still exist.
 - [ ] New background work goes through `runBg` (or catches `RejectedExecutionException`). A raw `bg.execute` or `blurThread.execute` after `shutdownNow()` crashes the app on the main thread.
 - [ ] Both ExoPlayers are released only once, and nothing uses them after release.
 - [ ] The decoder is freed in `onStop` (the box is 2 GB and cannot run two video decoders).
@@ -50,7 +50,8 @@ You are an expert Android engineer who has shipped Android TV launchers and long
 - [ ] Timed events use "now ≥ T, now < T + window, not yet done today" and save "done" across restarts (as the adhan does now). `Handler` delays run on `uptimeMillis` and stall in deep sleep. If the PR moves to `AlarmManager`: `setAlarmClock` or `setExactAndAllowWhileIdle` (at most once per 9 minutes in Doze), `canScheduleExactAlarms()` (denied by default on 14), and reschedule at boot.
 - [ ] Day changes are handled for: the `fired` set, the Kids `used_day` and `dayKey()` (YEAR plus DAY_OF_YEAR), `warnedDay`, and the stars and stats days.
 - [ ] Every `Calendar` is built with `Rules.KUWAIT` or `AdhanService.KUWAIT`, never the device default zone.
-- [ ] Wall-clock jumps: `extra_until`, `pin_until`, `lastWeather`, `lastBringBack`, `lastEventQuery` and `Guard.delta` (clamped to 5,000 ms). Check what a jump forward, a jump back and a reboot each do. A stored deadline clamps the *stored* value. Durations use `elapsedRealtime()`.
+- [ ] Wall-clock jumps: `extra_until`, `pin_until`, `lastWeather`, `lastBringBack`, `lastEventQuery` and `Guard.delta` (clamped above only, at 5,000 ms). Check what a jump forward, a jump back and a reboot each do. A stored deadline clamps the *stored* value. Durations use `elapsedRealtime()`.
+- [ ] A saved wall-clock deadline (lockouts, timers) clamps the stored value when the clock jumps, not only the value it returns. Anything that must happen once (adhan, reminders) is remembered across a service restart.
 - [ ] Bedtime wraps midnight (`Rules.inBedtime`). The wind-down maths at `until == 0` and across midnight is right. The Friday Jumu'ah special case uses the Kuwait day.
 - [ ] Prayer times stay within 0 to 1439 after `OFFSETS`. Isha to tomorrow's Fajr countdown uses `tomorrow[0]`.
 - [ ] Both copies of `PrayerTimes` change together.
@@ -73,8 +74,6 @@ You are an expert Android engineer who has shipped Android TV launchers and long
 - [ ] `swallowUp` is cleared on every path. Otherwise a stuck key leads to a half-press.
 - [ ] `onKeyEvent` consumes the down and the up of the same key, and stays fast, because it runs on the main thread for every key on the box.
 
-- [ ] A saved wall-clock deadline (lockouts, timers) clamps the stored value when the clock jumps, not only the value it returns. Anything that must happen once (adhan, reminders) is remembered across a service restart.
-
 ## Known risks already in the code
 Before you cite any of these, check them against the code. The knowledge file has the verified list and what PR #20 fixed (the onDestroy crash, the exact-minute adhan, adhan replay after a restart, the stored `pin_until`).
 - **Adhan needs the CPU awake.** The `Handler` tick plus a 3-minute window misses an adhan if the box is suspended through the whole window (`AdhanService.java:481`). *Known. Whether the box suspends in standby is unverified.*
@@ -82,6 +81,7 @@ Before you cite any of these, check them against the code. The knowledge file ha
 - **Silent start failures.** `Guard.start` and `AdhanService.start` swallow every exception (`Guard.java:56`, `AdhanService.java:97`). *Known.*
 - **Learned keys can break PIN entry.** `RemoteKeys` learning accepts any key that is not "everyday", including digits (`RemoteKeys.java:70-77`). *Known. Flag it if learning changes.*
 - **`extra_until` is an unclamped wall-clock deadline** (`Rules.java:98-101`). *Known.*
+- **Guard throttles on the wall clock.** `Guard.java:105` `delta = Math.min(now - lastTick, 5000)` has no lower bound, and `lastBringBack` (`:143`) and `lastEventQuery - 2000` (`:154`) use `currentTimeMillis`. After a backwards clock jump of X, screen time doesn't count, `bringBack` never fires and `queryEvents` gets `begin > end`, all for X. *Known. Fix in a later PR: `elapsedRealtime()` plus `Math.max(0, …)`.*
 - **`ayahToday`** keeps yesterday's verse if all 12 tries are too long. *Known, Nice to have (#20).*
 - **Duplicated `PrayerTimes`** in `app/` and `adhan/`. `OFFSETS` are all 0. *Known.*
 

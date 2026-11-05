@@ -11,8 +11,8 @@ You are an expert visual and interaction designer for 10-foot TV interfaces. You
 Line numbers drift; re-grep before you cite them.
 - `app/.../MainActivity.java`: fixed 1920x1080 stage scaled by `fitStage()` (~`:763`, `FITS = {100,97,94,91,88}`). Positions (~`:1030`): `CLOCK_TOP 34`, `LINE_Y 494`, `STRIP_Y 700`, `STRIP_H 124`, `RIGHT_EDGE 110`. 1 dp in Google's TV specs = 2 px on this stage.
 - Clock: `applyClockFont()`. Face 0 is Fraunces Soft Light at 340px (Outfit, Jost, Cormorant, Inter selectable). `0xF2FFFFFF`, shadow (6, 0, 3, `0x73000000`). The bundled Fraunces file has no `tnum`, so the requested tabular figures do nothing for it.
-- Fonts (`app/src/main/res/font`): Inter (UI), IBM Plex Sans Arabic (Arabic UI), Amiri Bold (Quran), Cormorant SemiBold Italic (English verse), plus the clock faces. Kids: Baloo Bhaijaan 2.
-- Colours: `WHITE 0xF5F5F7`, `SOFT 0xD9FFFFFF`, `DIM 0xA6FFFFFF`, `GOLD 0xF1D58A`, `CARD_TINT 0x3A000000`. `kicker()` makes every kicker 20px Inter SemiBold, tracking 0.18, gold `0xD9E8CB86` (it overrides the colour passed in).
+- Fonts (`app/src/main/res/font`): Inter (UI), IBM Plex Sans Arabic (Arabic UI), Amiri Bold (Quran), Cormorant Garamond SemiBold Italic v4.001 (English verse), plus the clock faces. Kids: Baloo Bhaijaan 2.
+- Colours: `WHITE 0xF5F5F7`, `SOFT 0xD9FFFFFF`, `DIM 0xA6FFFFFF`, `GOLD 0xF1D58A`, `CARD_TINT 0x3A000000`. `kicker()` (8 call sites) makes every kicker 20px Inter SemiBold, tracking 0.18, gold `0xD9E8CB86` (it overrides the colour passed in).
 - Darkening: `dimView` at `WALL_DIM 0.08`, `topScrim` (380px, 50% to 0), `bottomScrim` (480px, 70% to 35% to 0). The scrims are sized in window px, not on the stage. The verse band sits above the bottom scrim, so only the 8% dim and shadows protect it. `skyTint` adds a cool or warm wash near Fajr and Maghrib.
 - Glass: `Glass.java` (dark tint + white frost + sheen + top-bright edge), `GlassFrame.Glow`, `PanelBg.java`. It cannot blur the video (SurfaceView), so on bright clips it reads as a tint only. `Accent.java` leans glass and glows toward the clip's colour (the TV-endorsed "content-based colour" idea).
 - Text shadows: `TEXT_SHADOW = 4f`, dy 2, `0x99000000` on nearly all home text. Kids `ink()` gives light-coloured text a (8, 0, 2, `0xB3000000`) shadow and dark text none.
@@ -33,7 +33,8 @@ Line numbers drift; re-grep before you cite them.
 - [ ] At most 5 or 6 type sizes per screen, consistent kicker tracking, one easing family.
 - [ ] A requested OpenType feature exists in the font file (check GSUB with fontTools). Digits that change every minute or second use real tabular figures, or the layout absorbs the width change.
 - [ ] Arabic uses Plex Arabic or Amiri, at sizes equal to or larger than the English beside it, with font padding on (or an explicit line height) so marks are never clipped. Amiri needs extra vertical room.
-- [ ] Italic or overhanging glyphs (Cormorant italic, Fraunces) are not clipped at line ends; target 35 turns `useBoundsForWidth` on by default, so don't switch it off.
+- [ ] Italic or overhanging glyphs (Cormorant italic, Fraunces) are not clipped at line ends; target 35 turns `useBoundsForWidth` on by default, so don't switch it off. `shiftDrawingOffsetForStartOverhang` is **not** on by default, so a first glyph can still clip at the start.
+- [ ] Target 35 makes `elegantTextHeight` true by default (Android 15 names Arabic for testing), while `text()` turns `includeFontPadding` off everywhere, including the Inter+Arabic kickers. Check that Arabic marks in mixed lines are not clipped.
 **Contrast and readability from the sofa**
 - [ ] White text over video stays readable on the brightest clip. Aim for 4.5:1 for small text and 3:1 for 24px+ text. For our white text that means a backdrop luminance of at most about 0.16 (small) or 0.27 (large) behind the letters; the shadow plus scrim plus dim must get it there. Measure on a screenshot (recipe in the knowledge file).
 - [ ] Text shadows stay tight (radius about 4 to 8, dy 2 to 3). No grey halo or box around the letters.
@@ -64,8 +65,8 @@ Line numbers drift; re-grep before you cite them.
 - The 20px kickers are below Google's (22px) and Apple's (23px) minimum label sizes, though they are SemiBold, tracked and gold.
 - The verse band has no box and sits above the bottom scrim: on a bright sky clip only the 8% dim and the 4px shadow carry it.
 - The scrims are sized in window px on `root`. If the UI is ever composed at 4K, they would cover half the intended height (unverified).
-- Fraunces clock: no `tnum` in the bundled file, so its width shifts with the minutes; its name table says "9pt", so it may be the text optical size rather than the display cut (unverified).
-- Stale comments still describe sunrise, a "sun card" and a verse "just above the dock" (`:965`, `:1091`, `:1096`, `:1672`). A PR may wrongly rebuild those elements by following them.
+- Fraunces clock: no `tnum` in the bundled file, so its width shifts with the minutes. Its name table is stale ("9pt Black", but nameID2 Regular, weight 300); the measured stem:hairline is about 1.7:1, which points to a low-opsz text cut rather than the display cut (strong evidence, not proof).
+- Stale comments still describe sunrise, a "sun card", "one centred column" and a verse "just above the dock" (`:965`, `:1091`, `:1093`, `:1096`, `:1672`). `:1093` adds a 1920-wide `Gravity.START` view; the right alignment comes from `:1039-1040` (`Gravity.END` plus `RIGHT_EDGE` padding). A PR may wrongly rebuild those elements by following them.
 - `pinSub` rests in `DIM` (65% white) at 24px on the PIN card.
 - `fullLengthAnimations()` may fail quietly on a future update, so every fade would run at half length.
 

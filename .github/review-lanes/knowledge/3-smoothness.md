@@ -45,7 +45,7 @@
 
 ### 5. Blur and effects
 - `RenderEffect.createBlurEffect` is API 31+. It blurs the view it is set on and its children, not what is behind. It runs on the GPU, mostly on the RenderThread, and is re-done whenever the affected views redraw. [stylingandroid-rendereffect]
-- It cannot see a SurfaceView's video (that is a separate layer composed by SurfaceFlinger/HWC). PixelCopy of the SurfaceView came back black on this box. [source-graphics] (box behaviour: verified in code comment `MainActivity.java:285`)
+- It cannot see a SurfaceView's video (that is a separate layer composed by SurfaceFlinger/HWC). PixelCopy of the SurfaceView came back black on this box. [source-graphics] (box behaviour: verified in code comment `MainActivity.java:287`)
 - Over a moving video, a blur would have to redraw every frame. Treat any large blur on this GPU as a red flag.
 
 ### 6. Video: SurfaceView, composition, frame rate
@@ -60,10 +60,12 @@
 - Audio offload saves power for long screen-off audio only; with the screen on it has no significant effect. [media3-battery]
 
 ### 7. ExoPlayer / Media3 buffering
-- Current `DefaultLoadControl` (release branch source): `DEFAULT_MIN_BUFFER_MS` 50,000; `DEFAULT_MAX_BUFFER_MS` 50,000; `DEFAULT_BUFFER_FOR_PLAYBACK_MS` 1,000; after rebuffer 2,000; back buffer 0. Newer versions add `*_FOR_LOCAL_PLAYBACK` values (min buffer 1,000 ms, video buffer 300 segments instead of 2,000) and prioritise time over size for local playback. [media3-loadcontrol-src]
-- Target bytes, when unset, are summed per selected track: video 2000 x `C.DEFAULT_BUFFER_SEGMENT_SIZE` for streams, audio 200 x segment, clamped between min (200 x) and max sizes. (Segment size is 64 KB from memory, so about 128 MB for video: **unverified**, check `C.java`.) [media3-loadcontrol-src]
-- Builder: `setBufferDurationsMs`, `setBufferDurationsMsForLocalPlayback`, `setTargetBufferBytes`, `setPrioritizeTimeOverSizeThresholds`, `setBackBuffer`. [media3-loadcontrol-src]
-- **Whether 1.4.1 (this repo) has the local-playback constants is unverified.** If it does not, the wallpaper player can hold tens of MB of decoded-sample buffer for a short looping local file. A cap such as `setBufferDurationsMs(2000, 5000, 500, 1000)` plus a `setTargetBufferBytes` of a few MB is the usual fix; measure before and after with `dumpsys meminfo`.
+- `DefaultLoadControl` in **1.4.1 (this repo)**: `DEFAULT_MIN_BUFFER_MS` 50,000; `DEFAULT_MAX_BUFFER_MS` 50,000; `DEFAULT_BUFFER_FOR_PLAYBACK_MS` 2,500; after rebuffer 5,000; back buffer 0. No `*_FOR_LOCAL_PLAYBACK` values. [media3-loadcontrol-141]
+- Later versions: 1.6.0 lowered the playback defaults (the release branch has 1,000 / 2,000); 1.9.0 added `*_FOR_LOCAL_PLAYBACK` values (min buffer 1,000 ms, video buffer 300 segments instead of 2,000). [media3-release-notes] [media3-loadcontrol-src]
+- Target bytes, when unset, are summed per selected track: video 2000 x `C.DEFAULT_BUFFER_SEGMENT_SIZE` (64 KiB), so a **125 MiB** video target; audio 200 x segment, clamped between min (200 x) and max sizes. [media3-loadcontrol-141]
+- The buffer holds **compressed** samples (the demuxed stream), not decoded frames.
+- Builder: `setBufferDurationsMs`, `setBufferDurationsMsForLocalPlayback` (1.9.0+ only), `setTargetBufferBytes`, `setPrioritizeTimeOverSizeThresholds`, `setBackBuffer`. [media3-loadcontrol-src]
+- 1.4.1 has no local-playback constants, so the wallpaper player can hold up to 50 s (or the 125 MiB target) of compressed samples for a short looping local file. A cap such as `setBufferDurationsMs(2000, 5000, 500, 1000)` plus a `setTargetBufferBytes` of a few MB is the usual fix; measure before and after with `dumpsys meminfo`.
 - Google's TV guidance: media buffers sized for about 1 minute; for a 2 GB 2160p device 100 to 120 MB. Don't buffer more than 5 s of future while seeking. Free media allocations when changing an episode. Non-audio apps should stop playback in `onStop` and release resources. [tv-memory]
 
 ### 8. Memory on a 2 GB TV
@@ -78,7 +80,7 @@
 - App memory budgets (`<memory-budget>` in the manifest, Android 17 QPR2+) are calibrated by a sweep: pass when janky frames rise at most 1 point and P95 frame time at most 3 ms. The same pass criteria are a good bar for any memory change here. [app-memory-budgets]
 
 ### 9. This GPU and SoC
-- Amlogic S905X5M: 6 nm, 4x Cortex-A55 up to 2.5 GHz, **Mali-G310 V2**, DDR4/LPDDR4 up to DDR3200, AV1/H.265 decode up to 4Kp75 (per article), an AI-SR video upscaler. GPU 3D scores are about 1.4x to 2.8x the S905X4; CPU 16 to 36% better. [cnx-s905x5m]
+- Amlogic S905X5M: 6 nm, 4x Cortex-A55 up to 2.5 GHz, **Mali-G310 V2**, DDR4/LPDDR4 up to DDR3200, AV1/H.265 decode up to 4Kp75 (per article; this box itself is specified to decode up to 4K60 [mi-box-specs]), an AI-SR video upscaler. GPU 3D scores are about 1.4x to 2.8x the S905X4; CPU 16 to 36% better. [cnx-s905x5m]
 - Mali-G310: Arm's entry Valhall GPU for TVs and set-top boxes. Arm claims texturing up to 6x Mali-G31 and Android UI up to 2x previous generations; it supports AFBC. Core count is not public on the product page. [arm-mali-g310]
 - Xiaomi TV Box S 3rd Gen: 2 GB DDR4, about 1 GB free after boot, Google TV 14 in 32-bit mode, Mali-G310 V2. The reviewer says the "Android UI renders at 4K" (unverified; this matters for fill-rate, see Open questions). [androidpctv-review]
 - Fill-rate arithmetic: a 1080p frame is 2.07 M px; a 4K frame is 8.3 M px. Five full-screen translucent layers at 1080p is about 10 M blended px per frame (about 5x the screen, double the 2.5x rule of thumb). At a 4K UI it would be 41 M.
@@ -154,6 +156,7 @@ adb shell setprop debug.hwui.profile visual_bars       # Profile GPU rendering b
 adb shell wm size; adb shell wm density                # is the UI 1080p or 4K?
 adb shell dumpsys SurfaceFlinger | grep -iE "composition|DEVICE|CLIENT" # overlay or GPU?
 adb shell getprop ro.config.low_ram                    # low-RAM flag
+adb shell getprop ro.surface_flinger.max_graphics_width # UI composed below 4K? [omnirom-a13f2d58]
 adb pull /data/local/traces/                           # traces from on-device System Tracing
 ```
 (The `setprop` names and `wm` commands are standard developer tools but were not re-read from a page this time: verify if they fail.)
@@ -169,7 +172,9 @@ adb pull /data/local/traces/                           # traces from on-device S
 | `setAlpha` on overlapping view | ~2x fill-rate | [hardware-accel-views] |
 | Layer memory | w x h x 4 bytes (1920x1080 = 8.3 MB) | arithmetic |
 | TextureView power penalty | up to 30% | [media3-battery] |
-| ExoPlayer default min/max buffer | 50 s / 50 s | [media3-loadcontrol-src] |
+| ExoPlayer 1.4.1 min/max buffer | 50 s / 50 s | [media3-loadcontrol-141] |
+| ExoPlayer 1.4.1 start / after rebuffer | 2.5 s / 5 s | [media3-loadcontrol-141] |
+| ExoPlayer default video target | 125 MiB | [media3-loadcontrol-141] |
 | TV media buffer, 2 GB 2160p | 100 to 120 MB for ~1 min | [tv-memory] |
 | Seek pre-buffer | <= 5 s, 15 to 25 MB | [tv-memory] |
 | 1 GB TV budgets | Anon+Swap 160, Graphics 30-40, total 280 MB | [tv-memory] |
@@ -180,7 +185,7 @@ adb pull /data/local/traces/                           # traces from on-device S
 Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Modules: `app` (minSdk 28, target 35, `androidx.media3:media3-exoplayer:1.4.1`), `kids` (minSdk 33), `adhan` (minSdk 28). Both apps set `android:hardwareAccelerated="true"`.
 - `MainActivity.java` is about 3,500 lines; all views are built in code on a 1920x1080 `stage` scaled by `fitStage()` (~`:763`, `FITS = {100,97,94,91,88}` `:760`, default `"fit"` 100).
-- Window: `FLAG_KEEP_SCREEN_ON`; `root` is black; `video` is a `SurfaceView` (`:205`), then full-screen `videoCover` (gradient, faded to alpha 0 after the first frame), `skyTint` (alpha 0 except at Fajr/Maghrib), `dimView` (black at `baseDim()`, `WALL_DIM 0.08` `:3076`), `topScrim` (380 px, 50% to 0), `bottomScrim` (480 px, 70% to 35% to 0). Views at alpha 0 are skipped by the renderer, so the real full-screen blends at rest are about 1 (dim) plus two partial scrims, rising to 2 when skyTint shows (reasoning from View behaviour, unverified by overdraw tool).
+- Window: `FLAG_KEEP_SCREEN_ON`; `root` is black; `video` is a `SurfaceView` (`:206`), then full-screen `videoCover` (gradient, faded to alpha 0 after the first frame), `skyTint` (alpha 0 except at Fajr/Maghrib), `dimView` (black at `baseDim()`, `WALL_DIM 0.08` `:3076`), `topScrim` (380 px, 50% to 0), `bottomScrim` (480 px, 70% to 35% to 0). Views at alpha 0 are skipped by the renderer, so the real full-screen blends at rest are about 1 (dim) plus two partial scrims, rising to 2 when skyTint shows (reasoning from View behaviour, unverified by overdraw tool).
 - Wallpaper player: `new ExoPlayer.Builder(this).build()` (`:249`), no `LoadControl`, `REPEAT_MODE_ONE`, volume 0. `onPause` pauses it; `onStop` does not stop or release it; `onDestroy` releases both players (`:432`). So while the family watches another app the paused player keeps its buffers and decoder (verified in code; memory size unmeasured).
 - `playRandomClip()` (`:1459`) lists `Movies/TVWallpapers/*.mp4` on the UI thread (`listFiles`, `canRead`) on every `onResume`. Cheap for a few files; would matter on slow USB storage (unverified).
 - No `onTrimMemory` in `app` or `kids` (grep).
@@ -188,18 +193,22 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - `noAlphaLayers(root)` sets `forceHasOverlappingRendering(false)` on the whole tree after build (`:1890`); `show()` does it for new views.
 - `lineTimer` (`:1621`): a 29 s linear ValueAnimator per 30 s verse (`LINE_SECONDS 30`) feeding `lineBar.setProgress` while `lineBar` is GONE (`:1124`). The screen never idles. Still present.
 - `Accent.glideTo`: 1.6 s animator calling `invalidateSelf()` on every registered drawable (`Accent.java:40`, `:55`), held through `WeakReference`s.
-- `EqualizerView` reuses its Paint/RectF and only re-posts while playing or settling (`:42`). `StarField` posts every frame unconditionally (`:60`) while attached and visible (check its visibility gating in a PR that touches it).
+- `EqualizerView` reuses its Paint/RectF and only re-posts while playing or settling (`:42`). `StarField` (`StarField.java:49-61`, used at `MainActivity.java:500` and `:2516`) draws 3 full-screen rects (bg, glow, fade) plus a translated full-screen `drawPath` lattice and reposts every frame while the Quran or player background shows. It stops itself when GONE, because `onDraw` no longer runs.
 - `IntroView` (splash) creates new `RadialGradient`/`LinearGradient` shaders inside its per-frame draw (`:192`, `:198`, and more): allocation per frame, but only during the splash.
 - `Glass.java` allocates Paints/RectFs/shaders only in the bitmap path for `glow > 0` (`:62-81`) and in `buildBody` on bounds change; `BlurMaskFilter` is drawn into a bitmap there, which is the correct workaround.
 - `ThinBar` puts `setShadowLayer` on a non-text fill (`:21`): hardware-supported from API 28 but redrawn each frame it changes.
 - Dock `magnify()` (`:1363`) starts `animate()` scale/translation on every tile per key press, 240 ms; the properties are all cheap ones.
 - `drift()` (`:3423`) moves the SurfaceView by `translationX` over 1,400 ms; `DRIFT_ROOM 0.022`.
-- `fullLengthAnimations()` (`:3349`) calls hidden `ValueAnimator.setDurationScale` or the `sDurationScale` field by reflection; fallback keeps the box's 0.5x.
+- `fullLengthAnimations()` (`:3349`) calls hidden `ValueAnimator.setDurationScale` by reflection. It is greylisted and works at target 35. The `sDurationScale` field fallback is blocked, so it is dead code; if both fail the box's 0.5x stays. [aosp-valueanimator-14]
+- `sampleAccent` (`:3364`): one 64x36 PixelCopy per clip, falling back to `accentFromFile` (`MediaMetadataRetriever` on `bg`, cached in prefs) when the copy is black.
 - Text shadows: `TEXT_SHADOW = 4f` with `0x99000000` on most home text; clock `setShadowLayer(6, 0, 3, 0x73000000)` (`:1046`).
 - Kids: `MediaPlayer` on a `SurfaceView` (`KidsActivity.java:118`, `:409`, looping), Baloo loaded once (`:112`), dim folded into shades (`:918`).
 - Box: Mali-G310 V2, 2 GB, Google TV 14 (32-bit), about 1 GB free (from review, unverified on this unit). Whether the UI is composed at 1080p or 4K on this unit is **unverified**.
 
 ## Past findings
+### PR #21 (docs, 2026-11-05)
+- Corrected the 1.4.1 buffer values, the compressed-buffer wording, the hidden-API status of `fullLengthAnimations()` and added the `StarField` risk.
+
 ### PR #20 (merged 2026-11-05)
 - Must: `PinLock` ran 20,000 SHA-256 rounds on the UI thread. Fixed: single salted hash, `apply()`.
 - Should: PIN migration hash and `commit()` on the UI thread. Fixed: cheap hash + `apply()`.
@@ -212,15 +221,20 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: Repeated key presses are the usual way animations stack. Look for `animate()`/`ValueAnimator` started from key handlers without a `cancel()`.
 - 2026-11-05: "Hardware layer = 8 MB" was wrong as a general rule: layer memory is the view's own w x h x 4. Compute it per view.
 - 2026-11-05: An invisible view can still cost frames if an animator keeps feeding it (`lineTimer`). Check what a GONE view's animators are doing.
+- 2026-11-05: Check library facts against the repo's pinned tag (1.4.1), not the release branch.
+- 2026-11-05: Read hidden-API status from `@UnsupportedAppUsage(maxTargetSdk)` in AOSP source.
 
 ## Open questions to research next
 - Is the UI composed at 1080p or 4K on this box? Check `adb shell wm size`, `adb shell dumpsys display | grep -i mode`, `dumpsys SurfaceFlinger --display-id`. If 4K, every full-screen fill costs 4x and the overdraw budget is tighter.
 - Does SurfaceFlinger put the wallpaper SurfaceView on an HWC overlay or GPU-compose it while UI layers sit above? (`dumpsys SurfaceFlinger`, look for CLIENT vs DEVICE composition.)
-- Does media3 1.4.1 have the `*_FOR_LOCAL_PLAYBACK` LoadControl values? Check its `DefaultLoadControl.java` tag and `C.DEFAULT_BUFFER_SEGMENT_SIZE`. Measure the paused wallpaper player's memory while another app plays.
+- Answered 2026-11-05: media3 1.4.1 has no `*_FOR_LOCAL_PLAYBACK` values (they came in 1.9.0); segment size 64 KiB, video target 125 MiB. Still open: measure the paused wallpaper player's memory while another app plays.
 - What frame rates are the wallpaper clips (`ffprobe` the files in `Movies/TVWallpapers`) and what refresh rate does the box output? Judder risk if 24/25 fps on 60 Hz.
 - Does `isLowRamDevice()` return true on this box? (`adb shell getprop ro.config.low_ram`)
 - Is Mali-G310 tile-based with transaction elimination, and how many cores in the S905X5M? (Arm developer docs, not the product page.)
-- Is hidden-API reflection in `fullLengthAnimations()` still allowed on Android 14 for target 35? Look up the non-SDK interface lists for `ValueAnimator.setDurationScale`.
+- Answered 2026-11-05: `setDurationScale` is greylisted and works at target 35; the `sDurationScale` field is blocked.
+- Read `ro.surface_flinger.max_graphics_width` on the box (is the UI composed below 4K?).
+- Measure `StarField` with `dumpsys gfxinfo` while the Quran panel is open.
+- Does HWUI cache an unchanged, translated stroked `Path`, or re-rasterise it every frame?
 - Baseline Profiles for a launcher: worth it for cold start on a 32-bit A55 box?
 
 ## Source library
@@ -241,7 +255,12 @@ All checked 2026-11-05 unless noted. Tags are used in Core expertise.
 - [media3-surface] https://developer.android.com/media/media3/ui/surface: SurfaceView vs TextureView, full-resolution video on TVs that upscale UI.
 - [media3-battery] https://developer.android.com/media/media3/exoplayer/battery-consumption: TextureView up to 30% more power, tunneling caveats, audio offload.
 - [media3-track-selection] https://developer.android.com/media/media3/exoplayer/track-selection: how to enable tunneling and audio offload.
-- [media3-loadcontrol-src] https://raw.githubusercontent.com/androidx/media/release/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/DefaultLoadControl.java: actual default buffer values in the current release branch (newer than 1.4.1).
+- [media3-loadcontrol-src] https://raw.githubusercontent.com/androidx/media/release/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/DefaultLoadControl.java: default buffer values in the current release branch (newer than 1.4.1).
+- [media3-loadcontrol-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/DefaultLoadControl.java: the defaults this repo actually uses (2,500 / 5,000, no local-playback values). Checked 2026-11-05.
+- [media3-release-notes] https://github.com/androidx/media/blob/release/RELEASENOTES.md: 1.6.0 lowered defaults, 1.9.0 added local-playback values. Checked 2026-11-05.
+- [aosp-valueanimator-14] aosp-mirror platform_frameworks_base, android14-release, `core/java/android/animation/ValueAnimator.java`: `@UnsupportedAppUsage` on `setDurationScale` and `sDurationScale` (hidden-API status). Checked 2026-11-05.
+- [omnirom-a13f2d58] gerrit.omnirom.org, commit a13f2d58: GPU composition at a lower resolution (`max_graphics_width`). Checked 2026-11-05.
+- [mi-box-specs] mi.com/uk, the Xiaomi TV Box S 3rd Gen specs page: official decode specs (up to 4K60). Checked 2026-11-05.
 - [frame-rate] https://developer.android.com/media/optimize/performance/frame-rate: setFrameRate, FIXED_SOURCE, seamless vs always, set-top box black screens.
 - [source-graphics] https://source.android.com/docs/core/graphics: SurfaceFlinger, HWC, BufferQueue modes.
 - [stylingandroid-rendereffect] https://blog.stylingandroid.com/rendereffect-blur: RenderEffect blur API 31+, what it blurs, RenderThread cost.

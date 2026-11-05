@@ -27,11 +27,12 @@
 
 ### 3. Fonts in this app (verified with fontTools on the repo's files, 2026-11-05)
 - **Fraunces** is a display "Old Style" soft serif with axes opsz 9 to 144, wght 100 to 900, SOFT 0 to 100, WONK. As opsz goes down, x-height rises, spacing opens and letters widen; "wonky" forms switch off at 18 px and below. [fraunces-readme]
-- Our `fraunces_soft_light.ttf` is a static instance (no `fvar`), weight class 300, and its name table says **"Fraunces 9pt Black"**. It has **no `tnum` feature** and proportional digits (advance of "1" is 687 vs about 1000 for others, upm 2000). So `setFontFeatureSettings("tnum")` on the clock does nothing for face 0, and the clock's width changes as the minutes change. Whether this instance is cut at opsz 9 (text) rather than 144 (display) is **unverified**; if so, it is wider and lower-contrast than the display cut the spec imagines.
-- Inter (all bundled weights), Jost, Outfit, Cormorant, Chivo Mono and Baloo **do** have `tnum`. Inter has a tall x-height and features such as tabular numbers and slashed zero. [inter-readme]
+- Our `fraunces_soft_light.ttf` is a static instance (no `fvar`), weight class 300. Its name table is stale: it says **"Fraunces 9pt Black"**, but nameID2 is Regular and the weight is 300, so name tables can't be trusted after instancing. It has **no `tnum` feature** and proportional digits (advance of "1" is 687 vs about 1000 for others, upm 2000). So `setFontFeatureSettings("tnum")` on the clock does nothing for face 0, and the clock's width changes as the minutes change. The measured stem:hairline ratio is about **1.7:1**, which points to a low-opsz text cut rather than the display cut (opsz 144): strong evidence, not proof. A text cut is wider and lower-contrast than the display cut the spec imagines.
+- Inter (all bundled weights), Jost, Outfit, Cormorant, Chivo Mono and Baloo **do** have `tnum`. The bundled Inter mixes **v3.019** (Light, ExtraLight; UPM 2816) with **v4.001** (Medium, SemiBold, Bold; UPM 2048); proportional metrics are the same. "Cormorant" is Cormorant Garamond v4.001. [inter-v4] Inter has a tall x-height and features such as tabular numbers and slashed zero. [inter-readme]
 - IBM Plex Sans Arabic (Medium, SemiBold bundled): no `tnum` but its digits are already equal width (600 units). [plex-arabic-readme]
 - Amiri is a classical Naskh revival of the Bulaq (Amiria) press face, "one of the few metal typefaces that were used in typesetting the Quran"; mature since v1 (2022), no further development planned. Its vertical extents are very large (winAscent 1850, winDescent 910 on upm 1000), so it needs `includeFontPadding(true)` or explicit line height for marks. [amiri-readme]
 - Android text APIs that matter: `setIncludeFontPadding` (default true; adds room for accents above ascent/descent); `setFallbackLineSpacing` (API 28, default true; respects taller fallback fonts); `setElegantTextHeight` (uses uncompacted variants and taller bounds, useful for Arabic); `setUseBoundsForWidth` (API 35, **true by default when targeting 35**, uses glyph bounds so italic overhangs such as Cormorant are not clipped); `setLineHeight(unit, value)` (API 34). [textview-ref]
+- **Target-35 (Android 15) defaults:** `elegantTextHeight` is now **true by default** (Arabic is named for testing), and `useBoundsForWidth` is on. `shiftDrawingOffsetForStartOverhang` is **not** on by default, so a first glyph can still clip at the start. [a15-behavior] No code calls `setElegantTextHeight`, `setUseBoundsForWidth`, `setShiftDrawingOffsetForStartOverhang` or `setFallbackLineSpacing` (grep). `text()` (`:799`) turns `includeFontPadding` off everywhere, including the Inter+Arabic kickers.
 
 ### 4. Pairing Arabic and Latin
 - Arabic needs room above and below the line for marks; never set `includeFontPadding(false)` on Arabic or Quran text without an explicit line height (lesson from PR #20: Amiri needed padding).
@@ -124,7 +125,7 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Clock: face 0 Fraunces Soft Light at 340 px (`applyClockFont`, sizes `{340, 310, 306, 330, 304}` for Fraunces, Outfit, Jost, Cormorant, Inter), colour `0xF2FFFFFF`, shadow (6, 0, 3, `0x73000000`), `tnum` requested (no-op on Fraunces, see Core 3), AM/PM 50 px Inter Light `0xB3FFFFFF`.
 - Colours: `WHITE 0xFFF5F5F7`, `SOFT 0xD9FFFFFF`, `DIM 0xA6FFFFFF` (`:95`), `GOLD 0xFFF1D58A`, `CARD_TINT 0x3A000000`.
 - **Kickers**: `kicker()` (`:863`) sets letter-spacing 0.18 and colour `0xD9E8CB86` (warm gold at 85%), overriding the `DIM` passed in. All kickers are 20 px Inter SemiBold. (The old note "20px dim white" was wrong about the colour; the size concern stands.)
-- Text sizes in use (px): 20 (kickers, 7 places), 22, 24, 26, 28, 30, 32, 38, 40, 44, 46, 50, 60, 66, 168 (Arabic), 230/340 (clock). `text()` turns `includeFontPadding` off and adds a (5, 0, 2, `0x66000000`) shadow at 100 px+.
+- Text sizes in use (px): 20 (kickers, 8 call sites), 22, 24, 26, 28, 30, 32, 38, 40, 44, 46, 50, 60, 66, 168 (Arabic), 230/340 (clock). `text()` turns `includeFontPadding` off and adds a (5, 0, 2, `0x66000000`) shadow at 100 px+.
 - Home shadows: `TEXT_SHADOW 4f`, dy 2, `0x99000000` on most text; strip text `0xB3000000`.
 - Darkening: `dimView` black at `baseDim()` (8% at brightness 100), `topScrim` 380 px `0x80000000` to 0, `bottomScrim` 480 px `0xB3000000`/`0x59000000`/0 (`:215-226`). The scrims are sized in window px on `root`, not on the scaled stage. The verse band (y 494 to ~600 on the stage) sits above the bottom scrim, so only the 8% dim and the shadows protect it.
 - `skyTint` (`drawSky`, `:3434`): cool `0xFF5B86E5` around Fajr (up to 11%), warm `0xFFFF8C42` around Maghrib.
@@ -133,9 +134,13 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Motion: `EASE = DecelerateInterpolator(1.6f)`. Many `animate()` calls set no interpolator, so they use AccelerateDecelerate (`quranPanel`, `playerPanel`, `lineBox` cross-fade, `videoCover`). Verse cross-fade: out 400 ms (+8 px), in 600 ms. Wallpaper drift 1,400 ms.
 - Kids: `ink()` (`KidsActivity.java:1920`) gives **light-coloured text** a (8, 0, 2, `0xB3000000`) shadow and dark text none (decided by text colour, not by the world). Kids dim default 8 (`:918`); Baloo Bhaijaan 2 Medium/Bold/ExtraBold.
 - `pinSub` rests in `DIM` 24 px (`:2050`) (Nice-to-have from PR #20, not done).
-- Stale comments still describe the old layout: sun card (`:965`), "dates and sunrise sit under the clock" (`:1091`), verse "low on the screen just above the dock" (`:1096`), weather card sunrise (`:1672-1673`). `sunCard`, `sunLine`, `topParts[0]`, `lineBar` are hidden or removed.
+- Stale comments still describe the old layout: sun card (`:965`), "dates and sunrise sit under the clock" (`:1091`), "one centred column" on a 1920-wide `Gravity.START` view (`:1093`; the right alignment really comes from `:1039-1040`), verse "low on the screen just above the dock" (`:1096`), weather card sunrise (`:1672-1673`). `sunCard`, `sunLine`, `topParts[0]`, `lineBar` are hidden or removed.
 
 ## Past findings
+### PR #21 (docs, 2026-11-05)
+- Should: Android 15 target-35 text defaults added (elegantTextHeight on, includeFontPadding off in `text()`, start-overhang shift off). Fraunces name table is stale; stem:hairline 1.7:1 points to a text cut. Stale comment `:1093` ("one centred column") added.
+- Nice: Inter mixes v3.019 and v4.001; kickers are 8 call sites, not 7; "Cormorant" is Cormorant Garamond v4.001.
+
 ### PR #20 (merged 2026-11-05)
 - Must: none.
 - Should: kids lock warning was an off-brand Toast the children could see. Fixed: moved into the Parent menu.
@@ -149,10 +154,14 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: Check commit history before calling a spec mismatch a bug: the Screen size default and the right-aligned column were both deliberate changes after the spec text was written.
 - 2026-11-05: Read the helper, not the call site: `kicker()` overrides the colour passed to `text()`.
 - 2026-11-05: Requesting an OpenType feature proves nothing; check the font file has it (`fontTools`, look at GSUB features).
+- 2026-11-05: Name tables can be stale after instancing, so measure the glyphs.
+- 2026-11-05: Target-SDK changes alter text rendering with no code change. Recheck them when targetSdk moves.
 - 2026-11-05: Anything children see must be on-brand (no system Toasts); short copy that fits the pad beats smaller text.
 
 ## Open questions to research next
-- Is `fraunces_soft_light.ttf` cut at opsz 9 or 144? Compare its x-height/cap-height with a fresh Fraunces instance; consider re-instancing at opsz 144, SOFT 100, wght 300 with `tnum` kept (fontTools `instancer`).
+- Is `fraunces_soft_light.ttf` cut at opsz 9 or 144? Stem:hairline 1.7:1 suggests a text cut (2026-11-05). Confirming needs a fresh Fraunces opsz-144 instance (font downloads were blocked); consider re-instancing at opsz 144, SOFT 100, wght 300 with `tnum` kept (fontTools `instancer`).
+- Do the Arabic parts of the kickers lose marks on the TV (`includeFontPadding` off, `elegantTextHeight` on)?
+- Should Inter Light/ExtraLight be re-bundled from v4?
 - What do the scrims cover if the window is 3840x2160 (UI composed at 4K)? They are sized in px on `root`. Check `adb shell wm size` and a screenshot.
 - Find a typography source on Arabic/Latin size matching (x-height ratio) and line height for Naskh with full tashkeel (alreq gives no size rule).
 - Measure real contrast behind the verse band and strip on the brightest clip in `Movies/TVWallpapers`.
@@ -188,4 +197,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [adb] https://developer.android.com/tools/adb: `exec-out screencap -p`, `screenrecord` limits.
 - [alreq] https://w3c.github.io/alreq/: W3C Arabic and Persian Layout Requirements: vertical extents, mixed-script alignment, kashida, digits, bidi.
 - [smashing-tv] https://www.smashingmagazine.com/2025/09/designing-tv-principles-patterns-practical-guidance/: practical TV type (24 px body, 5 to 6 sizes), no pure white, focus contrast, safe zones.
+- [a15-behavior] https://developer.android.com/about/versions/15/behavior-changes-15: target-35 text defaults (elegantTextHeight, useBoundsForWidth). Checked 2026-11-05.
+- [inter-v4] https://github.com/rsms/inter/releases/tag/v4.0: Inter v4 changes (UPM 2048). Checked 2026-11-05.
 - To open next: Material 3 motion pages (need a JS-capable reader), Google TV home-screen design references.

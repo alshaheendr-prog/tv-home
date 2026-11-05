@@ -157,7 +157,7 @@ Verified on 2026-11-05 at commit 47e8c57 unless marked otherwise.
 - `Rules.NEVER` covers both YouTube apps, YouTube Kids, the Play Store, both Settings apps, TV Home, Projectivy, the Google TV launcher, four browsers, Stremio, Puffin and Downloader. `DEFAULT_APPS` covers Netflix, Crunchyroll, Prime Video, Shahid (2) and Kodi.
 - `Guard.passThrough` contains the Kids package, `android`, `com.android.systemui`, both permission controllers, and every IME.
 - Exported extras: MainActivity reads `panel` and `probe` in `onNewIntent` (`:307-320`) and `panel=pin` in `onCreate` (`:271`). The adhan SettingsActivity reads `test` (`SettingsActivity.java:56`).
-- Signing: `app/tvhome.keystore`, with the password `tvhome-family` in `app|kids|adhan/build.gradle.kts:20-23`. Kept, by the owner's decision.
+- Signing: `app/tvhome.keystore`, with its password in plain text in `app|kids|adhan/build.gradle.kts:20-23`. Kept, by the owner's decision.
 - CI: `.github/workflows/build.yml`:
   - `permissions: contents: write` for the whole workflow.
   - Triggers on `main` and `claude/**`.
@@ -180,12 +180,15 @@ Verified on 2026-11-05 at commit 47e8c57 unless marked otherwise.
   - Guard fails open without usage access. The Parent menu and the Kids setup line now warn about it.
   - Kodi is allowed in kids mode and can reach YouTube add-ons.
   - The YouTube lock guards only the dock and the remote button.
+- **PR #21 (2026-11-05, docs only).** Must: none. Should: a second plain-text copy of the signing password in this file (removed). Nice: dropped source URLs (restored). Checked fine: no new personal data, no brief check dropped, the Up-Up-Down-Down sequence was already public (the PIN is the gate), code facts spot-checked at 47e8c57.
 
 ## Lessons learned
 - 2026-11-05: Before calling a check "missing", read the current code. The brief said the Kids PIN had no attempt limit, but since #20 it uses PinLock.
 - 2026-11-05: For any allow-listed app, ask whether a child can switch profiles, accounts or sources inside it. The allow list trusts the app, not the content.
 - 2026-11-05: Any check that depends on a revocable grant (usage access, overlay, accessibility) must fail visibly. Look for `catch (Exception ignored)` around enforcement.
 - 2026-11-05: On targetSdk 31+, `adb backup` no longer exposes app data. Weigh allowBackup findings against cloud and device-to-device backup only.
+- (PR #21) On a docs-only PR, grep the added lines for secrets and personal data, and diff the removed brief lines so no check gets dropped. Briefs are reviewer instructions; dropping a check is a regression.
+- (PR #21) PinLock uses `apply()` (memory now, disk later), so a power cut right after a wrong try could lose that count. Negligible; if hardened, `commit()` the fail count before comparing.
 
 ## Open questions to research next
 - The 2025 tj-actions/changed-files tag-rewrite incident: a primary write-up was not opened this round (it is the classic example for SHA pinning).
@@ -195,6 +198,9 @@ Verified on 2026-11-05 at commit 47e8c57 unless marked otherwise.
 - Does a "Restricted settings" block (Android 13+ for sideloaded apps) affect turning on RemoteKeys or Kids usage access on Android TV 14? Search results exist (Lawnchair docs, bayton.org) but were not opened.
 - Do Netflix, Prime Video and Shahid on Android TV support a profile lock that the owner should switch on? This would go on lane 8's checklist.
 - Can Google TV's own Kids profile or Family Link work together with the launcher?
+- (2026-11-05) tj-actions incident: answered, see Source library [tj-actions]; SHA-pin actions.
+- (2026-11-05) Network ADB: the owner uses paired wireless debugging, so the open port-5555 worry mostly falls away. Still to ask: is wireless debugging left on after Update TV, and was "always allow on this network" ticked?
+- (2026-11-05) Restricted settings: Update TV turns RemoteKeys on over ADB, which likely bypasses the UI block (unverified). Check on the box only if the service ever fails to turn on.
 
 ## Source library
 
@@ -232,4 +238,8 @@ All checked 2026-11-05 unless noted. The [tags] are used above.
 - [Security tips] https://developer.android.com/privacy-and-security/security-tips: signature-protected providers, checkCallingPermission.
 - [GHA] https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions: SHA pinning, least-privilege token, script injection, secrets.
 - [App signing] https://developer.android.com/studio/publish/app-signing: key compromise, upload key reset.
-- From the brief, not reopened this round: the MASTG-TEST-0287, MASTG-TEST-0001 and MASWE-0004 pages, opensecurityarchitecture MASVS v2.1, MITRE ATT&CK T1453, zahidaz accessibility-abuse notes, the dev.to UsageStats blocking write-up, and the MIT archive of the security tips.
+- From the brief (first review), restored with URLs: https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0001/ , https://mas.owasp.org/MASWE/MASVS-STORAGE/MASWE-0004/ , https://www.opensecurityarchitecture.org/frameworks/owasp-masvs-v2/controls , https://attack.mitre.org/techniques/T1453 , https://zahidaz.github.io/awake/attacks/accessibility-abuse , https://dev.to/rexa/how-to-block-apps-on-android-without-an-accessibilityservice-5gog , https://stuff.mit.edu/afs/sipb/project/android/docs/training/articles/security-tips.html (MASTG-TEST-0287 not reopened).
+- [GH sensitive data] https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository: forks, clones and cached SHA views keep pushed data, so rotate rather than rely on deleting. Checked 2026-11-05.
+- [adb] https://developer.android.com/studio/command-line/adb.html: wireless debugging pairs with a code and the port shown on the device; stays paired until revoked; "always allow on this network" auto-allows on that Wi-Fi; legacy `adb tcpip 5555` has no pairing. Checked 2026-11-05.
+- [tj-actions] https://thehackernews.com/2025/03/github-action-compromise-puts-cicd.html: CVE-2025-30066 (March 2025): a bot PAT was stolen, all version tags repointed to a malicious commit, secrets dumped into public build logs; SHA-pinned users were not hit. Checked 2026-11-05.
+- [Restricted settings] https://www.esper.io/blog/android-13-sideloading-restriction-harder-malware-abuse-accessibility-apis and https://bayton.org/android/android-13-restricted-permissions/: Android 13+ blocks turning on accessibility services (bayton: also notification access, overlays) for apps from non-session installers; session installs and stores exempt; unlock via App info, menu, "Allow restricted settings". Neither covers adb. Checked 2026-11-05.

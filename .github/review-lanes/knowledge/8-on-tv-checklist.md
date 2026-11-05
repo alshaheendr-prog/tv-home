@@ -16,6 +16,7 @@
 - **State the setup first** ("Start on the family home screen"), and say where each step ends, so steps can be repeated.
 - **Number every step,** so he can reply "step 4 failed". Keep each step to one line. Put any warning *before* the step it is about.
 - **No developer words.** Write "the box", "the remote", "the PC". Never write APK, intent, activity or permission, except as an exact line to paste into Update TV.
+- **Give exact values** (for example "type 0000, which is wrong"), and list the preconditions before step 1 [uat-scripts].
 - **Keep it short.** About 10 minutes in all: 2 to 6 new steps plus the smoke test. A long list gets skipped.
 - **Order:** the risky or new things first while he is fresh, then the smoke test.
 
@@ -36,6 +37,8 @@ Every item below is from the Android TV quality criteria [tv-quality]:
 | TV-NP | audio that keeps playing in the background shows controls; video pauses when you leave | leave a cartoon and check it stops |
 | TV-BU / TV-BY | video blocks the screensaver; a still screen lets it start | if the PR touches the wallpaper or the screensaver, wait for the screensaver time |
 | TV-ME | memory limits on low-RAM devices | the 10-minute "is it getting slow" check on the 2 GB box |
+
+The publishing checklist [tv-checklist] also asks for: check both Ethernet and Wi-Fi, and the app has a clean way to exit.
 
 ### 3. Exploratory heuristics for a TV and a remote
 SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platform, Operations. Applied here:
@@ -62,6 +65,11 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
   - Warn him that kids stats, the daily limit and today's world may count wrongly that day.
 - Bedtime and the daily limit: lower the setting in Parent settings (for example a 1-minute limit), test, then **put it back** as an explicit last step.
 
+### 5b. Screensaver
+- Aerial Views is set with `settings put secure screensaver_components com.neilturner.aerialviews/.ui.screensaver.DreamActivity` [aerialviews].
+- On Android TV 12+, a `screen_off_timeout` below 360000 ms stops the screensaver from starting, so a screensaver test needs at least a 6-minute wait [aerialviews].
+- `am start -n com.android.systemui/.Somnambulator` may start it straight away, but results vary. That's for the developer only [somnambulator].
+
 ### 6. Parental-control test cases (kids lock and PINs)
 - **Before any wrong-PIN test, enter the right PIN once,** so the counter starts at zero.
 - 5 wrong tries make the pad rest: 30 seconds first, growing to at most 5 minutes. Wrong tries are forgotten after 1 hour (`PinLock.java:13-14`, FREE_TRIES = 5, FIRST_WAIT 30 s, MAX_WAIT 5 min, FORGET_AFTER 1 h). Warn him before he tries it.
@@ -79,21 +87,21 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 ### 7. Capturing evidence
 - **Photo:** the easiest way. Ask for a phone photo of the whole screen and the step number.
 - **Screenshot from the PC** (if he is comfortable), with `adb shell screencap -p /sdcard/s.png` then `adb pull /sdcard/s.png` [adb-gist]. Update TV already saves `C:\TVWallpapers\home.png`.
-- **Short video:** `adb shell screenrecord /sdcard/demo.mp4`, stopped with Ctrl+C [adb-gist]. Use it for animation or stutter problems.
+- **Short video:** `adb shell screenrecord /sdcard/demo.mp4`, stopped with Ctrl+C [adb-gist]. Use it for animation or stutter problems. It stops at 180 s (the default and the maximum), so record twice for longer [screenrecord].
 - **Crash log** (for the developer, not the owner): `adb logcat -d > log.txt` [adb-gist]. Only ask for it if he already runs adb commands.
-- **Remote key problems:** `logcat ... | grep -i keycode` shows which code a button really sends. Xiaomi's Home can arrive as `KEYCODE_ALL_APPS` [tvlauncher-noroot].
+- **Remote key problems:** `logcat ... | grep -i keycode` shows which code a button really sends. [tvlauncher-noroot] says Xiaomi's Home can arrive as `KEYCODE_ALL_APPS`: that is on some Xiaomi remotes, not verified on this box. Our code assumes the Apps button sends `KEYCODE_ALL_APPS` (the `rk_apps` default, `RemoteKeys.java:41-43`).
 
 ### 8. When something fails: recovery
 1. **Run Update TV again.** It re-applies every grant: overlay, usage access, the accessibility service, the home activity. A missing grant fails silently (no popup, buttons not remapped, Home goes to Google TV).
-2. **If the remote buttons stopped working,** relearn them: Parent settings, then learn the buttons again. They are stored per box (`RemoteKeys.java:14,38`).
-3. **If Home opens Google TV,** Update TV sets the home activity again. The manual line is `adb shell cmd package set-home-activity --user 0 com.family.tvhome/.MainActivity` [tvlauncher-noroot].
+2. **If the remote buttons stopped working,** relearn them: Parent settings, then learn the buttons again. They are stored per box (`RemoteKeys.java:12-16,38-43`).
+3. **If Home opens Google TV,** run Update TV again. In this app RemoteKeys never touches Home; Home lands on Family TV Home only because Update TV sets the home activity. The manual line is `adb shell cmd package set-home-activity --user 0 com.family.tvhome/.MainActivity` [tvlauncher-noroot].
 4. **Rollback.** Installing an *older* APK over a newer one fails with `INSTALL_FAILED_VERSION_DOWNGRADE` [install-errors]. Forcing it would mean uninstalling, which **deletes the PINs, settings and kids stats**. So the safe rollback is: reply on the PR, the developer reverts it, CI builds a new (higher-numbered) release with the old code, and he runs Update TV. Don't tell him to download an old APK.
 5. **If the box seems stuck,** unplug it for 10 seconds. The services restart by themselves through the BootReceivers.
 6. **Report:** step number, a photo, and what he expected.
 
 ### 9. TV behaviour that explains odd results
 - The FGS can't start from a BOOT receiver for some types on Android 15. Starting an FGS with the overlay permission also needs a visible overlay [a15]. That is why "unplug and replug" is a real test, not a formality.
-- Setting HOME alone doesn't capture the Xiaomi Home button. The accessibility service does that, so if RemoteKeys is off, Home goes to Google TV [tvlauncher-noroot].
+- In this app RemoteKeys never touches Home: `isEveryday()` passes `KEYCODE_HOME` through (`RemoteKeys.java:105-115`). Home lands on Family TV Home only because Update TV sets the home activity. If Home opens Google TV, run Update TV again. ([tvlauncher-noroot] says a Xiaomi Home button can send `KEYCODE_ALL_APPS`, which an accessibility service would have to catch; on some Xiaomi remotes, not verified on this box.)
 - Accessibility services are stored as one list separated by colons. Some tools overwrite it [a11y-gist]. If another accessibility app was set up, it may switch RemoteKeys off.
 
 ## This box and this code (verified 2026-11-05)
@@ -116,6 +124,7 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
   - Should fix: the kids lock warning toast was easy to miss. Fixed: it moved into the Parent menu.
   - Tips added to the brief: enter the right PIN before wrong-PIN tests; the adhan card only shows over another app; "Don't keep activities" for restart crashes.
   - Checklist comment (8 new steps plus the smoke test): https://github.com/alshaheendr-prog/tv-home/pull/20#issuecomment-6669904149
+- **2026-11-05, PR #21** (docs only, lane knowledge files): no TV steps. Should fix: the Home/RemoteKeys claim was wrong (RemoteKeys passes Home through), and the ALL_APPS claim conflicts with the `rk_apps` default. Comment: https://github.com/alshaheendr-prog/tv-home/pull/21#issuecomment-6670685789
 
 ## Lessons learned
 - 2026-11-05: Test the adhan card from inside another app, never from the family home.
@@ -123,11 +132,14 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 - 2026-11-05: A rollback is a revert PR plus Update TV, never an older APK (VERSION_DOWNGRADE, and uninstalling wipes data).
 - 2026-11-05: Any step that lowers a limit or changes a setting needs a matching "put it back" step at the end.
 - 2026-11-05: The secret menu line numbers moved from 2968 to 3009 after PR #20. Re-check the line numbers in the brief against the code on each review.
+- 2026-11-05: A docs-only PR needs no TV steps. Say so in one line, and still check the knowledge file against the code.
+- 2026-11-05: Check claims from blog sources against our own code before writing them as facts about this box.
 
 ## Open questions to research next
 (The web-fetch budget ran out on 2026-11-05 before these could be opened.)
-- The Android TV publishing checklist (https://developer.android.com/training/tv/publishing/checklist): reopen it and add any test-procedure details (for example how to test overscan).
-- The developer.android.com adb page: exact `screenrecord --time-limit` (default 180 s?) and `install -d` rules for release apps on Android 14.
+- Answered 2026-11-05: the publishing checklist lists requirements only, no test procedures.
+- Answered 2026-11-05: `screenrecord` stops at 180 s, the default and the maximum [screenrecord]. Still open: `install -d` rules for release apps on Android 14.
+- Which key codes do Home and Apps really send on this remote? Check with `adb logcat | findstr /i keycode` while pressing each one, then reconcile with the `rk_apps` default.
 - Sources on writing test cases for non-technical users (TestLodge, Marker.io) and on UAT scripts: confirm or extend section 1.
 - Elisabeth Hendrickson's Test Heuristics Cheat Sheet: interruption and timing heuristics for section 3.
 - The TV-ME memory limits for low-RAM devices (the exact MB values) and how the owner could see memory (Settings, then Storage/Memory on Xiaomi).
@@ -141,7 +153,12 @@ All checked 2026-11-05 unless noted.
 - [a15] https://developer.android.com/about/versions/15/behavior-changes-15: BOOT_COMPLETED FGS rules, SAW FGS visibility, audio focus. These explain why the reboot and adhan tests matter.
 - [install-errors] https://bayton.org/android/resolve-app-install-errors: VERSION_DOWNGRADE, UPDATE_INCOMPATIBLE and other errors he might see in Update TV.
 - [adb-gist] https://gist.github.com/Pulimet/5013acf2cd5b28e55036c82c91bd56d8: screencap, screenrecord, logcat, keyevents, pm clear.
-- [tvlauncher-noroot] https://mustafa.net/2026/11/01/replace-google-tv-launcher-without-root/: set-home-activity and how to verify it, why the accessibility service is needed for Home, the Xiaomi KEYCODE_ALL_APPS behaviour, and undo.
+- [tvlauncher-noroot] https://mustafa.net/2026/11/01/replace-google-tv-launcher-without-root/: set-home-activity and how to verify it, and undo. Its Xiaomi `KEYCODE_ALL_APPS` Home claim is not verified on this box and conflicts with our `rk_apps` default.
 - [a11y-gist] https://gist.github.com/mrk-han/67a98616e43f86f8482c5ee6dd3faabe: how accessibility services are enabled and overwritten through settings.
 - [downgrade-forum] https://forum.level1techs.com/t/downgrading-app-on-android-12/179457: a user's report that `-r -d` cleared the downgrade error but hit a permission-model failure. Downgrades are fragile.
-- From the brief (checked by the first reviewer, not reopened in this session): https://developer.android.com/training/tv/publishing/checklist and https://developer.android.com/about/versions/14/changes/fgs-types-required.
+- [tv-checklist] https://developer.android.com/training/tv/publishing/checklist: reopened 2026-11-05: requirements only, no test procedures (Ethernet and Wi-Fi, a clean exit).
+- From the brief (checked by the first reviewer, not reopened in this session): https://developer.android.com/about/versions/14/changes/fgs-types-required.
+- [uat-scripts] https://www.virtuosoqa.com/post/uat-test-scripts: one action per step, an explicit pass condition, preconditions, exact values. Checked 2026-11-05.
+- [screenrecord] https://essential-books.onrender.com/essential/android/recording-the-display-d649a1cd7b414b78a95d35d3a54d9eaa.html: the 180 s cap, `--size`, `--bit-rate`. Checked 2026-11-05.
+- [aerialviews] https://github.com/theothernt/aerialviews: `screensaver_components`, the 6-minute timeout floor, TestActivity. Checked 2026-11-05.
+- [somnambulator] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/55405715/adb-command-to-launch-screensaver-activity: starting the screensaver from adb (results vary). Checked 2026-11-05.

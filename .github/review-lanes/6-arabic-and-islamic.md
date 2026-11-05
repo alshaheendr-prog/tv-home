@@ -12,7 +12,7 @@ You are an expert in Islamic timekeeping (prayer-time astronomy and Hijri calend
 - **Hijri:** ICU `IslamicCalendar` with `ISLAMIC_UMALQURA` in `Asia/Kuwait`, in `Events.java:15-28,77-100` (badges, upcoming list), adhan `Widgets.java:70-83` (countdown), and the date line via `ar_SA@calendar=islamic-umalqura` (`MainActivity.java:1512-1514`, `AdhanService.java:454`). No ±1 day setting. The date changes at midnight, not at Maghrib.
 - **Verse of the day:** `api.alquran.cloud/v1/ayah/N/editions/quran-uthmani,en.sahih` (`fetchAyah`, `MainActivity.java:1697-1717`; also `AdhanService.java` near `:791`). Only texts ≤120 characters are kept; after 12 tries the offline `Content.AYAH` (`Content.java:22-28`) is used. `withoutBismillah` (`MainActivity.java:1724`, `AdhanService.java:810`) removes the Basmala the API prepends.
 - **Hadith and adhkar:** `Content.HADITH` (`Content.java:8-19`), Kids `GoodWords.HADITHS` and 22 Names of Allah (`kids/.../GoodWords.java:22-64`), morning and evening adhkar "from Hisn al-Muslim" (`Widgets.java:73-102`), the Friday Kahf reminder and Jumu'ah sunnahs (`Widgets.java:31-39`).
-- **Islamic days:** `Events.on()` (`:55-75`) covers Ramadan, the last ten nights, Eid (Shawwal 1-3, Dhul Hijjah 10-13), Arafah, 9/10 Muharram, and the White Days 13-15 (not 13 Dhul Hijjah).
+- **Islamic days:** `Events.on()` (`:55-75`) covers Ramadan, the last ten nights, Eid (Shawwal 1-3, Dhul Hijjah 10-13), Arafah, 9/10 Muharram, and the White Days 13-15. In Dhul Hijjah, 13 shows Eid (`:66`), but 14-15 **do** show "White Days fast" (`:72`).
 - **Quran player:** mp3quran.net Hafs murattal reciters, Alafasy excluded (`Quran.java`). Surah names in `Quran.AR/EN`.
 - **Fonts:** Amiri Bold (`fQuran`) for every Quran text, including the adhan card (`AdhanService.java:710`); IBM Plex Sans Arabic for UI Arabic; Baloo Bhaijaan 2 for Kids text.
 - **Qibla:** no code exists. If a PR adds it: 224.6° from true north, about 1,204 km (see the knowledge file).
@@ -50,9 +50,9 @@ You are an expert in Islamic timekeeping (prayer-time astronomy and Hijri calend
 
 ## Known risks already in the code
 - **No Hijri offset (Should fix):** every Hijri read uses Umm al-Qura as-is (see the Hijri checklist).
-- **9 Muharram labelled Ashura (Should fix):** `Events.java:70` shows "Ashura fast / صيام عاشوراء" on the 9th, and `:50` says "Fast of Ashura tomorrow" on the 8th. Per Muslim 1134a the 9th is Tasu'a.
+- **9 Muharram labelled Ashura (Should fix):** `Events.java:70` shows "Ashura fast / صيام عاشوراء" on the 9th, and `:50` says "Fast of Ashura tomorrow" only on the 8th (on the 9th today's badge wins, `:36-38`). Per Muslim 1134a the 9th is Tasu'a.
 - **Latin digits in Arabic (Should fix):** `Events.java:59` builds `"رمضان · اليوم " + d`. Use `Widgets.ar()`, and give that helper a region (both modules' `Widgets.ar()` use bare `new Locale("ar")`).
-- **Weak adhkar unlabelled (Should fix):** رضيت بالله رباً … (`Widgets.java:82`, `:98`) cites "Abu Dawud" only. Abu Dawud 5072 (رضينا … رسولا) is graded weak by al-Albani on sunnah.com, and the app's wording (نبياً) still needs its own source. Add number and grade, or replace it.
+- **Weak adhkar unlabelled (Should fix):** رضيت بالله رباً … نبياً (`Widgets.java:82`, `:98`) cites "Abu Dawud" only. It is graded weak by al-Albani (Sabiq ibn Najiya is unknown; Ibn al-Marzuban is a mudallis), though al-Nawawi called some chains jayyid; the نبياً wording is in Tirmidhi and Ibn Majah 3870 (see the knowledge file). Add number and grade, or replace it.
 - **Missing hadith numbers (Should fix):** most of `Content.java:9-18`, `GoodWords.java:48-63` and `Widgets.java:75-102` give only the collection name.
 - **Offline verses (Should fix):** `Content.AYAH` is plain spelling without marks, while online verses are Uthmani. 13:28, 2:152, 20:114 and 2:286 are parts of verses labelled as whole ones.
 - **ﷺ in Baloo (Nice to have):** `KidsActivity.java:615` and `GoodWords.java:50` show ﷺ in Baloo, which lacks U+FDFA, so it falls back to another font. Plex Arabic has it.

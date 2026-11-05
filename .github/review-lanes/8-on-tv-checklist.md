@@ -57,7 +57,7 @@ Always include **the standard smoke test** (about 5 minutes) and adapt the wordi
 - **Never** suggest installing an older APK to undo a PR. It fails with "VERSION_DOWNGRADE", and uninstalling wipes the PINs and settings. The rollback is: reply on the PR, the developer reverts it, then run Update TV.
 
 ## Known risks already in the code
-- Remote buttons are learned per box and saved in the home app's settings (`RemoteKeys.java:14,30-39`). After an update they should still work. If they don't, the fix is Parent settings, then learn the buttons again. Say so in the checklist.
+- Remote buttons are learned per box and saved in the home app's settings (`RemoteKeys.java:12-16,38-43`). After an update they should still work. If they don't, the fix is Parent settings, then learn the buttons again. Say so in the checklist.
 - The accessibility service and the home activity are set by Update TV using the class names. A PR that renames them breaks the remote buttons or the Home button with no error message, so smoke steps 9 and 10 matter.
 - Back is handled specially in `MainActivity.java:453` (and `:1271` while arranging) and `KidsActivity.java:258` (and `:989`). PIN entry also takes number keys, if a remote has them (`MainActivity.java:464`).
 - The secret menu needs four presses within 2.5 seconds, and only works when no panel is open (`MainActivity.java:3009-3026`). Tell him to press quickly.

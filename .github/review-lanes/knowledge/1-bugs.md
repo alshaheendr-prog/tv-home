@@ -38,10 +38,10 @@
 - A HOME launcher is kept longest in the cached list ("generally keeps the home app and the last-seen activity longest"), but it can still be killed. [Process lifecycle]
 
 ### 3. Services and foreground services (FGS)
-- After `startForegroundService()` the service has about 5 seconds to call `startForeground()`. If it doesn't, the system throws `ForegroundServiceDidNotStartInTimeException` (shown as an ANR or a crash). [ANR, FGS troubleshooting]
+- After `startForegroundService()` the service has about 5 seconds to call `startForeground()`. If it doesn't, the system throws `ForegroundServiceDidNotStartInTimeException` (shown as an ANR or a crash). [ANR, FGS troubleshooting] (The ANR page says 5 s; the FGS troubleshooting page now says "a few seconds".)
 - targetSdk 34+ must declare a type for every FGS. `specialUse` needs `FOREGROUND_SERVICE_SPECIAL_USE` and a `<property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE">`. It has no runtime prerequisites. [FGS types, B14]
 - Background FGS starts have been blocked since Android 12. Exemptions include BOOT_COMPLETED, LOCKED_BOOT_COMPLETED and MY_PACKAGE_REPLACED receivers, `ACTION_TIMEZONE_CHANGED`, `ACTION_TIME_CHANGED` and `ACTION_LOCALE_CHANGED` receivers, a visible activity, user interaction, battery optimisation turned off, exact alarms, and holding SYSTEM_ALERT_WINDOW. On targetSdk 35 the SYSTEM_ALERT_WINDOW exemption also needs a currently visible `TYPE_APPLICATION_OVERLAY` window. [FGS bg-start, B15]
-- Android 15 with targetSdk 35: BOOT_COMPLETED receivers cannot start `dataSync`, `camera`, `mediaPlayback`, `phoneCall`, `mediaProjection` or `microphone` FGS. `specialUse` is not on the list. Testing commands: `am compat enable FGS_BOOT_COMPLETED_RESTRICTIONS <pkg>` and `am compat enable FGS_SAW_RESTRICTIONS <pkg>`. [B15]
+- Android 15 with targetSdk 35: BOOT_COMPLETED receivers cannot start `dataSync`, `camera`, `mediaPlayback`, `phoneCall`, `mediaProjection` or `microphone` FGS. `specialUse` is not on the list. Testing commands: `am compat enable FGS_BOOT_COMPLETED_RESTRICTIONS <pkg>` and `am compat enable FGS_SAW_RESTRICTIONS <pkg>`. [B15] (The bg-start page says the boot-type limits apply at "targets 14+", while B15 says 15.) [FGS bg-start]
 - Android 15: `dataSync` and `mediaProcessing` may run for 6 hours per 24 hours, then `onTimeout(int,int)` fires. If `stopSelf()` isn't called it crashes with `RemoteServiceException`. `shortService` gets about 3 minutes. [B15, FGS types]
 - `START_STICKY`: after the process dies, `onStartCommand` is called again with a **null** intent. [Service]
 - `onStartCommand` runs on the main thread, so no network or heavy disk work goes there. [Service]
@@ -56,7 +56,7 @@
 - The gap between boot and BOOT_COMPLETED can be tens of seconds on a slow box. Shared-storage media may not be readable yet, which is why `onPlayerError` retries.
 
 ### 5. Alarms, Doze, standby
-- Doze defers ordinary alarms and jobs, ignores wake locks, and cuts network access. `setExactAndAllowWhileIdle` and `setAndAllowWhileIdle` fire in Doze, but at most "once per nine minutes, per app". `setAlarmClock` always fires: "the system never adjusts their delivery time". [Doze, Alarms]
+- Doze defers ordinary alarms and jobs, ignores wake locks, and cuts network access. `setExactAndAllowWhileIdle` and `setAndAllowWhileIdle` fire in Doze, but at most "once per nine minutes, per app" [Doze]. `setAlarmClock` always fires: "the system never adjusts their delivery time". [Alarms]
 - Doze starts only when the device is "unplugged, stationary, and the screen is off", and "connecting a charger exits Doze". A mains-powered TV box should rarely enter Doze, but OEM standby can still suspend the CPU *(unverified for this box)*. [Doze]
 - On Android 14, `SCHEDULE_EXACT_ALARM` is denied by default for fresh installs of apps targeting 13+. Check `canScheduleExactAlarms()` first, or a `SecurityException` follows. `USE_EXACT_ALARM` is granted automatically but limited to alarm and calendar use cases. If the permission is revoked, all exact alarms are cancelled and the app stops. [B14-all, Alarms]
 - An inexact alarm on 12+ can be up to an hour late. A `setWindow` shorter than 10 minutes is typically clipped to 10. [Alarms]
@@ -68,7 +68,7 @@
 - Views are touched only on the main thread. Results from `bg` go back through `ui.post`.
 - Fields written on `bg` and read on the UI thread need `volatile` or a post. The repo uses `volatile` for `tempNow`, `appCache` and `hiLo`, so new shared fields should follow the same pattern.
 - A non-static inner `Runnable` or `Handler` posted with a long delay holds the Activity until it runs, which leaks it. A self-reposting loop that is never removed leaks it forever.
-- If a self-reposting `tick()` throws before reaching its `postDelayed`, the loop stops for good. An uncaught exception in a service's tick crashes the process, and START_STICKY restarts it later. Put the repost first, or wrap the body.
+- If a self-reposting `tick()` throws before reaching its `postDelayed`: an uncaught throw on the main looper kills the whole process (`RuntimeInit.KillApplicationHandler`, then `Process.killProcess` and `System.exit(10)`). A service tick throw kills its process too, and START_STICKY restarts it later. The loop silently stops only if the throw is caught above the repost. Put the repost first, or wrap the body. [RuntimeInit]
 - Android 15: network requests started "outside a valid process lifecycle" (from a cached process) throw `UnknownHostException` or `IOException`. [B15-all]
 
 ### 7. ANR
@@ -122,17 +122,24 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 - `runBg()` catches `RejectedExecutionException` (`MainActivity.java:128-130`). `blurThread` is declared and shut down but no `execute` call was found by grep, so check how it is used before flagging.
 - Extras: `onCreate` reads only `panel=pin` (`:271`). `onNewIntent` reads `probe` and then `panel` (`apps`, `quran`, `pin`, `calendar`, `stress`, `reciters`, `player`) after 400 ms (`:300-322`). `onNewIntent` calls `dockTiles.get(Math.min(lastDock, dockTiles.size()-1))`, which throws if `dockTiles` is empty.
 - `get()` uses 8 s connect and read timeouts and does not check the response code (`:1629-1641`).
-- The wallpaper `onPlayerError` retries up to 12 times (`:259-264`). A successful start resets `clipErrors` (`:255`). The Quran player gives up after 3 errors (`:2860-2864`).
+- The wallpaper `onPlayerError` retries up to 12 times (`:259-264`). A successful start resets `clipErrors` (`:255`). The Quran player gives up on the 4th error (`++quranErrors > 3`, `:2861`).
 - `PinLock.java` is identical in `app/` and `kids/` apart from the package line. `waitLeft` writes back a clamped `pin_until`. It uses one salted SHA-256 hash and `MessageDigest.isEqual`. Prefs writes use `apply()`.
-- `Guard` (kids): `specialUse` FGS, `startForeground` in `onCreate`, `START_STICKY`, a 1.5 s tick. Its first query looks back 6 h, and later queries start at `lastEventQuery - 2000`. `allowed("")` returns true (`Guard.java:135-139`). `delta` is clamped to 5000 ms. `bringBack` is throttled to 2 s. `start()` swallows every exception (`:56`).
+- `Guard` (kids): `specialUse` FGS, `startForeground` in `onCreate`, `START_STICKY`, a 1.5 s tick. Its first query looks back 6 h, and later queries start at `lastEventQuery - 2000`. `allowed("")` returns true (`Guard.java:135-139`). `delta` is clamped above only, at 5000 ms (`:105`, no `Math.max(0, …)`). `bringBack` is throttled to 2 s on the wall clock (`:143`), and the event window starts at `lastEventQuery - 2000` (`:154`). After a backwards clock jump of X, screen time doesn't count, `bringBack` never fires and `queryEvents` gets `begin > end`, all for X. `start()` swallows every exception (`:56`).
 - Kids Corner shows the setup line "Without app watching the kids lock can't send him back" when usage access is missing (`KidsActivity.java:1733-1745`).
 - `AdhanService`: `fired` is saved per day in prefs (`fired_day`, `fired`) and reloaded on the day change (`:435-447`). The adhan fires when `today[i] ≤ nowMin < today[i]+LATE_MIN` (`LATE_MIN = 3`, `:373`, `:481`). The reminder fires 10 minutes before, also with a 3-minute window. The tick re-aligns to the second (`:514`). Audio focus is `AUDIOFOCUS_GAIN_TRANSIENT` (`:572`).
 - No receiver for `TIME_CHANGED` or `TIMEZONE_CHANGED` anywhere. Every tick recomputes from `Calendar.getInstance(KUWAIT)`, so a clock change is picked up on the next tick.
 - `Rules.extra_until` is a wall-clock deadline (`Rules.java:98-101`). A backwards jump lengthens extra time and a forward jump ends it early. It is not clamped like `pin_until`.
+- The adhan sound falls back to the raw chime at `AdhanService.java:562`.
+- Kids Corner uses `MediaPlayer` for videos and surahs (`KidsActivity.java:409`, `:1217`).
 - Both `BootReceiver`s handle `BOOT_COMPLETED` and `MY_PACKAGE_REPLACED`, and the kids one restarts `Guard` only if `Rules.on`.
 - `PrayerTimes.java` is duplicated in `app/` and `adhan/`.
 
 ## Past findings
+
+### PR #21 (2026-11-05, docs only)
+- Must: none.
+- Should: the README ready rule contradicted step 4 and CLAUDE.md; a tick throw is a process crash, not a silent stop; the Guard wall-clock throttles were missing from Known risks.
+- Nice: line refs (chime `:562`, Quran player `:2861`), the orphan checklist item moved under Timing, Kids MediaPlayer mentioned, source tags fixed.
 
 ### PR #20 (merged 2026-11-05): PIN limits, crash after restart, missed adhan, Quran text
 - Must: none.
@@ -144,11 +151,14 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 - 2026-11-05: For every stored deadline, check the stored value, not only the value returned. Ask what a clock jump forward, a jump back, and a reboot each do.
 - 2026-11-05: For every "happens once" event, ask what a process restart inside its window does. Memory-only flags replay.
 - 2026-11-05: Check that hashing and other crypto work stays off the UI thread or is cheap.
+- 2026-11-05: For every elapsed-time calculation, check both bounds (a `min()` with no `max(0, …)` goes negative on a backwards jump) and which clock it uses. Throttles on `currentTimeMillis` freeze after a backwards jump.
+- 2026-11-05: On docs PRs, check the README, briefs and CLAUDE.md for contradictions.
 - 2026-11-05: Recheck the brief's "Known risks" against the code before citing them. Several were fixed in #20 (onDestroy, exact-minute adhan, Kids PIN with no limit).
 
 ## Open questions to research next
 - Does the Xiaomi TV Box S 3rd Gen suspend the CPU in standby (screen off by the remote)? If it does, `Handler` ticks stop and an adhan due while the box is in standby is missed, as the 3-minute window shows. Check with the owner (lane 8) and `dumpsys deviceidle` and `dumpsys power`.
-- Does Android TV 14 on this box send BOOT_COMPLETED to a force-stopped app? (On Android 14, stopped apps get no broadcasts until they are launched.)
+- Does Android TV 14 on this box send BOOT_COMPLETED to a force-stopped app? Answered 2026-11-05: no. Force-stop puts the app back in the stopped state, which lasts across reboots until the user launches it (Hackborn via CommonsWare). Android 15 also cancels its PendingIntents and sends BOOT_COMPLETED when it is un-stopped. Update TV's `am start -S` un-stops adhan by launching it. [CommonsWare stopped] [B15-all]
+- Does the box keep time across a power cut (RTC), or boot with a wrong clock until NTP syncs? That affects `fired_day`, `used_day` and the Guard throttles. (r/AndroidTV reports Xiaomi devices failing NTP after a power loss, unverified.)
 - Does YouTube or Kodi on Android TV use picture-in-picture, so that it can keep playing with no new `ACTIVITY_RESUMED`?
 - media3 1.4.1 compared with the latest release: are there known `SurfaceView` or loop bugs on Amlogic decoders?
 - `Rules.extra_until` and a wall-clock jump: is clamping needed, in the same way as `pin_until`?
@@ -185,4 +195,7 @@ All checked 2026-11-05 unless noted. The short tags in [brackets] are used above
 - [UsageStatsManager] https://developer.android.com/reference/android/app/usage/UsageStatsManager: permission, retention, null when locked.
 - [UsageEvents.Event] https://developer.android.com/reference/android/app/usage/UsageEvents.Event: ACTIVITY_RESUMED, PAUSED and DEVICE_SHUTDOWN semantics.
 - [AccessibilityService] https://developer.android.com/reference/android/accessibilityservice/AccessibilityService: onKeyEvent ordering, well-formed streams, copies.
+- [RuntimeInit] https://git.aicp-rom.com/frameworks_base.git/plain/core/java/com/android/internal/os/RuntimeInit.java: AOSP mirror; uncaught exception handling (KillApplicationHandler, killProcess, System.exit(10)). Checked 2026-11-05.
+- [CommonsWare stopped] https://commonsware.com/blog/2011/07/13/boot-completed-regression-confirmed.html: force-stop and BOOT_COMPLETED (secondary). Checked 2026-11-05.
+- Rechecked 2026-11-05: FGS troubleshooting, ANR, Alarms, Doze and B15-all.
 - From the brief, not reopened this round: https://dev.to/rexa/how-to-block-apps-on-android-without-an-accessibilityservice-5gog (UsageStats polling pitfalls) and https://www.androidauthority.com/google-tv-update-blocks-projectivy-override-3649445 (a Google TV update broke custom HOME overrides).

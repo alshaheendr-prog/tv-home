@@ -70,7 +70,7 @@ If you can't find the run, say so plainly. Do not guess that it passed.
 
    Renaming any of them silently breaks the script's grants (home activity, accessibility service) or the stats link. Flag it, and tell the owner what to change in Update TV.
 6. **versionCode still goes up.** It must still come from `GITHUB_RUN_NUMBER` in all three modules.
-   - Renaming or recreating the workflow file (or its `name:`, if it becomes a new workflow) resets the run number to 1, which gives `INSTALL_FAILED_VERSION_DOWNGRADE`.
+   - Changing the workflow file's path or its `name:` line can restart the run number at 1, which gives `INSTALL_FAILED_VERSION_DOWNGRADE`. Treat either as Must fix.
    - Re-running the *same* run keeps the number, which is harmless. **Re-running an older main run republishes `latest` with an older versionCode**, so Update TV then fails.
    - A hard-coded number or a different formula also needs checking.
 7. **minSdk, targetSdk and compileSdk.**
@@ -83,6 +83,7 @@ If you can't find the run, say so plainly. Do not guess that it passed.
    Anything outside the normal bucket needs a matching line in Update TV. Give that line to the owner, ready to paste. A new `uses-feature` must have `required="false"` (otherwise `INSTALL_FAILED_MISSING_FEATURE`).
 9. **Foreground services (targetSdk 35).**
    - Every `startForeground` needs a type that is declared in the manifest, plus the matching `FOREGROUND_SERVICE_<TYPE>` permission. Otherwise it throws `MissingForegroundServiceTypeException` or a `SecurityException`. `specialUse` also needs `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`.
+   - `MY_PACKAGE_REPLACED` is a listed exemption from the background FGS start limits, and the Android 15 type block names only `BOOT_COMPLETED`, so `specialUse` from either is OK. Test the boot rule with `adb shell am compat enable FGS_BOOT_COMPLETED_RESTRICTIONS <pkg>`.
    - Under the Android 15 rules, `BOOT_COMPLETED` receivers may not start `dataSync`, `mediaPlayback`, `camera`, `microphone`, `phoneCall` or `mediaProjection`. So moving the adhan to a `mediaPlayback` FGS started from `BootReceiver` is a risk.
    - On Android 15, an FGS started from the background on the strength of the overlay permission needs a *visible* overlay window.
    - `dataSync` and `mediaProcessing` FGS get a 6 h per day limit.
