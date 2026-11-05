@@ -20,6 +20,7 @@
 - "Most modern TVs no longer have overscan issues." Still: "Don't adjust or clip background screen elements to the overscan safe area. Instead, allow partial display of offscreen elements." That is what `bleed()` does. [tv-layouts]
 - Apple: "Inset primary content **60 points** from the top and bottom of the screen, and **80 points** from the sides ... regardless of TV compatibility settings or overscan cropping." = 60/80 px on our stage. [hig-layout]
 - Working rule for this repo: text and focusable items at least **96 px from the sides and 54 px from top/bottom** at Screen size 100%; Apple's 80/60 px is the hard floor. Background layers bleed.
+- Broadcast basis: ITU-R BT.1848-1 and EBU R 95 define graphics-safe as 5% (96 px / 54 lines, 1728x972) and action-safe as 3.5% (67 px / 38 lines, 1786x1004) on 1080p. [itu-bt1848] [ebu-r95] Known exceptions: the dock label's bottom is about y 1027 (1 px past 1026); the Kids dock frame's bottom is y 1044 (2 px past action-safe; its contents end about y 1015).
 - Screen size maths: at fit f the stage is scaled by s = f/100 (on a 1920x1080 window) and centred, so the border added on each side is `(1 - s) * 1920 / 2` px horizontally and `(1 - s) * 1080 / 2` px vertically (in window px). 97% adds 29/16 px, 94% 58/32, 91% 86/49, **88% 115/65**. A stage element at x from the edge ends up at `border + x * s` from the real screen edge. (computed from `fitStage()`)
 
 ### 3. Grid and columns
@@ -95,12 +96,12 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep). Geomet
 - Stage: `fitStage()` `MainActivity.java:763`, `FITS :760`, `BLEED 200 :783`. Kids `fitStage()` `KidsActivity.java:222`, same `FITS`. The video is `DRIFT_ROOM 2.2%` larger than the window on each side (`:3419`).
 - `at()` (`:837`): END gravity turns x into a right margin, BOTTOM turns y into a bottom margin.
 - **Right column** (`buildCenter()`, `:1037`): `c` is 1920 wide at y `CLOCK_TOP 34`, `Gravity.END`, right padding `RIGHT_EDGE 110`. Children top to bottom: weather row (temp 58 px Inter Light + sky 28 px), day row (24 px), clock row (340 px Fraunces, margins -62/-66), date row (date 34 px Inter SemiBold · Hijri 32 px Plex Arabic with font padding). Estimated heights (computed): 70 + 29 + (419 - 128) + 53 ≈ 443 px, so the column ends near **y 477**, about 17 px above `LINE_Y 494` (unverified on screen).
-- **Verse band** (`:1097-1133`): lineBox padding 56/6/56/10, kicker 20 px, Arabic Amiri Bold 38 px (32 px if over 110 characters) with font padding, English Cormorant italic 32 px (28 px if over 150 characters), max width 1700 each. One line each (computed): 6 + 24 + 6 + 104 + 2 + 39 + 10 ≈ **191 px → y 494..685**, 15 px above the strip. Amiri: hhea 1124/-634 (1.758 em per line) plus head yMax/yMin 1823/-909 padding (+0.974 em once). A second Arabic line at 38 px adds about 67 px and would reach about y 752, into the strip slot (computed).
+- **Verse band** (`:1097-1133`): lineBox padding 56/6/56/10, kicker 20 px, Arabic Amiri Bold 38 px (32 px if over 110 characters) with font padding, English Cormorant italic 32 px (28 px if over 150 characters), max width 1700 each. The build-time sizes 36/30 (`:1107`, `:1112`) are always replaced at show time (`:1614-1615`) and by the stress test (32/28, `:404-406`); don't flag them. One line each (computed): 6 + 24 + 6 + 104 + 2 + 39 + 10 ≈ **191 px → y 494..685**, 15 px above the strip. Amiri: hhea 1124/-634 (1.758 em per line) plus head yMax/yMin 1823/-909 padding (+0.974 em once). A second Arabic line at 38 px adds about 67 px and would reach about y 752, into the strip slot (computed).
 - Stress verse (Al-Baqarah 2:286, 145 characters) is 888 px wide at 32 px Amiri Bold, so one line; the stress English (146 characters) is 1448 px at 28 px Cormorant, one line under the 1700 max. (computed with HarfBuzz)
 - **Strip** (`assembleStrip()`, `:2435`): y 700..824, right margin 110, `Gravity.CENTER_VERTICAL|END`, no padding, no box, no lines; names then countdown (44 px), 36 px gap, divider, prayer times block 520 px wide, then the now-reciting part (hidden until playing). Prayer Arabic names hidden in the strip.
-- **Dock** (`buildBottom()`, `:1147`): frame 188 tall, 36 px from the bottom → y 856..1044; tiles 132 px centred → y 884..1016; tile margins 11 px (22 px between), dock padding 48. With 11 tiles the dock is about 1790 px wide, x 65..1855 (computed). Focused tile (1.2, lift 20, pivot bottom centre) tops out near **y 838**, 14 px below the strip slot (computed). Label at y about 1000 (`:1394`), x clamped 60..1860.
+- **Dock** (`buildBottom()`, `:1147`): frame 188 tall, 36 px from the bottom → y 856..1044; tiles 132 px centred → y 884..1016; tile margins 11 px (22 px between), dock padding 48. With 11 tiles the dock is about 1790 px wide, x 65..1855 (computed). Focused tile (1.2, lift 20, pivot bottom centre) tops out near **y 838**, 14 px below the strip slot (computed); neighbours scale 1.06 with a 5 px lift (`magnify()` `:1367-1368`), leaving 27 px focused-to-neighbour and 22 px neighbour-to-neighbour (computed). Label at y about 1000 (`:1394`), x clamped 60..1860. The lifted tile's bottom is y 996, so there is a **4 px gap** to the label's top; keep it if the lift or label y changes. Tiles stay at least **98 px** from the sides with `DOCK_MAX` (first tile x 124, focused 111, pushed neighbour 98); only the frame and glow reach x 65..1855.
 - Pill (80, 56) top left; old top cards (80, 56) 560x330; event chip at y 56 + 330 + 16. These sit on the left margin line 80 (below Google's 96).
-- **Kids** (`KidsActivity.java`): `place()` `:1896` uses absolute left/top. Welcome card (80, 56) `:457`; middle cards y 430, left 80..860 (`:535`), right 890..1840 (`:589`), `MID_SPLIT 890`, `MID_GAP 28`, `MID_BOTTOM = DOCK_Y - 30` (`:543`); `fitMiddle()` equalises the two heights and keeps them between welcome + 16 and the dock - 30. Dock row (80, `DOCK_Y 836`, 1760 x `DOCK_H 208`) → bottom **y 1044, 36 px from the bottom edge**; label at `DOCK_Y + DOCK_H - DOCK_NAME - 4` = y 988 (`:636`), clamped x 80..1840. `trim()` (`:1928`) gives back Baloo's air with negative padding (-0.2 em top, -0.26 em bottom).
+- **Kids** (`KidsActivity.java`): `place()` `:1896` uses absolute left/top. Welcome card (80, 56) `:457`; middle cards y 430, left 80..860 (`:535`), right 890..1840 (`:589`), `MID_SPLIT 890`, `MID_GAP 28`, `MID_BOTTOM = DOCK_Y - 30` (`:543`); `fitMiddle()` equalises the two heights and keeps them between welcome + 16 and the dock - 30. The gutter between the middle cards is 30 px (house value; Google's card spacing is 40 px on our stage): don't flag it per PR. Dock row (80, `DOCK_Y 836`, 1760 x `DOCK_H 208`) → bottom **y 1044, 36 px from the bottom edge**; label at `DOCK_Y + DOCK_H - DOCK_NAME - 4` = y 988 (`:636`), clamped x 80..1840. `trim()` (`:1928`) gives back Baloo's air with negative padding (-0.2 em top, -0.26 em bottom).
 - **Adhan** (`AdhanService.java`): `k = max(w,h)/1920` (`:110`); panel and card at 56 px side / 44 px top or bottom (`:254`, `:738`), card 560 px wide; alert band full width, 116 + 70 px fade, row centred (`:282-334`). Not scaled by Screen size: at 88% on a TV that really crops, the card's 44 px edge gap is what is left.
 - Vertical map of the home stage at rest (computed; confirm on a screenshot):
 
@@ -118,12 +119,13 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep). Geomet
 - Clock width per minute (computed, 340 px Fraunces, spacing -0.01): "11:11" 504 px, "8:08" 574, "12:58" 659, "23:58" 701, "10:00" 731. Other faces with `tnum` are constant (Outfit 784, Jost 776, Cormorant 700, Inter 775 px). Right alignment keeps the right edge still.
 
 ## Past findings
-None yet; lane created 2026-11-05 (split from lane 4).
+- 2026-11-05, PR #21 (docs): self-check. Fixed the false "end tiles past 96 px" claim; added the neighbour 1.06 / lift 5 tiles and the stale `magnify()` comment; recorded the build-time verse sizes, the 4 px tile-to-label gap, the Kids 30 px gutter and the broadcast safe areas.
 
 ## Lessons learned
 - 2026-11-05: Measure before you judge: font metrics plus HarfBuzz widths predict most overlaps (Amiri's padded line is 2.7 em tall). Confirm on a stress-test screenshot.
 - 2026-11-05: View bounds are not ink edges. Alignment is judged on the visible glyphs.
 - 2026-11-05: Check commit history before calling a layout a bug: the right-aligned column and the 100% default were deliberate.
+- 2026-11-05: Check focus-growth claims with the full `magnify()` maths, neighbours included.
 
 ## Open questions to research next
 - Real screenshots at 100% and 88% with the stress test: do the computed y values above match (column end about 477, verse end about 685, focused tile top about 838)?
@@ -131,7 +133,8 @@ None yet; lane created 2026-11-05 (split from lane 4).
 - Should the dock label and the Kids dock move up to the 54 px bottom line, or is 36 to 53 px fine on this TV (it doesn't crop at 100%)?
 - Should the adhan overlay follow the home Screen size (it lives in another app and ignores `fit`)?
 - Propose a named spacing scale (8/16/24/32/48/64 px) only as a comment-level guide, or leave the ad hoc values? (Polish only, no refactor without the owner.)
-- Find Material 3's own spacing page text (m3.material.io needs JavaScript; not opened) and Google TV's home-screen spec.
+- Find Material 3's own spacing tokens (m3.material.io needs JavaScript; not opened) and Google TV's home-screen spec.
+- Read the official bbc.co.uk subtitle guidelines (only an unverified mirror [bbc-subs-mirror] was opened).
 - What is the family's TV size and sofa distance? It sets the real arcmin of every size (Core 8).
 
 ## Source library
@@ -158,4 +161,7 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [wiklund-2019] https://consensus.app/papers/details/6a523653b68b5be49d4c2f7f922d2f12/ (Wiklund et al. 2019): 20 to 22 arcmin character height (abstract only).
 - [yeh-2012] https://consensus.app/papers/details/4098900e23755a5c96d65f7504e5e6a8/ (Yeh et al. 2012, CISP): subtitle size and preferred viewing distance (abstract only).
 - [autosize] https://developer.android.com/develop/ui/views/text-and-emoji/autosizing-textview: autosize needs a bounded view (not wrap_content), defaults 12 to 112 sp.
-- To open next: m3.material.io spacing and layout pages (JavaScript only), Google TV home-screen references, BBC subtitle guidelines (blocked this session).
+- [itu-bt1848] https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.1848-1-201510-I!!PDF-E.pdf: graphics-safe 5% and action-safe 3.5% areas. Checked 2026-11-05.
+- [ebu-r95] https://tech.ebu.ch/docs/r/r095.pdf: the same safe areas for 16:9 HD. Checked 2026-11-05.
+- [bbc-subs-mirror] https://bbcbreakingnews.pages.dev/accessibility/forproducts/guides/subtitles: unverified mirror of the BBC subtitle guidelines (online subtitles at most 68% of the width, inside the central 75% x 90%, at most 2 lines). Checked 2026-11-05.
+- To open next: m3.material.io spacing and layout pages (JavaScript only), Google TV home-screen references, the official bbc.co.uk subtitle guidelines.

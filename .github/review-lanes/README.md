@@ -28,17 +28,19 @@ Every part of the three apps has owners. A PR that touches an area gets all its 
 |------|-----------|
 | Clock | 4, 9, 10, 11, 12 |
 | Weather and the Gregorian / Hijri dates | 1, 6, 9, 10 |
-| Verse and hadith band | 6, 10, 11, 9 |
-| Prayer strip, next adhan, countdown | 6, 1, 9, 10 |
-| Adhan popup, 10-minute reminder, corner card (adhan app) | 6, 1, 15, 5, 12 |
+| Verse and hadith band | 6, 10, 11, 9, 12 |
+| Prayer strip, next adhan, countdown | 6, 1, 9, 10, 11 |
+| Adhan popup, 10-minute reminder, corner card (adhan app) | 6, 1, 15, 5, 12, 10, 11 |
 | Dock and app icons, All apps grid | 13, 15, 5, 12 |
 | Remote buttons (RemoteKeys) | 5, 2, 1 |
-| Wallpaper video, dimming, scrims, glass tint | 14, 11, 3 |
-| Quran player panel and recitation line | 6, 15, 1, 3 |
-| Calendar and Islamic days | 6, 15, 9 |
-| PIN pads, YouTube lock, Parent settings | 2, 15, 5 |
+| Wallpaper video, dimming, scrims, glass tint | 14, 11, 3, 12 |
+| Quran player panel and recitation line (and its `StarField` background) | 6, 15, 1, 3, 12, 14 |
+| Calendar and Islamic days | 6, 15, 9, 11 |
+| PIN pads, YouTube lock, Parent settings | 2, 15, 5, 11, 12 |
 | Screen size and overscan | 9, 5 |
-| Kids Corner: home, worlds, apps, cartoons, rest and bedtime, kids lock | 2, 4, 13, 14, 15, 6 (Good Words) |
+| Kids Corner: home, worlds, apps, cartoons, rest and bedtime, kids lock | 2, 4, 5, 9, 10, 11, 12, 13, 14, 15, 6 (Good Words) |
+| Splash intro (`IntroView`) | 12, 10, 4 |
+| Ambient mode and night dim | 12, 14, 3 |
 | Screensaver (Aerial Views option) | 14, 1 |
 | Build, signing, install as an update, CI | 7 |
 | What the owner checks on the TV | 8 |

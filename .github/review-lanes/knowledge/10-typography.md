@@ -1,7 +1,7 @@
 # Lane 10 knowledge: Typography
 
 ## How to use this file
-- Read this whole file before every review, then the brief `../10-typography.md`. Lane 4's knowledge file has contrast maths and the Centre stage spec; lane 6's has Arabic glyph coverage and digit locale facts. Don't repeat them here; link to them.
+- Read this whole file before every review, then the brief `../10-typography.md`. Lane 11's knowledge file has contrast maths, lane 4's the Centre stage spec; lane 6's has Arabic glyph coverage and digit locale facts. Don't repeat them here; link to them.
 - Research online whatever the PR touches that this file does not cover (a new font, weight, feature, API). Open the pages yourself and cite only what you opened.
 - After every review, send the PR thread short, dated additions for **Past findings**, **Lessons learned**, **Source library** and **Open questions**. The PR thread commits them here in the same PR.
 - Keep entries short. Past about 400 lines, condense the oldest Past findings and Lessons. Never delete a source that is still cited.
@@ -26,16 +26,16 @@
 ### 3. Tracking (letter-spacing)
 - Butterick: add **5 to 12%** letterspacing (0.05 to 0.12 em) to all caps and small caps, especially at small sizes; "Lowercase letters don't ordinarily need letterspacing"; too much is when another letter would fit between. [butterick-ls]
 - Caps: only for short labels "shorter than one line"; always letterspace and kern them; never whole paragraphs. [butterick-caps]
-- SF Pro's own tracking (a good model for a UI sans): +0.40 pt at 29 to 33 pt falling to +0.07 at 76 pt and 0 from 80 pt; negative below 23 pt. Large sizes want less positive tracking. [hig-typography]
+- SF Pro's own tracking (a good model for a UI sans, in pt, mixed-case text): negative from 13 to 23 pt, positive at 11 pt and below; +0.40 pt at 29 pt (= +0.014 em) falling to +0.07 at 76 pt and 0 from 80 pt. Large sizes want less positive tracking. Convert pt to em before comparing with ours. [hig-typography]
 - Android `setLetterSpacing` is in em ("Typical values for slight expansion will be around 0.05. Negative values tighten text."). [textview-ref]
 - **Arabic is a cursive script**: CSS Text 3 says a renderer that cannot elongate cursively "must not apply spacing between any pair of that script's typographic letter units at all"; also, non-zero spacing should turn off optional ligatures. [css-text-3] alreq: moving joined letters closer or further "creates undesirable results"; stretching (kashida) is not letter-spacing. [alreq] Android's Minikin skips letter-spacing for cursive scripts (see lane 6 knowledge, [minikin] there).
-- Our values: kicker 0.18 (above Butterick), verse kicker 0.16, adhan card kicker 0.08, Kids 0.12 / 0.16 / 0.2, dock label 0.02, AM/PM 0.08, clocks -0.03 to 0.
+- Our values: kicker 0.18 (above Butterick), verse kicker 0.16, splash kicker 0.22 (`IntroView.java:58`, Paint), adhan card kicker 0.08, adhan Settings 0.1 (`SettingsActivity.java:102`), Kids 0.12 / 0.14 (`section()` `:1972`) / 0.16 / 0.2, dock label 0.02, AM/PM 0.08, clocks -0.03 to 0. That is 8 caps values (0.08 to 0.22); move toward one (about 0.10 to 0.12).
 
 ### 4. Line height (leading) and vertical metrics
 - Butterick: "the optimal line spacing is between **120% and 145%** of the point size." [butterick-lsp] Google TV body 1.33 to 1.5; tvOS Body 36/29 = 1.24, Title 1 96/76 = 1.26. [tv-type-tokens] [hig-typography]
 - Apple: with three or more lines, avoid tight leading even where height is limited. [hig-typography]
 - Android: `setLineSpacing(add, mult)` multiplies each line except the last; `setLineHeight(unit, value)` sets baseline-to-baseline distance (API 34 for the unit form); `setFirstBaselineToTopHeight`/`setLastBaselineToBottomHeight` set padding from font metrics and can clip if the view is too short; `includeFontPadding` (default true) adds room "for accents that go above the normal ascent and descent"; `fallbackLineSpacing` (default true) lets a taller fallback font grow the line. [textview-ref]
-- Target 35 (Android 15): `elegantTextHeight` defaults to **true** ("replacing the compact font used by default with some scripts that have large vertical metrics"), Arabic is named for testing; `useBoundsForWidth` gives cursive or overhanging glyphs room, but the start-overhang shift is **off** by default. [a15-behavior]
+- Target 35 (Android 15): `elegantTextHeight` defaults to **true** ("replacing the compact font used by default with some scripts that have large vertical metrics"), Arabic is named for testing; `useBoundsForWidth` gives cursive or overhanging glyphs room, but the start-overhang shift is **off** by default. [a15-behavior] Android 15+ devices only: the gate (`targetSdk >= 35`) is in Android 15's framework, and `setUseBoundsForWidth` is API 35. The box is Android TV 14, so line heights come from hhea ascent/descent plus `includeFontPadding` (inferred, unverified on the box). If the box updates to Android 15, recheck every Amiri/Plex line. [aosp-elegant] How the hard-coded metrics clip: [cozens-clipping].
 - What a TextView line is on Android: font size x (hhea ascent + |descent|) / upm with padding off; padding on adds the `head` yMax/yMin overshoot once at top and bottom. Values for our fonts are in "This box and this code".
 
 ### 5. Line length, wrapping, truncation
@@ -70,7 +70,7 @@
 ### 9. Text over video
 - Google TV: use a scrim behind text on images; avoid images with text. [tv-carousel]
 - Apple (visionOS context, still useful): for text with no surface behind it, consider making it bold rather than relying on shadows. [hig-typography]
-- Our practice (lane 4): tight shadow radius 4 to 8, dy 2 to 3, 40 to 70% black; contrast maths in lane 4 knowledge.
+- Our practice (lane 4): tight shadow radius 4 to 8, dy 2 to 3, 40 to 70% black; contrast maths in lane 11 knowledge.
 
 ### 10. Review recipes
 Font audit (version, metrics, features, coverage) with fontTools:
@@ -98,29 +98,41 @@ Verified on 2026-11-05 (line numbers drift; re-grep).
   - `fraunces_soft_light.ttf`: name "Fraunces 9pt Black", "Version 1.000;[b76b70a41]", upm 2000, wght 300, static, 698 glyphs, 1956/-510, 2050/-493; GSUB `case liga ss01` only (no `tnum`, `lnum`); proportional digits (advances 687 to 1133).
   - `inter_medium/semibold/bold.ttf`: Inter 4.001, upm 2048, 2871 glyphs, 1984/-494, yMax about 2275; GSUB `calt ccmp dnom frac locl numr pnum tnum` (no `case`, `zero`, `ss0x`, `cv`). x-height 0.546, cap 0.728.
   - `inter_light/extralight.ttf`: Inter **3.019**, upm 2816, 498 glyphs, 232 characters (no ●, ★), 2728/-680.
-  - `plex_arabic_medium/semibold.ttf`: 1.101, upm 1000, 1085/-415, yMax/yMin about 1100/-580; `calt ccmp ... rlig`, no `tnum` but all digits (Western and Arabic-Indic) 600 wide.
+  - `plex_arabic_medium/semibold.ttf`: 1.101, upm 1000, 1085/-415, yMax/yMin about 1100/-580; `calt ccmp ... rlig`, no `tnum`; Western digits all 600 wide, **Arabic-Indic digits proportional** (٠288 ١271 ٢495 ٣632 ٤502 ٥543 ٦505 ٧537 ٨537 ٩526).
   - `amiri_bold/regular.ttf`: 1.002, upm 1000, ~5300 glyphs, **Arabic-only cmap (1104 characters: no Latin letters, Western digits or colon)**, hhea 1124/-634 (1.758 em line), yMax/yMin 1823/-909 (2.73 em with font padding); GSUB `ccmp dnom fina init locl medi numr pnum rlig`, GPOS `curs kern mark mkmk`.
   - `cormorant_light.ttf`, `cormorant_semibold_italic.ttf`: Cormorant Garamond 4.001, 373 glyphs, 924/-287, x-height 0.386; default figures **old-style proportional** (3 descends to -275); `tnum` → `three.tosf` (tabular old-style), `tnum, lnum` → `three.tf` (tabular lining). Full name reads "Cormorant Garamond Light SemiBold Italic" (stale name).
-  - `outfit_thin.ttf` 1.100, `jost_extralight.ttf` 3.710, `chivo_mono_bold.ttf` 1.008: small Latin subsets (217 to 248 characters) with `tnum`.
+  - `outfit_thin.ttf` 1.100 (224 characters) and `jost_extralight.ttf` 3.710 (217): small Latin subsets with `tnum`. `chivo_mono_bold.ttf` 1.008: 642 characters / 800 glyphs, with `tnum`.
   - `baloo_medium/bold/extrabold.ttf` (kids and adhan): Baloo Bhaijaan 2 1.701, 1080/-632 (1.71 em, so Kids' 0.8 line spacing and `trim()`), has Arabic-Indic digits and `tnum`; missing ●, ★ and Quranic marks (lane 6).
 - `text()` home (`MainActivity.java:793`): px size, padding off, shadow at 100 px+. About 17 views turn padding back on (`lineAr`, `skyText`, `hijriText`, `adhanAr`, `eventText`, the Quran grid and player titles, `nowSurah`, `nowReciter`, ...; grep `setIncludeFontPadding(true)`). `kicker()` `:863`.
-- Clock (`applyClockFont()` `:1012`): sizes `{340, 310, 306, 330, 304}`, tracking `{-0.01, -0.02, 0, -0.01, -0.03}`, AM/PM lift `{58, 50, 50, 56, 48}`, AM/PM Inter Light 50 px for Inter, else the clock face. Width of the time at 340 px Fraunces (HarfBuzz): "11:11" 504, "8:08" 574, "12:58" 659, "23:58" 701, "10:00" 731 px.
+- Clock (`applyClockFont()` `:1012`): sizes `{340, 310, 306, 330, 304}`, tracking `{-0.01, -0.02, 0, -0.01, -0.03}`, AM/PM lift `{58, 50, 50, 56, 48}`, AM/PM Inter Light 50 px for Inter, else the clock face. Width of the time at 340 px Fraunces (HarfBuzz, with -0.01 tracking; without it, 521 to 748 px): "11:11" 504, "8:08" 574, "12:58" 659, "23:58" 701, "10:00" 731 px.
 - Verse (`nextLine()` `:1605`): Arabic 38 → 32 px over 110 characters; English 32 → 28 px over 150; max width 1700; English line spacing 1.05 (below Butterick's 1.2 floor, but usually one line). Stress verse: Arabic 888 px at 32 px, English 1448 px (146 characters) at 28 px, one line each.
 - Strip: adhan English 32 px SemiBold vs Arabic 26 px Plex SemiBold (Arabic smaller than its English); countdown 44 px Inter Light `tnum` (real tabular in Inter); prayer times 24 px SemiBold `tnum`, names 22 px Medium.
 - Home sizes in use (px): 20 (kickers), 22, 24, 26, 28, 30, 32, 34, 38, 44, 50, 58, 60, 66, 168, 340 (plus clock alternates). Kids sizes: mostly 30 to 64, plus 72, 88, 92, 112 (clock), 140, 200. Adhan: 20 to 64.
 - Kids `text()` (`KidsActivity.java:1902`): line spacing 0.8, `trim()` -0.2/-0.26 em, `ink()` shadow by luminance. Caps tracking: "WELCOME" 0.2 (`:439`), world chip 0.12, `charFrom` 0.16, `wordKick` 0.2. No `setFontFeatureSettings` anywhere in Kids.
+- Unused font files, still packed into the APKs (2026-11-05): `app/.../font/amiri_regular.ttf` (317 KB), the app's `chivo_mono_bold.ttf` (59 KB; only the adhan app uses Chivo) and `adhan/.../font/inter_light.ttf` (62 KB): about 440 KB to drop in a polish PR.
+- `nowSurah` / `nowReciter` use `setMaxLines(1)` with no ellipsize (`MainActivity.java:2926-2927`), so long names are cut silently at the edge (against the no-cut rule). Check with the longest reciter name.
+- `adhanName` is built with autosize 30..38 (`:917-919`), then switched to a fixed 32 px (`:2449-2450`); `maxLines(1)` stays.
+- All 3 apps: compileSdk/targetSdk 35 (`*/build.gradle.kts`). The box runs Android TV 14, so Android 15 text defaults don't apply.
 - Adhan (`AdhanService.java`): countdown and times in Chivo Mono Bold (`:209`, `:228`), clock Baloo ExtraBold 64 px, alert 46 px Inter Medium + 50 px Plex SemiBold gold (Arabic +4 px), verse card Amiri Bold 34 px RTL, padding on, line spacing 1.15 (`:710-716`), English Baloo Medium 26 px line spacing 1.1, kicker 20 px Baloo Bold tracking 0.08.
 
 ## Past findings
-None yet; lane created 2026-11-05 (split from lane 4).
+- 2026-11-05, PR #21 (docs only): first lane 10 review. No Must fix. Should fix: Android 15 text defaults were described as if they apply on the Android 14 box; the Plex Arabic-Indic digit width claim was wrong; the tracking inventory was missing 0.22/0.14/0.1. Nice: Chivo character count, unused fonts, Fraunces width note, SF wording, missing size 50.
 
 ## Lessons learned
 - 2026-11-05: Shape the text to learn what a feature does: Cormorant's `tnum` gives old-style tabular digits, which reading the feature list alone would not reveal.
 - 2026-11-05: Check the cmap of every face a TextView uses: Inter has no Arabic, so mixed kickers use the system Arabic face; Amiri here has no Latin.
 - 2026-11-05: Version strings matter: the app mixes Inter 3.019 and 4.001, and Amiri 1.002 is one release behind.
+- 2026-11-05: Android "behavior changes for apps targeting N" also need the device to run Android N. Check the box's OS (Android TV 14) before applying a target-35 default.
+- 2026-11-05: Check digit widths for every numeral system a face has. Plex's Western digits are tabular, its Arabic-Indic digits aren't.
+- 2026-11-05: To find every tracking value, grep `setLetterSpacing` across all three apps and Canvas views (`IntroView` uses `Paint.setLetterSpacing`).
+- 2026-11-05: Apple's tracking table is in pt. Convert it to em before comparing (+0.40 pt at 29 pt = 0.014 em).
 
 ## Open questions to research next
-- Which system Arabic font draws the kicker Arabic on this Android TV 14 box with `elegantTextHeight` on (Noto Naskh Arabic or the UI cut), and does it clash with Plex? Screenshot a kicker.
+- Which system Arabic font draws the kicker Arabic on this Android TV 14 box (Noto Naskh Arabic or the UI cut), and does it clash with Plex? Screenshot a kicker.
+- On the box (Android 14), screenshot a Quran line and a Plex Hijri line to confirm metrics-based line height (no elegant metrics). Repeat if the box ever gets Android 15.
+- Is any Arabic-Indic number that changes on screen set in a Plex face (Hijri date, toasts like "بعد ١٠ دقائق")? If so, does it wobble?
+- How long is the longest reciter name at 24 px Plex, and the longest surah name at 26 px Amiri, against the now-reciting box width?
+- Type-size count (from lane 4): the home uses about 16 sizes vs NN/g's 3 and Smashing's 5 to 6. Audit in a whole-app review.
 - Re-instance Fraunces at opsz 144, SOFT 100, wght 300 with `tnum` (fontTools `instancer` on the variable font) and compare stem contrast and width with the bundled file.
 - Would Inter Display (or Inter's opsz axis in v4) suit the 44 to 60 px numbers better than Inter Light v3.019?
 - Kickers: 22 px at 0.10 to 0.12 tracking vs today's 20 px at 0.18; mock both at 3 m.
@@ -133,7 +145,7 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [tv-typography] https://developer.android.com/design/ui/tv/guides/styles/typography: TV type roles, legibility, pairing, optical size, avoid decorative fonts.
 - [tv-type-tokens] https://raw.githubusercontent.com/androidx/androidx/androidx-main/tv/tv-material/src/main/java/androidx/tv/material3/tokens/TypeScaleTokens.kt: TV sizes, line heights, tracking, weights.
 - [mdc-typography] https://raw.githubusercontent.com/material-components/material-components-android/master/docs/theming/Typography.md: Material 3 baseline and emphasized type scale.
-- [hig-typography] https://developer.apple.com/design/human-interface-guidelines/typography (read via https://developer.apple.com/tutorials/data/design/human-interface-guidelines/typography.json): tvOS sizes and leading, 29/23 pt, avoid light weights, SF tracking table.
+- [hig-typography] https://developer.apple.com/design/human-interface-guidelines/typography (read via https://developer.apple.com/tutorials/data/design/human-interface-guidelines/typography.json): tvOS sizes and leading, 29/23 pt, avoid light weights, SF tracking table. The JSON also has the full SF Pro / SF Compact tracking tables (6 to 96 pt) and the tvOS table with an "Emphasized weight" column (Bold); re-checked 2026-11-05.
 - [hig-rtl] https://developer.apple.com/design/human-interface-guidelines/right-to-left (via .../right-to-left.json): Arabic +2 pt beside Latin caps, alignment, numerals.
 - [butterick-ls] https://practicaltypography.com/letterspacing.html: 5 to 12% for caps, none for lowercase.
 - [butterick-lsp] https://practicaltypography.com/line-spacing.html: 120 to 145% line spacing.
@@ -146,7 +158,9 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [textview-ref] https://developer.android.com/reference/android/widget/TextView: letter-spacing, line height, font padding, fallback spacing, elegant height, ellipsize, font features.
 - [linebreaker-ref] https://developer.android.com/reference/android/graphics/text/LineBreaker: SIMPLE, HIGH_QUALITY, BALANCED.
 - [autosize] https://developer.android.com/develop/ui/views/text-and-emoji/autosizing-textview: autosize defaults and wrap_content warning.
-- [a15-behavior] https://developer.android.com/about/versions/15/behavior-changes-15: elegantTextHeight default true, useBoundsForWidth, start overhang.
+- [a15-behavior] https://developer.android.com/about/versions/15/behavior-changes-15: elegantTextHeight default true, useBoundsForWidth, start overhang (Android 15+ devices only).
+- [cozens-clipping] https://simoncozens.github.io/android-clipping: how Views clip text by ascent/descent; `includeFontPadding` uses glyph yMax/yMin; `elegantTextHeight` replaces font metrics with hard-coded 1900/-500 (padding off) or 2500/-1000 (padding on) per 2048 UPM; fallbackLineSpacing. Checked 2026-11-05.
+- [aosp-elegant] https://gitlab.e.foundation/e/os/android_frameworks_base/-/commit/c6d3e0b1a2ff12870acd6aeec47326526b68b781: mirror of the AOSP commit that skips hard-coded metrics for apps with targetSdk >= 35 (Android 15 framework). Checked 2026-11-05.
 - [tv-carousel] https://developer.android.com/design/ui/tv/guides/components/featured-carousel: scrim behind text over imagery.
 - [fraunces-readme] https://raw.githubusercontent.com/undercasetype/Fraunces/master/README.md: axes and optical size.
 - [inter-readme] https://raw.githubusercontent.com/rsms/inter/master/README.md: design intent, features, Display subfamily.

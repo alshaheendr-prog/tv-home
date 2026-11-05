@@ -51,9 +51,9 @@
 - Memory: a 168 px ARGB_8888 icon is 168 x 168 x 4 = **113 KB**; 11 dock + about 40 grid icons is about 5.7 MB (arithmetic; lane 3 owns the budget).
 
 ### 7. Emoji and symbols as icons
-- Android's Noto Color Emoji uses the **CBDT/CBLC** bitmap colour-font format. [noto-emoji] A bitmap emoji enlarged far beyond its strike size goes soft (design judgement; the strike size, about 136 px, is **unverified**, see Open questions).
-- Emoji newer than the device's font show as **tofu (☐)**; Android 11 and lower can't update the emoji font. [emoji2] Android TV 14 is fine for what we use (the newest, "🫧" bubbles, is Emoji 14.0: **unverified** version mapping).
-- Symbol glyphs not in the bundled font fall back to a system font with a different weight, width and baseline. Verified with fontTools (2026-11-05): Inter has ▶ ◀ ▼ ✓ › ● ⌫ ★ ∞ ✗ but **not** ⭐ ✕ ⋯ ⏮ ⏭ ⏸ ❚; Inter Light/ExtraLight only have ›; Baloo has ▶ ◀ ▼ › ∞ but **not** ★ ✓ ✗ ⌫ ●.
+- Android's Noto Color Emoji uses the **CBDT/CBLC** bitmap colour-font format. [noto-emoji] A bitmap emoji enlarged far beyond its strike size goes soft. Noto Color Emoji 2.047 has one strike at **109 ppem (136x128 px bitmaps)**, so emoji stay sharp to about 109 px text; our largest is 72 px (Kids Good Words, `KidsActivity.java:582`). Verified with fontTools 2026-11-05.
+- Emoji newer than the device's font show as **tofu (☐)**; Android 11 and lower can't update the emoji font. [emoji2] Android TV 14 is fine for what we use: the newest, "🫧" (Emoji 14.0), is in Noto Emoji 2.047, and Android got Emoji 15 in the December 2022 feature drop [emoji15] (not seen on the box).
+- Symbol glyphs not in the bundled font fall back to a system font with a different weight, width and baseline. Verified with fontTools (2026-11-05): Inter has ▶ ◀ ▼ ✓ › ● ⌫ ★ ∞ ✗ but **not** ⭐ ✕ ⋯; Inter Light/ExtraLight only have ›; Baloo has ▶ ◀ ▼ › ∞ but **not** ★ ✓ ✗ ⌫ ● ❚ (the Kids "❚❚" pause mark falls back). The Quran player's ⏮ ⏭ ⏸ are only keys: `PlayerIcon` draws them as anti-aliased vectors (`MainActivity.java:601-607`).
 - Rule: a symbol that acts as an icon (keypad delete, transport controls, All apps) should be a vector drawable or a glyph we ship; emoji only where colour and playfulness are the point (Kids Good Words, weather).
 
 ### 8. Kids art and copyright
@@ -94,7 +94,7 @@ Check the APK's launcher art: `aapt2 dump badging app-release.apk | grep -E "ico
 
 ## This box and this code
 Verified by reading the code and measuring files on 2026-11-05 (line numbers drift; re-grep).
-- **Our launcher art** (all in bare `res/drawable/`, so mdpi): home `icon.png` 192x192 RGB, 7.8 KB, 141 colours, orange-to-crimson gradient with a yellow round face and two eyes, edges not anti-aliased; home `banner.png` 320x180, "Family TV Home" in a white serif beside the face. Kids `icon.png` 512x512 RGB = `C-happy-star-square.png` (byte-identical), a smiling yellow star on a teal-to-blue gradient; Kids `banner.png` 320x180, the star inside a rounded-square tile plus "Kids Corner" in a rounded bold face. Adhan `icon.png` 192x192 with **2 colours** (gold crescent on navy, hard stair-stepped edges); Adhan `banner.png` 320x180, crescent plus "Adhan / أذان".
+- **Our launcher art** (all in bare `res/drawable/`, so mdpi: Android scales it ×2 at xhdpi, ×1.33 at tvdpi [densities]; 192 px icons become blurry 384 px, the 512 px Kids icon is decoded at 1024 px, about 4 MB, banners are upscaled to 640x360): home `icon.png` 192x192 RGB, 7.8 KB, 141 colours, orange-to-crimson gradient with a yellow round face and two eyes, edges not anti-aliased; home `banner.png` 320x180, "Family TV Home" in a white serif beside the face. Kids `icon.png` 512x512 RGB = `C-happy-star-square.png` (byte-identical), a smiling yellow star on a teal-to-blue gradient; Kids `banner.png` 320x180, the star inside a rounded-square tile plus "Kids Corner" in a rounded bold face. Adhan `icon.png` 192x192 with **2 colours** (gold crescent on navy, hard stair-stepped edges); Adhan `banner.png` 320x180, crescent plus "Adhan / أذان".
 - The three icons share no common shape or corner logic: two are flat full squares, the Kids one is a soft illustrated gradient. Readable as a family only through warm gold/yellow.
 - Kids icon options on the network share (read-only): Night house, Rocket, Happy star, each as full art (512 RGBA with rounded corners), `-square` (512 RGB full-bleed) and `-banner` (320x180). `icon-choices.png` shows the three; Happy star was chosen. The bundled Kids banner (31,039 bytes) differs from `C-happy-star-banner.png` (36,809 bytes).
 - Manifests: `android:icon="@drawable/icon"`, `android:banner="@drawable/banner"` in all three apps (`app` `:21-22`, `kids`, `adhan`). No adaptive icon, no `mipmap-*`.
@@ -108,34 +108,37 @@ Verified by reading the code and measuring files on 2026-11-05 (line numbers dri
 - Built-in "world" sample clips on the share (`/mnt/project-files/tv-box/wallpapers/`) contain drawn look-alikes of Kirby, Mario hills and pipes, Sonic loops and dragon balls. They are not in the repo and the setup script deletes the old ones from the TV (`Kids Corner setup.ps1:61`). Keep it that way.
 
 ## Past findings
-None yet; lane created 2026-11-05 (split from lane 4).
+- 2026-11-05, PR #21 (docs only): no art changes. Fixed four fact errors in the lane's own files: ⏮⏭⏸ are drawn by `PlayerIcon`, not text; "❚❚" is in the Kids player, not the home; bare `drawable/` means runtime ×2 upscaling, not just "minimum size"; the Kids no-banner panel is rounded (26), only the icon inside is raw.
 
 ## Lessons learned
 - 2026-11-05: Measure assets, don't trust their look in a thumbnail: counting colours and zooming showed the adhan icon has no anti-aliasing at all.
 - 2026-11-05: "Drawn from each app's own icon/banner" was only half true: the home dock uses icons only; banners appear only in Kids "Big banners". Read the loader, not the comment.
 - 2026-11-05: A symbol in a string is an icon with an unknown font. Check the bundled font's cmap before approving it.
+- 2026-11-05: Check whether a symbol string is drawn or only used as a key (`PlayerIcon` uses "⏮" only to pick a shape).
+- 2026-11-05: A bare `drawable/` asset is mdpi, so its problem is runtime scaling, not just its pixel size.
 
 ## Open questions to research next
 - Is the box UI composed at 1080p or 4K (`adb shell wm size`, `dumpsys SurfaceFlinger`)? If 4K, raise `fullBleed` to about 320 px (lane 3 to weigh the memory).
-- What density does the box report (`adb shell wm density`: 320 xhdpi or 213 tvdpi)? It decides which bucket Android picks for our launcher art.
+- What density does the box report (`adb shell wm density`: 320 xhdpi or 213 tvdpi)? It decides whether our bare-`drawable/` art is upscaled ×2 or ×1.33.
 - How do Google TV's Your apps row and Settings actually show our icon vs banner on this box, and with what mask and corner radius? Screenshot it.
-- Noto Color Emoji strike size on Android 14 (open the font's CBLC table with fontTools on a device copy, `/system/fonts/NotoColorEmoji.ttf`).
-- Which emoji version does Android TV 14 ship (is 🫧 supported)? Check on the box.
+- Answered 2026-11-05: Noto Color Emoji 2.047 has one strike at 109 ppem (136x128 px). A device copy of the font could still differ.
+- Answered 2026-11-05: 🫧 (Emoji 14.0) is in Noto 2.047 and Android has had Emoji 15 since Dec 2022 [emoji15]. Still to see on the box.
 - Should the home draw other apps' banners (as Google TV does) or stay with square icons (as tvOS and the chosen spec do)? Design question for lane 4, not a feature.
-- Adaptive banner XML format for TV (two layers, 16:9): find the official sample.
+- Adaptive banner XML format for TV: partly answered 2026-11-05. [tv-icon] says "two layers" like adaptive launcher icons, but gives no layer sizes and no XML sample. Sizes still unknown.
 - Material 3 icon and shape guidance (m3.material.io was blocked by the proxy on 2026-11-05).
 - Nintendo, Sega, Toei and Mojang fan-content policies: what exactly do they allow for private, non-commercial use?
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
-- [tv-icon] https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines: banner and icon density tables, adaptive banner, no themed icons, banner do's and don'ts.
+- [tv-icon] https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines: banner and icon density tables, adaptive banner (two layers; no sizes or XML sample), no themed icons, banner do's and don'ts, launcher icon used in Google TV's Your apps row (re-checked 2026-11-05).
 - [tv-start] https://developer.android.com/training/tv/start/start: icon and banner both required, 320x180 xhdpi, text in the image, per language.
 - [tv-quality] https://developer.android.com/docs/quality-guidelines/tv-app-quality: TV-LB, TV-BN, TV-4K.
 - [tv-patterns-2014] https://spot.pcc.edu/~mgoodman/developer.android.com/preview/tv/design/patterns.html: archived 2014 Android TV patterns page (banner rule, 1920x1080 backgrounds). Old; use only for history.
 - [adaptive] https://developer.android.com/develop/ui/views/launch/icon_design_adaptive: 108 dp layers, 66 dp safe zone, 48 dp minimum logo, 18 dp reserved, no masks in layers.
 - [aid-ref] https://developer.android.com/reference/android/graphics/drawable/AdaptiveIconDrawable: 108/72/18 dp, extra inset fraction, `getIconMask`.
 - [play-icon] https://developer.android.com/distribute/google-play/resources/icon-design-specifications: 512 px, 1024 KB, full square, 30% radius, no baked shadows, keylines, forbidden badges.
-- [densities] https://developer.android.com/training/multiscreen/screendensities: density buckets, tvdpi 1.33x, nodpi, mipmap, launchers upscale up to 25%.
+- [densities] https://developer.android.com/training/multiscreen/screendensities: density buckets, tvdpi 1.33x, nodpi, mipmap, launchers upscale up to 25%. Quote: "default resources ... designed for the baseline pixel density (mdpi) and resizes those bitmaps" (re-checked 2026-11-05).
+- [emoji15] https://www.androidcentral.com/apps-software/emoji-15-android-colors-customization: Android got Emoji 15 in the December 2022 feature drop. Checked 2026-11-05.
 - [vector] https://developer.android.com/develop/ui/views/graphics/vector-drawable-resources: vector drawables and why they suit icons.
 - [load-bitmap] https://developer.android.com/topic/performance/graphics/load-bitmap: `inJustDecodeBounds`, `inSampleSize`, decode to the view's size.
 - [pm-ref] https://developer.android.com/reference/android/content/pm/PackageManager: `getApplicationIcon`, `getApplicationBanner`, `getActivityBanner(Intent)`.

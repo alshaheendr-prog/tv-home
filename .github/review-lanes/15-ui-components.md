@@ -11,9 +11,10 @@ Three apps, one family: the home launcher (`app/`, Inter + gold on night-blue gl
 - **Home focus language** (`app/.../MainActivity.java`): `focusGlass()` (~`:1939`) is "brighter glass with a gold edge" (white 28% to 12% gradient, 3px `0xE6F1D58A` stroke) plus a scale and, on some items, `goldLift()` (gold system shadow). Scales in use: dock 1.2 (hero, with neighbour push, lift and `BrandGlow`), PIN keys 1.12, All apps 1.1, player buttons 1.08, surah cells 1.07, Quran panel buttons 1.06, parent rows and reciter tiles 1.03, calendar rows 1.02.
 - **Home components:** dock tiles (`addTile` ~`:1211`, `magnify` ~`:1363`, arrange mode with a 4px gold ring and `ARRANGE_HINT`); PIN pad (`buildPin` ~`:2028`, round 96px keys, press dip 0.94, damped shake, red/green dot flash); panels (`overlay()` ~`:1871` scrim, `show()` ~`:1898` fade and rise, `panelCard()` with `PanelBg`, `listCard()`, `panelHint()` pill); All apps grid (~`:2307`, hold-OK `appMenu` ~`:2360`, `menuButton` ~`:2394`); Parent settings `parentRow()` (~`:3324`, OK cycles the value); Quran surah cells (~`:2598`), reciter tiles (~`:2690`, selected = `goldEdge()` + gold text + check mark), player buttons (`playerButton` ~`:600`); calendar rows (~`:3284`); the message pill (`toast()` ~`:844`, `pillText` ~`:1136`, 3.5 s, shared with the 10-minute and Jumu'ah reminders).
 - **Glass:** `Glass.java` (tint + frost + sheen + bright top edge, accent-tinted), `GlassFrame` (glow rings + optional blurred backdrop + `Glass`), `PanelBg.java` (night-blue panel with a gold hairline), and plain `glass()` `GradientDrawable`s for small pills and buttons.
-- **Kids focus language** (`kids/.../KidsActivity.java`): focused buttons and PIN keys **invert** to a solid white (or gold) fill with dark ink, which matches the tv-material default; dock tiles grow with a label; parent rows and app cells only brighten their background (no scale). Kids PIN keys are rounded rectangles at 1.06, with a short 3-step shake and no success flash. Rest screen `buildRest()` (~`:1112`); cartoons have an empty state (`cartoonsEmpty`).
+- **Kids focus language** (`kids/.../KidsActivity.java`): focused buttons and PIN keys **invert** to a solid white (or gold) fill with dark ink, which matches tv-material's focused colours (tv-material also scales 1.1); dock tiles grow with a label; parent rows and app cells only brighten their background (no scale). Kids PIN keys are rounded rectangles at 1.06, with a short 3-step shake and no success flash. Rest screen `buildRest()` (~`:1112`); cartoons have an empty state (`cartoonsEmpty`).
 - **Adhan** (`adhan/.../AdhanService.java`): the banner (`buildAlert` ~`:286`, Inter + Plex Arabic, gold line), the 10-minute reminder card (`buildReminder` ~`:378`, Baloo, gold `0xFFFFC24A`, 15 s) and the widget card (`buildCard` ~`:698`). None takes the remote's keys.
 - No control uses a pressed drawable or a disabled state today. Only the PIN keys show a press.
+- **PIN rest** (both pads, from PR #20): after too many wrong tries the keys still look and focus normally, but every press runs the full wrong-PIN feedback (home `MainActivity.java` ~`:2189`, shake + red dots; Kids `KidsActivity.java` ~`:1533`, 3-step shake + red dots), and the line under the title counts down via `PinLock.waitText` ("Too many tries. Wait N seconds", rounded up to whole minutes from 60 s).
 
 ## Expert checklist
 **One family of components**
@@ -29,6 +30,7 @@ Three apps, one family: the home launcher (`app/`, Inter + gold on night-blue gl
 **States and feedback**
 - [ ] Every press gets visible feedback within about 100 ms (NN/g; Apple: "always include a press state"): a dip, a flash, a value change or the next screen. A press that does nothing visible is a bug in this lane (calendar rows are focusable but OK does nothing).
 - [ ] Selected and on/off states are shown by an icon or words plus colour (check mark, "On/Off", "✓ allowed"), never by colour or background alone.
+- [ ] A lock-out or wait state looks different from a wrong PIN (keys dimmed, or a calm nudge instead of the error shake), and its countdown tells the truth.
 - [ ] If a PR adds a disabled or unavailable state, it is clearly dimmer (tv-material uses 40% container and content), is not focusable without a reason on screen, and OK on it is answered.
 - [ ] Loading shows something calm at once ("Loading · جارٍ التحميل…", placeholder tile colours), never a blank panel, and never "nothing here" while still loading.
 - [ ] Empty states say what is missing and what to do next, in plain words (Kids cartoons empty panel is the model). No silent empty grid or list.
@@ -50,6 +52,8 @@ Three apps, one family: the home launcher (`app/`, Inter + gold on night-blue gl
 - Kids `launch()` (~`:1058`) returns silently when an app is missing.
 - The 10-minute reminder is a home pill (Inter, glass, top left, 3.5 s) inside the launcher but a Baloo card with a different gold (`0xFFFFC24A` vs `0xFFF1D58A`) top right in other apps.
 - Four focus scales and two focus languages inside Kids (scale on PIN keys and gold buttons, background only on parent rows, app cells and `button()`).
+- Kids `button()`, parent rows and app cells show focus by one cue only (inverted fill or brighter background, no scale), against the two-cue rule.
+- While a PIN pad rests, each press looks exactly like a wrong PIN (shake + red dots); only the subtitle tells it apart.
 - `closeAppMenu()` removes the menu at once while it faded in over 200 ms.
 - Two-sentence pill messages ("Removed X. Add apps back from All apps (hold OK).") get only 3.5 s.
 

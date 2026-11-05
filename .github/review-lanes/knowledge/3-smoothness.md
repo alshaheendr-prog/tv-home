@@ -199,7 +199,7 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - `ThinBar` puts `setShadowLayer` on a non-text fill (`:21`): hardware-supported from API 28 but redrawn each frame it changes.
 - Dock `magnify()` (`:1363`) starts `animate()` scale/translation on every tile per key press, 240 ms; the properties are all cheap ones.
 - `drift()` (`:3423`) moves the SurfaceView by `translationX` over 1,400 ms; `DRIFT_ROOM 0.022`.
-- `fullLengthAnimations()` (`:3349`) calls hidden `ValueAnimator.setDurationScale` by reflection. It is greylisted and works at target 35. The `sDurationScale` field fallback is blocked, so it is dead code; if both fail the box's 0.5x stays. [aosp-valueanimator-14]
+- `fullLengthAnimations()` (`:3349`) calls hidden `ValueAnimator.setDurationScale` by reflection. It is greylisted and works at target 35. The `sDurationScale` field fallback is blocked, so it is dead code. Today the method returns early: Update TV.ps1 `:92-94`, Tune TV.ps1 `:72-73` and the Restore TV.ps1 fallback `:182-184` (project files `tv-box/`) set window 0.5, transition 0.5 and animator **1.0**. [aosp-valueanimator-14]
 - `sampleAccent` (`:3364`): one 64x36 PixelCopy per clip, falling back to `accentFromFile` (`MediaMetadataRetriever` on `bg`, cached in prefs) when the copy is black.
 - Text shadows: `TEXT_SHADOW = 4f` with `0x99000000` on most home text; clock `setShadowLayer(6, 0, 3, 0x73000000)` (`:1046`).
 - Kids: `MediaPlayer` on a `SurfaceView` (`KidsActivity.java:118`, `:409`, looping), Baloo loaded once (`:112`), dim folded into shades (`:918`).
@@ -208,6 +208,7 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 ## Past findings
 ### PR #21 (docs, 2026-11-05)
 - Corrected the 1.4.1 buffer values, the compressed-buffer wording, the hidden-API status of `fullLengthAnimations()` and added the `StarField` risk.
+- Corrected from lane 12's review: the box's animator scale is 1.0 (only window and transition are 0.5), so `fullLengthAnimations()` does nothing today.
 
 ### PR #20 (merged 2026-11-05)
 - Must: `PinLock` ran 20,000 SHA-256 rounds on the UI thread. Fixed: single salted hash, `apply()`.

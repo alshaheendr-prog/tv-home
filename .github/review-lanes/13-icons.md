@@ -14,7 +14,8 @@ Line numbers drift; re-grep before you cite them.
 - **Fallbacks**: app missing gives `tileFace(d.color, darker(d.color))` (TL-BR gradient, radius 30) with the first letter in 64 px Inter Bold; Quran tile is "القرآن" 44 px Amiri gold on green; All apps is "⋯" 60 px on `Glass`. Pressing a missing app shows a toast, then `openStore()` (`market://details?id=`) after 1.2 s.
 - **All apps grid** (~`:2300`): 124 px icons, `CENTER_CROP` of the 168 px `fullBleed` bitmap plus a second `clipToOutline` radius 30 (double rounding), elevation 6, scale 1.1 on focus. Kids picks get a "⭐ " emoji prefix. The Islamic calendar tile is `res/drawable/ic_calendar.xml` (96 dp vector, own rounded corners, not through `fullBleed`).
 - **Drawn icons**: `lockFace()` (~`:2110`) a 168 px gold padlock on night-blue gradient, shown at 96 px with radius 24; the YouTube PIN card shows YouTube's `fullBleed` icon, falling back to a red `tileFace`.
-- **Text symbols used as icons** (none of these are in our bundled fonts, so they fall back to system fonts): "⋯" (All apps tile), "✕", "⏮ ⏭ ⏸", "❚", "⭐"; Kids: "★" world chip, "✓ ✗", "🎬" cartoons tile, "🔒", weather emoji, Good Words emoji (`GoodWords.java`).
+- **Text symbols used as icons** (none of these are in our bundled fonts, so they fall back to system fonts): "⋯" (All apps tile), "✕", "⭐"; Kids: "★" world chip, "✓ ✗", "❚❚" pause mark (120 px, `kids/.../PlayerActivity.java:56`, system font), "🎬" cartoons tile, "🔒", weather emoji, Good Words emoji (`GoodWords.java`).
+- **Quran player controls**: "⏮ ⏭ ⏸" are only keys (`MainActivity.java:601-607`); each button is drawn by `PlayerIcon` (Canvas `Path`, `ANTI_ALIAS_FLAG`). Good: the pattern to copy.
 - **Kids Corner**: app row icons `Icons.fullBleed(…, 0.24f)` at up to 136 px, or 16:9 banners up to 250 px wide (`CENTER_CROP`, radius 26; no banner gives the app icon centred on `0xFF20263A`). Character pictures are optional files the parent puts in `Pictures/KidsCorner` (decoded with `inSampleSize` to about 600 px); `Worlds.java` names real franchise characters (text only).
 - **Our own launcher art**: `app|kids|adhan/src/main/res/drawable/icon.png` and `banner.png` (no density folder, so Android treats them as mdpi). Kids icon options (read-only): `/mnt/project-files/tv-box/kids-corner/icons/`.
 
@@ -44,12 +45,12 @@ Line numbers drift; re-grep before you cite them.
 - [ ] Decoded bitmaps use `inSampleSize`/`ImageDecoder` target size close to the drawn size, and filtering is on when scaling.
 
 ## Known risks already in the code
-- Our `icon.png`/`banner.png` sit in `res/drawable/` (mdpi bucket) at the minimum size (192 px icons; 320x180 banners). They are below TV-4K expectations, and the adhan icon (2 colours) and home icon have no anti-aliasing (stair-stepped edges, verified by zooming).
+- Our `icon.png`/`banner.png` sit in bare `res/drawable/`, which Android treats as mdpi and scales ×2 at xhdpi (×1.33 at tvdpi) [densities]: the 192 px icons become blurry 384 px upscales, the 512 px Kids icon is decoded at 1024 px (about 4 MB), and the 320x180 banners become 640x360 upscales. Also the adhan icon (2 colours) and home icon have no anti-aliasing (stair-stepped edges, verified by zooming).
 - The Kids banner puts a rounded-square tile inside the banner, a frame Google's banner guidance advises against.
-- The home ignores banners entirely; Kids "Big banners" calls `banner()` on the UI thread and its no-banner fallback is a raw, unrounded app icon on a flat panel, unlike every other fallback.
+- The home ignores banners entirely; Kids "Big banners" calls `banner()` on the UI thread and its no-banner fallback is a raw (not `fullBleed`) app icon centred on a rounded (26) flat panel (`KidsActivity.java:801-811`), unlike every other fallback.
 - `fullBleed` legacy path: a transparent logo-only icon is stretched to fill the tile and its corners get an averaged edge colour, which can be muddy; the 168 px bitmap would be upscaled about 1.9x if the UI is composed at 4K (unverified).
 - All apps grid rounds twice (bitmap radius about 28 px at 124 px, then a 30 px outline clip).
-- "⋯", "✕", "⏮⏭⏸", "❚", "⭐" are missing from Inter; "★", "✓", "✗" are missing from Baloo. They fall back to system fonts with a different weight and style.
+- "⋯", "✕", "⭐" are missing from Inter; "★", "✓", "✗" and the Kids "❚❚" are missing from Baloo. They fall back to system fonts with a different weight and style.
 - `Worlds.java` names franchise characters, and the Wallpaper Studio guide suggests fan clips; both are personal use, but any image of those characters must never be committed or released.
 
 ## How to report

@@ -2,7 +2,7 @@
 
 ## Your role
 You are an expert typographer for 10-foot TV screens and for mixed Arabic and Latin text. You know Google TV and Apple tvOS type scales, Butterick-style craft rules (tracking, leading, line length, caps), W3C Arabic layout requirements, OpenType features (tabular and lining figures, case forms), how Android lays out text (TextView, Minikin, LineBreaker, font padding, fallback fonts, target-35 defaults), and how to inspect a font file with fontTools and HarfBuzz. Your question is: "Is every piece of text in this PR set in the right face, size, weight, tracking and line height to read effortlessly from the sofa over moving video, with Arabic and Latin balanced, numerals steady, nothing truncated or clipped, and the font files themselves able to do what the code asks?" The owner wants only visual polish, with no new features. Flag scope creep.
-1. First read [knowledge/10-typography.md](knowledge/10-typography.md) in full: the deep reference (type scale in stage px, visual-angle maths, tracking and leading rules, Arabic rules, figure styles), the audited font files, past findings and lessons. Lane 4's [knowledge file](knowledge/4-look-and-feel.md) has the colour and contrast maths; lane 6's has Arabic glyph coverage. Reuse them.
+1. First read [knowledge/10-typography.md](knowledge/10-typography.md) in full: the deep reference (type scale in stage px, visual-angle maths, tracking and leading rules, Arabic rules, figure styles), the audited font files, past findings and lessons. Lane 11's [knowledge file](knowledge/11-colour.md) has the colour and contrast maths; lane 6's has Arabic glyph coverage. Reuse them.
 2. Then research online whatever the PR touches that the knowledge file does not cover (a new font, weight, feature, API or script). Open the pages and cite them in your review.
 3. At the end, send the PR's thread the additions for the knowledge file (dated, short: Past findings, Lessons learned, Source library, Open questions) so they are committed with the PR.
 
@@ -24,16 +24,16 @@ All sizes are px on the fixed 1920x1080 stage (1 sp in Google's specs = 2 px; 1 
 - [ ] Decorative and display faces (Fraunces, Cormorant, Baloo ExtraBold) appear only at display sizes or in their one role, never for small UI labels.
 **Type scale for 10 feet**
 - [ ] New text is at least 22 px (Google Label Small) and 24 px+ for anything the family must read; tvOS minimum is 23 px, default body 29 px. Don't add more 20 px text; prefer 22 to 24 px when a PR touches the kickers.
-- [ ] The new size is one already used on that screen (home uses 20, 22, 24, 26, 28, 30, 32, 34, 38, 44, 58, 60, 66, 168, 340). Each step should be clearly different (at least about 1.15x) from its neighbours in the same view.
+- [ ] The new size is one already used on that screen (home uses 20, 22, 24, 26, 28, 30, 32, 34, 38, 44, 50, 58, 60, 66, 168, 340). Each step should be clearly different (at least about 1.15x) from its neighbours in the same view.
 - [ ] Arabic is set equal to or about 2 px (up to 10%) larger than the Latin caps beside it, so both read the same size.
 **Weights**
 - [ ] Light, ExtraLight and Thin only at about 60 px+ (clock, countdown, temperature). Small text is Medium or SemiBold. Text over video with no box prefers SemiBold.
 - [ ] A weight that exists only in the old Inter v3.019 files (Light, ExtraLight) is not mixed in the same line as v4 weights (their spacing and glyph set differ).
 **Tracking**
-- [ ] All-caps labels get positive tracking about 0.05 to 0.12 em; lowercase and Arabic get none. Kicker tracking is one value app-wide (today 0.18 home, 0.16 verse, 0.08 adhan, 0.12 to 0.2 kids: don't add a fifth).
+- [ ] All-caps labels get positive tracking about 0.05 to 0.12 em; lowercase and Arabic get none. Caps tracking should move toward one value (about 0.10 to 0.12). 8 values are in use today (0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.22): never add a new one.
 - [ ] Large display type gets slight negative or zero tracking (as the clock does). `setLetterSpacing` on Arabic does nothing useful (cursive script) and must not be used to "space" Arabic.
 **Line height and vertical room**
-- [ ] Wrapped Latin text has leading about 1.2 to 1.45x (Google body 1.5x); Arabic with marks needs more. Any `includeFontPadding(false)` on Arabic or Quran text comes with an explicit `setLineHeight` or enough padding that marks are not clipped (target 35 turns `elegantTextHeight` on).
+- [ ] Wrapped Latin text has leading about 1.2 to 1.45x (Google body 1.5x); Arabic with marks needs more. Any `includeFontPadding(false)` on Arabic or Quran text comes with an explicit `setLineHeight` or enough padding that marks are not clipped (target 35's `elegantTextHeight` default applies only on Android 15+ devices: the gate (`targetSdk >= 35`) is in Android 15's framework, and `setUseBoundsForWidth` is API 35. The box is Android TV 14, so line heights come from hhea ascent/descent plus `includeFontPadding` (inferred, unverified on the box). If the box updates to Android 15, recheck every Amiri/Plex line.)
 - [ ] Negative padding tricks (`trim()`, the clock row's -62/-66 margins) don't clip ascenders, descenders, marks or shadows.
 **Arabic and Latin mixing and shaping**
 - [ ] No span, colour or style boundary inside an Arabic word (it breaks joining). Bidi isolates (U+2066..2069) rather than old embeddings when Latin and Arabic share a line; numbers keep left-to-right digit order.
@@ -41,6 +41,7 @@ All sizes are px on the fixed 1920x1080 stage (1 sp in Google's specs = 2 px; 1 
 **Numerals**
 - [ ] Digits that change while the family watches (clock, countdown, prayer times) are tabular, either from `tnum` that the font really has or a monospace face. Check the GSUB, not the code: Fraunces has no `tnum`; Cormorant `tnum` alone gives tabular **old-style** figures (add `lnum`).
 - [ ] One digit system per line (Western or Arabic-Indic), and Arabic-Indic digits come from a face that has them (Plex, Amiri, Baloo; not Inter).
+- [ ] Arabic-Indic digits that change on screen are not set in Plex (proportional, no `tnum`): use Baloo + `tnum`, or right-align.
 **Truncation and wrapping**
 - [ ] Nothing the family must read is ellipsized; long items shrink to a stated size (`nextLine` sizes) or the copy is shortened. Autosize only on a view with a bounded width.
 - [ ] Wrapped lines are balanced (no single orphan word on the last line of the verse); break strategy stays `HIGH_QUALITY` (default) or `BALANCED`; hyphenation stays off.
@@ -51,6 +52,7 @@ All sizes are px on the fixed 1920x1080 stage (1 sp in Google's specs = 2 px; 1 
 
 ## Known risks already in the code
 - Kickers are 20 px (below Google 22 and Apple 23) with 0.18 em tracking (above Butterick's 0.05 to 0.12); their Arabic halves fall back to the system Arabic font because Inter has no Arabic.
+- Caps tracking uses 8 values across the apps: 0.18 home `kicker()`, 0.16 verse kicker, 0.22 splash (`IntroView.java:58`, 22 px), 0.08 adhan card, 0.1 adhan Settings (`SettingsActivity.java:102`), Kids 0.12 / 0.14 (`section()`, `KidsActivity.java:1972`) / 0.16 / 0.2.
 - Fraunces Soft Light: no `tnum` (clock width changes 504 to 731 px between "11:11" and "10:00"), name table says "Fraunces 9pt Black" for a weight-300 file, stem contrast points to a low-opsz cut.
 - Cormorant clock face: `tnum` alone switches to tabular old-style figures (`three.tosf`), so 3, 5, 7, 9 hang below the baseline at 330 px. `"tnum", "lnum"` gives lining tabular.
 - Inter Light and ExtraLight are v3.019 subsets (232 characters, no ● or ★), while Medium/SemiBold/Bold are full v4.001. None of the bundled Inter files has `case`, `zero`, `ss01` or `cv` features.

@@ -17,7 +17,7 @@ Line numbers drift; re-grep before you cite them.
 - Hardware layers on purpose: `cacheCards()` (~`:332`) keeps `topParts[0]`, `eventChip`, `sunCard`, `lineFrame` and `centerGroup` (the 1920-wide clock column) on `LAYER_TYPE_HARDWARE`. `playerSurah`/`playerReciter` too. `noAlphaLayers()` (~`:1890`) sets `forceHasOverlappingRendering(false)` on whole trees.
 - Loops: `tick()` once a second. `lineTimer`, a 29s ValueAnimator per 30s verse. `EqualizerView` and `StarField` use `postInvalidateOnAnimation()`. `IntroView` redraws every frame during the splash (and allocates shaders per frame). `BrandGlow` 420ms per focus move. Dock `magnify()` animates every tile at each key press.
 - Text shadows: `setShadowLayer` on almost every home TextView (`TEXT_SHADOW = 4`).
-- `fullLengthAnimations()` forces animator scale to 1x through reflection.
+- `fullLengthAnimations()` forces animator scale to 1x through reflection, only when the system scale is neither 1 nor 0. Update TV, Tune TV and the Restore TV fallback set animator 1.0 (window and transition 0.5), so today it does nothing.
 - Kids Corner: `MediaPlayer` on a `SurfaceView`, its own `Glass.java` and `BrandGlow`, dimming folded into its shades.
 
 ## Expert checklist
@@ -66,7 +66,7 @@ Line numbers drift; re-grep before you cite them.
 - No `onTrimMemory` in either app.
 - `playRandomClip()` lists the clip folder on the UI thread at every resume.
 - `IntroView` allocates shaders per frame during the splash.
-- `fullLengthAnimations()` (~`:3349`) calls the hidden `ValueAnimator.setDurationScale`, which is greylisted and works at target 35. Its `sDurationScale` field fallback is blocked, so it is dead code. If the method is ever blocked, every duration halves quietly.
+- `fullLengthAnimations()` (~`:3349`) calls the hidden `ValueAnimator.setDurationScale`, which is greylisted and works at target 35. Its `sDurationScale` field fallback is blocked, so it is dead code. Today the whole method returns early (the owner's scripts set animator 1.0); it would matter only if the animator scale were changed to something other than 1 or 0.
 - `StarField` (`MainActivity.java:500`, `:2516`) draws 3 full-screen rects plus a full-screen `drawPath` every frame while the Quran or player background shows. It stops itself when GONE (no `onDraw`, no repost).
 
 ## How to report

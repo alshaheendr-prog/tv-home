@@ -104,7 +104,7 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 | Component | Rest | Focused | Press | Selected / other |
 |---|---|---|---|---|
 | Dock tile (`addTile` ~`:1211`, `magnify` ~`:1363`) | icon, 2 px `0x4DFFFFFF` ring | 1.2, lift -20, neighbours 1.06 and pushed aside, `BrandGlow`, name label 22 px | none (launches) | arrange: 4 px gold ring + `ARRANGE_HINT` label |
-| PIN key (~`:2087`) | round 96 px, `0x1FFFFFFF` fill | 1.12, `0x59/0x26FFFFFF` fill, 3 px gold, `goldLift` 16 | dip 0.94 (70 ms) then 1.12 | wrong: damped shake 420 ms + red `0xFFFF6B6B` dots; right: green `0xFF5BE38A` dots |
+| PIN key (~`:2087`) | round 96 px, `0x1FFFFFFF` fill | 1.12, `0x59/0x26FFFFFF` fill, 3 px gold, `goldLift` 16 | dip 0.94 (70 ms) then 1.12 | wrong: damped shake 420 ms + red `0xFFFF6B6B` dots; right: green `0xFF5BE38A` dots; **resting** (~`:2189`): keys look normal, every press = wrong feedback, `pinSub` counts down `PinLock.waitText` |
 | All apps item (~`:2307`) | no box, label `SOFT` | `focusGlass(30)`, 1.1, label white, `goldLift` 22 | none | Kids pick: "⭐ " prefix; hold OK: `appMenu` |
 | App menu button (`menuButton` ~`:2394`) | no box, `SOFT` | `focusGlass(22)`, white, **no scale** | none | |
 | Parent row (`parentRow` ~`:3324`) | no box, value `DIM` 26 px | `focusGlass(22)`, 1.03 | value changes (list redrawn) | value words ("On", "Shown", "100%") |
@@ -122,7 +122,7 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 | Lock tile (~`:856`) | `Glass(44, 0x40000000)`, "🔒", red setup dot | magnify, "Grown-ups" label | opens PIN | |
 | `button()` (~`:1932`) | `0x26FFFFFF` pill | **inverts**: white fill, dark ink, no scale | none | |
 | `goldButton()` (~`:1977`) | `0x2EFFC233` pill, gold ink | gold fill `0xFFFFD45A`, dark ink, 1.06 | none | |
-| PIN key (~`:1472`) | 130x96 rounded rect `0x1AFFFFFF` | white fill, dark ink, 1.06 (160 ms, default interpolator) | none | wrong: 3-step shake 180 ms, red `0xFFFF5A5A`; no success flash |
+| PIN key (~`:1472`) | 130x96 rounded rect `0x1AFFFFFF` | white fill, dark ink, 1.06 (160 ms, default interpolator) | none | wrong: 3-step shake 180 ms, red `0xFFFF5A5A`; no success flash; **resting** (~`:1533`): keys look normal, every press = wrong feedback, countdown via `PinLock.waitText` |
 | Cartoon card (~`:1388`) | `0x1AFFFFFF` | white card, dark title, 1.08 (220 ms, default interpolator) | plays | empty state panel `cartoonsEmpty` |
 | Parent value row (~`:1687`) | value pill "◀ x ▶" | background `0x26FFFFFF` only | Left/Right change value | |
 | App permission cell (~`:1828`) | icon (dimmed to 115 when not allowed), "✓ allowed" / "not allowed" | background `0x24FFFFFF` only | toggles | words + colour + icon alpha (good) |
@@ -138,13 +138,15 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 
 ### Facts that matter for every review
 - No `StateListDrawable`, `state_pressed`, `setEnabled(false)` or disabled look exists anywhere in the three apps. Only home PIN keys animate a press.
+- PIN rest (both pads, PR #20): `PinLock.waitText` (`PinLock.java:69`) says "Too many tries. Wait N seconds" below 60 s, then rounds up to whole minutes. The pad stays live and each press runs the wrong-PIN shake; nothing is dimmed. Android's lock screen instead turns entry off (`handleAttemptLockout` → `setPasswordEntryEnabled(false)`) and counts seconds ("Try again in # seconds."). [aosp-keyguard]
 - Every focus change is done by `setOnFocusChangeListener` swapping drawables and animating scale, so each component re-implements focus. A PR that adds a control must copy the right sibling exactly.
 - Loading copy in use: "Forecast loading…", "Loading · جارٍ التحميل…" (Quran). No clips: a calm gradient, retried every 3 s for 2 minutes, with no message.
 - Missing-app copy in use: "X isn't installed yet. Opening the Play Store…" (then opens it after 1.2 s), "Kids Corner isn't installed yet. Run Update TV on the PC.", "YouTube isn't installed.", "Couldn't open X".
 - Hold-OK hints in use: All apps `panelHint` ("Hold OK to add an app to Kids ⭐", then "Hold OK for options: home row or Kids ⭐"), the dock's `ARRANGE_HINT` while arranging, Kids parent menu line. The home dock has no hint before arranging.
 
 ## Past findings
-None yet; lane created 2026-11-05 (split from lane 4).
+- 2026-11-05, PR #21 (docs only): Should: the PIN rest state from PR #20 was missing from the inventory (added, with a States checklist item); "Kids focus inverts, which matches the tv-material default" left out tv-material's 1.1 scale (reworded; Kids one-cue focus added to Known risks). Copy seeds for a later polish PR (hand to lane 10): the Kids setup line says "can't send **him** back" (`KidsActivity.java` ~`:1745`), should be "the kids"; "Too many tries. Wait 30 seconds" lacks its final full stop.
+
 Seed findings from the creation research (not yet reported on a PR; confirm before raising):
 - Should: PIN "set" copy "Hold OK on YouTube to change it later" (`MainActivity.java` ~`:2148`) is wrong: holding OK on the YouTube tile arranges the row; the PIN is changed in Parent settings ("Change the YouTube PIN").
 - Should: calendar rows are focusable and scale but OK does nothing (~`:3284`).
@@ -157,19 +159,22 @@ Seed findings from the creation research (not yet reported on a PR; confirm befo
 - 2026-11-05: Read the long-press handler, not the hint copy: hints can promise an action the code no longer does.
 - 2026-11-05: Each component sets its own focus look in a listener, so "consistent" must be checked by diffing the values (radius, stroke, scale, shadow), not by eye.
 - 2026-11-05: Android gives a free pressed state on OK down only to clickable views (`View.onKeyDown`); a focusable-only view gets no press at all.
+- 2026-11-05: A merged PR can add a state (the PIN rest) the inventory doesn't list yet. Re-check the inventory against `main` every review.
+- 2026-11-05: "Matches tv-material" must cover scale as well as colour.
 - 2026-11-05: m3.material.io pages need JavaScript; read the generated token files in androidx (`StateTokens.kt`, `FilledButtonTokens.kt`) and the tv-material `*Defaults.kt` files with curl instead. Apple HIG pages read well from `developer.apple.com/tutorials/data/design/human-interface-guidelines/<page>.json`.
 
 ## Open questions to research next
 - Which press look suits our gold-glass style best: a 0.96 dip, a brief fill flash, or tv-material's "scale back to 1.0"? Mock all three on the box at 3 m.
-- Should Kids keep the inverted white focus (tv-material default) while home uses gold glass, or should home buttons invert too? Find Google TV launcher screenshots or specs for its own buttons (not opened yet).
+- Should Kids keep the inverted white focus (tv-material's focused colours, but without its 1.1 scale) while home uses gold glass, or should home buttons invert too? Find Google TV launcher screenshots or specs for its own buttons (not opened yet).
 - Does the 3 px gold focus edge keep 3:1 against its unfocused look over the brightest wallpaper clip? Measure on a screenshot.
-- What is a good on-screen time for a pill message? Find a source on reading time for short notices (words per second) for TV.
+- What is a good on-screen time for a pill message? Partly answered 2026-11-05: UX Movement gives 2 to 5 s, 3 s ideal, for a 1 to 2 line toast [uxm-toasts]; an unofficial rule of thumb is 3 s plus 1 s per 3 words [dsp-toasts], so the two-sentence pill needs about 6 s, not 3.5 s. Confirm on the TV.
+- Should a resting PIN pad dim its keys to 40% like a tv-material disabled button, or keep them live with a softer nudge?
 - Should the adhan reminder and the home pill share one design? Ask lane 11 about the two golds and lane 10 about Baloo outside Kids.
 - tvOS HIG "Buttons" has no tvOS-specific section any more; find Apple's tvOS button sizes and focus treatments (older HIG or WWDC session) to compare.
 - Find NN/g's article on toasts (fetch failed with a client error on 2026-11-05).
 
 ## Source library
-All opened 2026-11-05.
+All opened 2026-11-05; all tv-material and M3 numbers re-verified 2026-11-05 (PR #21).
 - [tv-focus] https://developer.android.com/design/ui/tv/guides/styles/focus-system: states, scale 1.025/1.05/1.1, glow 2 to 32 dp, use-case matrix.
 - [tv-buttons] https://developer.android.com/design/ui/tv/guides/components/buttons (also read via the developer.android.google.cn mirror): button types, 1.1 focus scale, shapes, label rules, one primary action.
 - [tv-cards] https://developer.android.com/design/ui/tv/guides/components/cards: card variants, aspect ratios, widths, scrim on compact cards.
@@ -204,4 +209,7 @@ All opened 2026-11-05.
 - [wcag-focus-appearance] https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html: 2 px perimeter, 3:1 focused vs unfocused.
 - [wcag-non-text] https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html: 3:1 for state indicators, inactive exempt.
 - [smashing-tv] https://www.smashingmagazine.com/2025/09/designing-tv-principles-patterns-practical-guidance/: three focus styles, hold for contextual menu, dim behind menus.
+- [aosp-keyguard] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/packages/SystemUI/res-keyguard/values/strings.xml (`kg_too_many_failed_attempts_countdown`, "Try again in # seconds.") and https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/packages/SystemUI/src/com/android/keyguard/KeyguardAbsKeyInputViewController.java (`handleAttemptLockout` turns entry off): how Android shows a lock-out. Checked 2026-11-05.
+- [uxm-toasts] https://uxmovement.com/forms/best-practices-to-make-your-toasts-usable-and-accessible/: toasts 2 to 5 s, 3 s ideal, 1 to 2 lines. Checked 2026-11-05.
+- [dsp-toasts] https://designsystemproblems.pages.dev/accessibility-compliance/toast-notification-accessibility: unofficial; 3 s plus 1 s per 3 words. Checked 2026-11-05.
 - Also useful: https://www.nngroup.com/videos/empty-states-in-application-design-guidelines/ (short video summary of the empty-state article).
