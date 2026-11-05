@@ -147,7 +147,25 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - `pinSub` rests in `DIM` 24 px (`:2050`) (Nice-to-have from PR #20, not done).
 - Stale comments still describe the old layout: sun card (`:965`), "dates and sunrise sit under the clock" (`:1091`), "one centred column" on a 1920-wide `Gravity.START` view (`:1093`; the right alignment really comes from `:1039-1040`), verse "low on the screen just above the dock" (`:1096`), weather card sunrise (`:1672-1673`). `sunCard`, `sunLine`, `topParts[0]`, `lineBar` are hidden or removed.
 
+Added by the whole-app audit (verified 2026-11-05):
+- eventChip sits at `at(..., 80, 56 + CARD_H + 16)` = (80, 402), outside topParts, so ambient mode neither fades nor drops it.
+- Ambient (`enterAmbient`, ~`:3467`): after 2 min the dock fades and drops 40 px; centerGroup, lineFrame and the strip (topParts[1]) drop QUIET_DROP 110 px. Night dim to 0.6 after 15 min.
+- Default dock = all 11 DOCK entries (dock_order unset): 11 x (132 + 22) + 96 = 1,790 px wide, nearly edge to edge.
+- Next-prayer highlight: `prayerCells[i].setBackground(isNext ? glass(14, GLASS_HI, 0) : null)` (~`:1600`).
+- Drive line colours: mint `0xCC9BE7B4` (free space), coral `0xFFFF9A8F` (unplugged), in dayRow beside the forecast, above the clock.
+- Adhan app surfaces: banner = Inter Medium + Plex Arabic SemiBold, `0xF1D58A`, dark `0xE6080B14→0xF5080B14` (house style). Reminder, floating panel and corner card = Baloo / Chivo Mono, `GOLD 0xFFC24A`, `TEXT 0xF6F3FF`, fill `0xE00A0C16`/`0xD90A0C16`. Panel and card show only over a non-family launcher; the reminder shows over any app except tvhome.
+- Kids grown-up panels use violet `sheet()` `0xFF241B45→0xFF150F2B`; home panels use navy PanelBg.
+
 ## Past findings
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- Must: eventChip is a Layout-0 leftover: a glass chip alone at (80, 402) on the left, shown ~100+ days a year (Ramadan, Shawwal, Dhul Hijjah 1-13, Ashura, White Days and eves); it does not follow the ambient drop. Fix: boxless gold line in centerGroup under the dates.
+- Should: next-prayer cell gets a 30% white glass pill (`:1600`) inside the boxless strip; use a gold time instead.
+- Should: drive status mint `0xCC9BE7B4` / coral `0xFFFF9A8F` in the hero column; use SOFT and a gold dot.
+- Should: colour emoji (☀ ⛅ 🌫 🌧 ⛈) in the forecast line above the clock (`skyIcon`).
+- Should: adhan reminder over other apps is Baloo + gold `0xFFC24A`; the adhan banner already uses home's Inter/Plex/`0xF1D58A`. Restyle the reminder to the banner recipe.
+- Nice: verse kicker DIM white while all other kickers are gold; stale comments `:865`, `:1362`, `:1672-1673`, `:2911`; adhan white `0xF6F3FF`; three dark-surface recipes; notice pill top-left; dock dominates the 20 px blur while browsing (fine: it fades after 2 min).
+- No TV screenshots were reachable (C:\TVWallpapers not connected); used a code-built mock (reviews/audit-2026-11/lane-4-mock-squint.png).
+
 ### PR #21 (docs, lane 4 re-review as the art director, 2026-11-05, at 8b9f60c)
 - Must: none.
 - Should: the brief gave no picture source a cloud reviewer can use. Default to Update TV's saved screenshots.
@@ -181,6 +199,11 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: Judge from Update TV's screenshots: `C:\TVWallpapers\home.png`, `intro.png` and `Screens\{apps,quran,reciters,player,pin,calendar,stress,adhan}.png`. Ignore the top-left chip in `stress.png` unless it's an event day.
 - 2026-11-05: Grep a colour across all three apps before calling it one app's colour.
 - 2026-11-05: Once a specialist lane owns a topic, the shared copy here drifts. Point to the owner's file rather than restating numbers.
+- 2026-11-05: When a layout is reorganised, list every view positioned relative to the old parts (eventChip used CARD_H of a hidden card). Leftovers hide in positions, not only in visibility flags.
+- 2026-11-05: Count how many days a "rare" state shows before ranking it: the event chip is on screen for about a third of the year.
+- 2026-11-05: A highlight that adds a box to a boxless design is a direction break; mark state with the accent colour instead.
+- 2026-11-05: Check where the ambient/quiet animations look (topParts, centerGroup, lineFrame); anything outside them stays put and looks stuck.
+- 2026-11-05: Without screenshots, a quick PIL mock from the code's real positions, fonts and colours, blurred at 20 px, is a usable squint test. Say plainly that it is a mock.
 
 ## Open questions to research next
 - Is `fraunces_soft_light.ttf` cut at opsz 9 or 144? Stem:hairline 1.7:1 suggests a text cut (2026-11-05). Confirming needs a fresh Fraunces opsz-144 instance (font downloads were blocked); consider re-instancing at opsz 144, SOFT 100, wght 300 with `tnum` kept (fontTools `instancer`).
@@ -195,6 +218,10 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Find Google TV's own home-screen visual spec (not opened this time).
 - Does Android TV 14 "reduce motion"/remove animations setting need honouring beyond `fullLengthAnimations()` respecting 0?
 - Should kickers move to 22 px (Google Label Small) and SemiBold, or stay 20 px for the look? Mock both at 3 m.
+- Does `skyIcon` emoji render as colour emoji, tofu or a square on the box? Needs a screenshot of a day with a forecast.
+- With screenshots: re-run the 5 px / 20 px blur on the real home.png (bright and dark clips) and replace the mock.
+- Should the adhan app's floating panel and corner card (seen only over a non-family launcher) be restyled too, or retired visually once Google TV home stays disabled?
+- Is there a published Google TV / Android TV ambient-mode visual spec (clock size and placement over photos)? Not found this time.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -233,3 +260,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [inter-v4] https://github.com/rsms/inter/releases/tag/v4.0: Inter v4 changes (UPM 2048). Checked 2026-11-05.
 - [hig-tvos] https://developer.apple.com/design/human-interface-guidelines/designing-for-tvos (read via .../tutorials/data/design/human-interface-guidelines/designing-for-tvos.json): tvOS principles: focus that gently highlights and expands, edge-to-edge artwork, subtle fluid animation, cinematic and legible from across the room. Checked 2026-11-05.
 - To open next: Material 3 motion pages (need a JS-capable reader), Google TV home-screen design references.
+- [hig-color] https://developer.apple.com/design/human-interface-guidelines/color (read via .../tutorials/data/design/human-interface-guidelines/color.json): tvOS "limited color palette that coordinates with your app logo. Subtle use of color ... while deferring to the content"; use colour consistently, never the same colour for different meanings; colour sparingly on glass, reserve it for status or primary actions; don't use colour alone for focus. Checked 2026-11-05.
+- [xda-gtv-ambient] https://www.xda-developers.com/google-tv-personalized-cards-rolling-out/: Google TV's ambient redesign moved to small cards at the bottom so they don't obscure the background. Supports keeping home overlays few and small. Checked 2026-11-05.
+- [macrumors-aerials] https://www.macrumors.com/2025/08/01/tvos-26-custom-aerial-screen-saver-apple-tv/: tvOS 26 aerial playlists; says nothing about clock styling over aerials (dead end for that question). Checked 2026-11-05.

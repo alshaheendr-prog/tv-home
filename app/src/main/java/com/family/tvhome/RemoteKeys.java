@@ -97,7 +97,13 @@ public class RemoteKeys extends AccessibilityService {
         PackageManager pm = getPackageManager();
         Intent i = pm.getLeanbackLaunchIntentForPackage(b[3]);
         if (i == null) i = pm.getLaunchIntentForPackage(b[3]);
-        if (i == null) return;
+        if (i == null) {
+            // the app isn't on the box: the press was already taken, so say so on the home screen instead of nothing
+            i = new Intent(this, MainActivity.class).putExtra("missing", b[2].replace("Opens ", ""))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            try { startActivity(i); } catch (Exception ignored) { }
+            return;
+        }
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try { startActivity(i); } catch (Exception ignored) { }
     }

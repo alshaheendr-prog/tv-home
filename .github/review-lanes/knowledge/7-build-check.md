@@ -198,6 +198,14 @@ Sort every new `<uses-permission>` into one of these buckets. Every bucket excep
 - **Overlays:** `TYPE_APPLICATION_OVERLAY` at `AdhanService.java:174` and `Guard.java:198,245`.
 - **README.md is outdated.** It describes a WebView with `assets/index.html`. The UI is native Java.
 
+Added by the whole-app audit (2026-11-05, verified from the published APKs, build #134):
+- APK sizes: tv-home 8.8 MB, of which classes.dex is 7.5 MB, stored uncompressed. adhan 1.2 MB, kids 0.5 MB.
+- All three are signed v2 only (block IDs 0x7109871a v2, 0x504b4453 AGP dependency info, 0x42726577 verity padding). No v1, no v3.
+- No `.so` files. Not debuggable or testOnly.
+- AGP shortens resource paths in release (`res/H8.ttf`).
+- `META-INF/version-control-info.textproto` holds the git revision. Use it to prove which commit an APK came from (`unzip -p x.apk META-INF/version-control-info.textproto`).
+- The `latest` release's tag is created at main's tip, not the built SHA (`target_commitish: "main"`).
+
 ## Past findings
 - **2026-11-05, PR #20** (PIN limits, crash after restart, missed adhan, Quran text):
   - CI run #122 passed: 3 × assembleRelease plus lint vital. No Must fix or Should fix.
@@ -212,6 +220,11 @@ Sort every new `<uses-permission>` into one of these buckets. Every bucket excep
     - Renaming MainActivity or RemoteKeys breaks Update TV's setup.
     - README.md is outdated.
 - **2026-11-05, PR #21** (docs only): CI #130 passed; no Must; Should: run_number resets on a `name:` change; all code line refs verified correct.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit on main d772bcc. CI #134 passed. No Must.
+  - Should: S1 publish race (delete before create, no `--target`, no concurrency, an older re-run can downgrade); S2 actions on tags and old majors.
+  - Nice: unused fonts (app amiri_regular and chivo_mono_bold, adhan inter_light); 441 KB WAV; unguarded API 29 `startForeground` in adhan (minSdk 28); R8 off with 7.5 MB dex; outdated README; artifact retention; hidden-API animator reflection.
+
 
 ## Lessons learned
 - 2026-11-05: Ask for the CI run by head SHA. Don't take "it built" from the PR text.
@@ -220,6 +233,10 @@ Sort every new `<uses-permission>` into one of these buckets. Every bucket excep
 - 2026-11-05: adhan also needs usage access (PACKAGE_USAGE_STATS) and MANAGE_EXTERNAL_STORAGE, not just kids. When a grant goes missing, check both apps.
 - 2026-11-05: The keystore stays in the repo. Don't re-raise it as a finding.
 - 2026-11-05: A docs-only PR still publishes `latest` on merge. Check main has no app-code drift, then tell the owner Update TV is optional.
+- 2026-11-05: You *can* inspect the real release APKs from the container. `curl -L https://github.com/alshaheendr-prog/tv-home/releases/download/latest/<name>.apk` works through the proxy. Then use `unzip -lv` for size and stored/compressed, and a Python read of the APK Signing Block for the scheme IDs. Do this rather than guessing.
+- 2026-11-05: `git ls-remote --tags https://github.com/<owner>/<action>.git` works from the container. Use it to get pin SHAs, and take the `^{}` line for annotated tags.
+- 2026-11-05: lintVitalRelease checks only fatal-severity issues. NewApi is not fatal by default, so a minSdk violation passes CI. On this box (API 34) it doesn't matter, but don't treat green CI as proof of minSdk safety.
+- 2026-11-05: Commit comments need a write token, so workflow-wide `contents: write` is needed while `claude/**` failure comments exist (unverified permission detail).
 
 ## Open questions to research next
 - `adb install -r -d`: commit f1d44db allows a downgrade only on a debuggable build or app (for system apps). Confirm the rule applies to normal release APKs; until then assume `-d` fails. [aosp-f1d44db]
@@ -229,6 +246,10 @@ Sort every new `<uses-permission>` into one of these buckets. Every bucket excep
 - Does Xiaomi's Android TV 14 build keep `appops` and accessibility grants across `adb install -r`? (Update TV re-applies them anyway.)
 - The exact `lint` DSL property descriptions (the page text was cut off). Does `lintVitalRelease` run `NewApi` as fatal by default?
 - Is `actions/checkout@v5` / `setup-java@v5` / `upload-artifact@v4` still current? checkout v6.0.0 exists. Still open: the latest setup-java and upload-artifact majors, and the SHAs for each tag in case the owner wants them pinned.
+- Is `ValueAnimator.setDurationScale` or `sDurationScale` on the hidden-API blocklist for targetSdk 35? (Search didn't find the hiddenapi-flags entry.)
+- Does creating a commit comment really need `contents: write` for GITHUB_TOKEN? Open the REST "commit comments" permission table.
+- What is the exact Node 20 removal date for GitHub-hosted runners, after which upload-artifact v4 and setup-gradle v4 stop working?
+- How much does R8 shrink tv-home's dex with media3-exoplayer 1.4.1? (Try it in a `claude/` branch and read the CI APK size.)
 
 ## Source library
 All checked 2026-11-05 unless noted.
@@ -265,3 +286,9 @@ All checked 2026-11-05 unless noted.
 - [gha-name-reset] https://github.com/orgs/community/discussions/26709: run_number restarts when the workflow's `name:` changes. Checked 2026-11-05.
 - [so-112] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/41257994/what-does-error-code-112-mean-in-android: -112 is DUPLICATE_PERMISSION. Checked 2026-11-05.
 - [aosp-f1d44db] https://android.googlesource.com/platform/frameworks/base/+/f1d44db88067%5E%21/: downgrade allowed only on a debuggable build or app, for system apps. Checked 2026-11-05.
+- [gh-create] https://cli.github.com/manual/gh_release_create: `--target` defaults to the default branch, and with no tag one is created "from the latest state of the default branch". Also `--verify-tag` and `--latest`. Checked 2026-11-05.
+- [lint-agp-dsl] https://googlesamples.github.io/android-custom-lint-rules/usage/agp-dsl.md.html: checkReleaseBuilds is "limited to issues with severity configured to be `fatal`" and aborts on fatal issues. Checked 2026-11-05.
+- [setup-java-rel] https://github.com/actions/setup-java/releases: v6.0.0 (24 Aug) and v6.1.0 (14 Oct, the latest shown at fetch time). `git ls-remote` showed v6.2.0 on 2026-11-05.
+- [upload-artifact-rel] https://github.com/actions/upload-artifact/releases: v5 adds Node 24 support; v6 runs on node24 by default and needs runner ≥ 2.327.1; latest is v7.0.2. Checked 2026-11-05.
+- [durationscale] https://learn.microsoft.com/zh-tw/dotnet/api/android.animation.valueanimator.durationscale?view=net-android-37.0: `getDurationScale` is public from API 33, read-only, with no public setter.
+- [so-durationscale] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/64226137/ignore-developer-s-settings-animation-scale-in-android: the reflection `setDurationScale` override is reset by WindowManagerGlobal if done too early, so re-apply it in onResume.

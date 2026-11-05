@@ -35,18 +35,20 @@ final class Events {
     /** {English, Arabic} for today's badge, or null on an ordinary day. Today's event wins; otherwise a fast that starts tomorrow. */
     static String[] badge(Calendar now) {
         int[] h = hijri(now);
-        String[] today = on(h[0], h[1]);
-        if (today != null) return today;
         Calendar t = (Calendar) now.clone();
         t.add(Calendar.DAY_OF_MONTH, 1);
         int[] n = hijri(t);
         hijri(now); // put today back in the cache
-        String[] tomorrow = on(n[0], n[1]);
-        if (tomorrow == null) return null;
-        if (n[0] == IslamicCalendar.RAMADAN && n[1] == 1) return new String[]{"Ramadan starts tomorrow", "رمضان يبدأ غداً"};
+        // The days before the two Eids and Arafah already have their own badge (the last ten nights, the first ten
+        // days, the Day of Arafah), so tomorrow's great day is checked first or it could never show.
         if (n[0] == IslamicCalendar.SHAWWAL && n[1] == 1) return new String[]{"Eid al-Fitr tomorrow", "عيد الفطر غداً"};
         if (n[0] == IslamicCalendar.DHU_AL_HIJJAH && n[1] == 10) return new String[]{"Eid al-Adha tomorrow", "عيد الأضحى غداً"};
         if (n[0] == IslamicCalendar.DHU_AL_HIJJAH && n[1] == 9) return new String[]{"Fast of Arafah tomorrow", "صيام عرفة غداً"};
+        String[] today = on(h[0], h[1]);
+        if (today != null) return today;
+        String[] tomorrow = on(n[0], n[1]);
+        if (tomorrow == null) return null;
+        if (n[0] == IslamicCalendar.RAMADAN && n[1] == 1) return new String[]{"Ramadan starts tomorrow", "رمضان يبدأ غداً"};
         if (n[0] == IslamicCalendar.MUHARRAM && (n[1] == 9 || n[1] == 10)) return new String[]{"Fast of Ashura tomorrow", "صيام عاشوراء غداً"};
         if (n[1] == 13 && n[0] != IslamicCalendar.DHU_AL_HIJJAH) return new String[]{"White Days start tomorrow", "الأيام البيض تبدأ غداً"};
         return null;

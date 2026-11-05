@@ -87,9 +87,6 @@ public class AdhanService extends Service {
     private long cardSwitched;
     private String[] ayahToday; // {ar, en, ref}
     private String ayahDay = "";
-    private boolean wasHome;
-    private long lastSwap;
-    private String lastClip = "";
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
 
     static void start(Context c) {
@@ -132,7 +129,6 @@ public class AdhanService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && "test".equals(intent.getAction())) fireAdhan(3);
-        if (intent != null && "swap".equals(intent.getAction())) swapWallpaper();
         if (intent != null && "refresh".equals(intent.getAction())) { setPanel(false); setCard(false); }
         return START_STICKY;
     }
@@ -279,7 +275,9 @@ public class AdhanService extends Service {
     // A glass band across the bottom tenth of the screen: a gold line draws out from the centre,
     // the band rises, then the English and Arabic lines fade in. Everything is drawn live (no cached bitmaps).
 
-    static final float BAND = 116, BAND_FADE = 70; // band height and the soft fade above it, in 1920-wide TV pixels
+    // band height and the soft fade above it, in 1920-wide TV pixels. LIFT keeps the words above the bottom 5% of
+    // the screen, which some TVs crop (overscan); the dark band itself still reaches the edge.
+    static final float BAND = 136, BAND_FADE = 70, LIFT = 56;
     private View alertBand, alertLine, alertDot;
     private LinearLayout alertRow;
 
@@ -329,6 +327,7 @@ public class AdhanService extends Service {
         alertRow.addView(alertTitle);
         alertRow.addView(alertDot, dp);
         alertRow.addView(alertSub);
+        alertRow.setPadding(0, 0, 0, (int) px(LIFT));
         FrameLayout.LayoutParams rp = new FrameLayout.LayoutParams(-2, (int) px(BAND), Gravity.CENTER_HORIZONTAL | Gravity.TOP);
         rp.topMargin = (int) px(BAND_FADE);
         alert.addView(alertRow, rp);
@@ -505,7 +504,6 @@ public class AdhanService extends Service {
         updateForeground();
         // Our own launcher already shows the times, so the floating panels stay hidden over it.
         boolean home = homePackages.contains(foreground) && !foreground.equals("com.family.tvhome");
-        maybeSwapWallpaper(home);
         setPanel(home);
         setCard(home);
         if (cardShown && System.currentTimeMillis() - cardSwitched > 15000) nextCard(now);
@@ -532,6 +530,7 @@ public class AdhanService extends Service {
         if (usm == null) return;
         long now = System.currentTimeMillis();
         long from = lastEventQuery == 0 ? now - 6 * 3600 * 1000L : lastEventQuery - 2000;
+        from = Math.min(from, now - 2000); // the clock can jump back (network time): never ask for a window that ends before it starts
         try {
             UsageEvents ev = usm.queryEvents(from, now);
             UsageEvents.Event e = new UsageEvents.Event();
@@ -559,10 +558,15 @@ public class AdhanService extends Service {
             File f = new File(dl, name);
             if (f.canRead()) return Uri.fromFile(f);
         }
-        return Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.chime);
+        return chime();
     }
 
-    private void playSound() {
+    private Uri chime() { return Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.chime); }
+
+    private void playSound() { playSound(soundUri()); }
+
+    /** Plays the takbir (or adhan file). A file that won't play falls back to the built-in chime, so the family always hears something. */
+    private void playSound(Uri uri) {
         stopSound();
         AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
         AudioAttributes attrs = new AudioAttributes.Builder()
@@ -572,10 +576,11 @@ public class AdhanService extends Service {
         AudioFocusRequest focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                 .setAudioAttributes(attrs).build();
         am.requestAudioFocus(focus); // pauses Netflix or YouTube while the adhan plays
+        MediaPlayer mp = new MediaPlayer();
+        player = mp;
+        boolean isChime = uri.equals(chime());
         try {
-            MediaPlayer mp = new MediaPlayer();
             mp.setAudioAttributes(attrs);
-            Uri uri = soundUri();
             mp.setDataSource(this, uri);
             Runnable finish = () -> {
                 am.abandonAudioFocusRequest(focus);
@@ -589,12 +594,18 @@ public class AdhanService extends Service {
                 if (full) fadeOut(p, 20_000, 2500, finish);
             });
             mp.setOnCompletionListener(p -> finish.run());
-            mp.setOnErrorListener((p, w, x) -> { am.abandonAudioFocusRequest(focus); hideAlert(); return true; });
+            mp.setOnErrorListener((p, w, x) -> {
+                if (player != p) return true; // an older sound, already replaced
+                am.abandonAudioFocusRequest(focus);
+                stopSound();
+                if (!isChime) playSound(chime()); else ui.postDelayed(this::hideAlert, 60_000);
+                return true;
+            });
             mp.prepareAsync();
-            player = mp;
         } catch (Exception e) {
             am.abandonAudioFocusRequest(focus);
-            ui.postDelayed(this::hideAlert, 60_000);
+            stopSound();
+            if (!isChime) playSound(chime()); else ui.postDelayed(this::hideAlert, 60_000);
         }
     }
 
@@ -649,48 +660,6 @@ public class AdhanService extends Service {
             c.disconnect();
         }
         return sb.toString();
-    }
-
-    // ------------------------------------------------------------------ random wallpaper for Projectivy
-
-    /** Clips the parent copied to the box. */
-    static File clipsDir() { return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "TVWallpapers"); }
-
-    /** The one file Projectivy is set to play. */
-    static File wallpaperFile() { return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "Projectivy/wallpaper.mp4"); }
-
-    private void maybeSwapWallpaper(boolean home) {
-        String mode = prefs.getString("wallpaper_mode", "return"); // return | hourly | off
-        boolean leftHome = wasHome && !home;
-        wasHome = home;
-        if (mode.equals("off")) return;
-        boolean due = mode.equals("return") ? leftHome
-                : !home && System.currentTimeMillis() - lastSwap > 3600_000L;
-        if (due) swapWallpaper();
-    }
-
-    void swapWallpaper() {
-        lastSwap = System.currentTimeMillis();
-        new Thread(() -> {
-            File[] clips = clipsDir().listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".mp4"));
-            if (clips == null || clips.length == 0) return;
-            File pick = clips[new java.util.Random().nextInt(clips.length)];
-            if (clips.length > 1) while (pick.getName().equals(lastClip)) pick = clips[new java.util.Random().nextInt(clips.length)];
-            File out = wallpaperFile();
-            File tmp = new File(out.getParentFile(), ".next.mp4");
-            try {
-                out.getParentFile().mkdirs();
-                try (java.io.InputStream in = new java.io.FileInputStream(pick);
-                     java.io.OutputStream os = new java.io.FileOutputStream(tmp)) {
-                    byte[] buf = new byte[1 << 16];
-                    int n;
-                    while ((n = in.read(buf)) > 0) os.write(buf, 0, n);
-                }
-                if (tmp.renameTo(out) || (out.delete() && tmp.renameTo(out))) lastClip = pick.getName();
-            } catch (Exception ignored) {
-                tmp.delete();
-            }
-        }).start();
     }
 
     // ------------------------------------------------------------------ widget card

@@ -118,14 +118,24 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep). Geomet
 - Spacing values: `setPadding` in `MainActivity.java` uses 27 distinct values (0 to 90, mostly steps of 2); margins add 3, 11, -30, -62, -66. Kids margins: 80 sides, 16/28/30 gaps. There is no spacing token set.
 - Clock width per minute (computed, 340 px Fraunces, spacing -0.01): "11:11" 504 px, "8:08" 574, "12:58" 659, "23:58" 701, "10:00" 731. Other faces with `tnum` are constant (Outfit 784, Jost 776, Cormorant 700, Inter 775 px). Right alignment keeps the right edge still.
 
+Added by the whole-app audit (2026-11-05):
+- Panels: header TOP|START (110, 56); hint TOP|END (110, 74); Quran buttons TOP|END (110, 80); Quran now-playing block (430, 96) 640 wide; surah scroller (100, 250) 1720x830; apps scroller (100, 230) 1720x850, 7 x 246 px columns. PIN card 600 wide, about 961 tall; Parent card 900 wide, about 958 tall, scroller 760, rows 76. Reciter card 1500x940, tiles 664x160; calendar card 1100x940. Kids: cartoons page padding 110, tiles 384 + 40 right margin, scale 1.08; Kids apps card 1456x900, tiles 316 + 20 right margin. (computed, d772bcc)
+- Font line heights (px, includeFontPadding as used): Inter SemiBold 44 → 53.2, 52 → 62.9; Plex Arabic Medium 30 padded → 49.8, 40 padded → 66.4; Amiri Bold 36 padded → 98.4, 52 padded → 142.1. (computed with fontTools)
+
 ## Past findings
 - 2026-11-05, PR #21 (docs): self-check. Fixed the false "end tiles past 96 px" claim; added the neighbour 1.06 / lift 5 tiles and the stale `magnify()` comment; recorded the build-time verse sizes, the 4 px tile-to-label gap, the Kids 30 px gutter and the broadcast safe areas.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit (main d772bcc): 3 Must, 5 Should, 4 Nice, all in panels and Kids grids. Quran top-right buttons overlap the now-playing block once a reciter is named (button 1043 px for Al-Minshawi, starts x 767; block x 430..1070); Parent rows and the Kids cartoon grid clip the focused item's sides; All apps (1722 in 1720) and the surah grid clip the gold shadow; reciter list and Kids apps grid sit 20 px off-centre; Parent rows 76 px < 96. (computed)
+
 
 ## Lessons learned
 - 2026-11-05: Measure before you judge: font metrics plus HarfBuzz widths predict most overlaps (Amiri's padded line is 2.7 em tall). Confirm on a stress-test screenshot.
 - 2026-11-05: View bounds are not ink edges. Alignment is judged on the visible glyphs.
 - 2026-11-05: Check commit history before calling a layout a bug: the right-aligned column and the 100% default were deliberate.
 - 2026-11-05: Check focus-growth claims with the full `magnify()` maths, neighbours included.
+- 2026-11-05: Any scroller that clips (`clipToBounds`, or a plain ScrollView, which clips children at its bounds even with `clipToPadding false`) needs side room of at least `(scale - 1) * width / 2` plus the shadow. `listCard()` (`-30` margins + `30` list padding) is the house pattern; check every other scroller against it.
+- 2026-11-05: GridLayout margins on one side only (`0, 0, 40, 40`) leave the trailing margin as empty space, so the grid sits off-centre. Use symmetric margins, or size tiles so `cols * (w + gap) - gap` equals the content width.
+- 2026-11-05: Buttons that show user data ("Reciter: <name>") grow with it. Measure the widest real value against every neighbour, not just the default text.
 
 ## Open questions to research next
 - Real screenshots at 100% and 88% with the stress test: do the computed y values above match (column end about 477, verse end about 685, focused tile top about 838)?
@@ -136,6 +146,8 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep). Geomet
 - Find Material 3's own spacing tokens (m3.material.io needs JavaScript; not opened) and Google TV's home-screen spec.
 - Read the official bbc.co.uk subtitle guidelines (only an unverified mirror [bbc-subs-mirror] was opened).
 - What is the family's TV size and sofa distance? It sets the real arcmin of every size (Core 8).
+- Confirm items 1 to 3 on box screenshots: the Quran panel with Al-Minshawi chosen and playing; Parent settings with a row focused; Kids cartoons with the first card focused.
+- Material 3 spacing tokens: m3.material.io and the pub.dev M3 Expressive spacing page both failed to load on 2026-11-05.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -165,3 +177,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [ebu-r95] https://tech.ebu.ch/docs/r/r095.pdf: the same safe areas for 16:9 HD. Checked 2026-11-05.
 - [bbc-subs-mirror] https://bbcbreakingnews.pages.dev/accessibility/forproducts/guides/subtitles: unverified mirror of the BBC subtitle guidelines (online subtitles at most 68% of the width, inside the central 75% x 90%, at most 2 lines). Checked 2026-11-05.
 - To open next: m3.material.io spacing and layout pages (JavaScript only), Google TV home-screen references, the official bbc.co.uk subtitle guidelines.
+- [tv-layouts] re-opened 2026-11-05: "To prevent overlapping, it's important to consider the padding between items and the size increase of focused states"; points to Cards for component spacing.
+- [cliptopadding] https://codemia.io/knowledge-hub/path/android_what_does_the_cliptopadding_attribute_do: with `clipToPadding false`, children "may draw into the padded area"; "`clipChildren` controls clipping to parent outer bounds" (a secondary source; the official ViewGroup reference page did not load the method text). Checked 2026-11-05.
+- [tv-compose-lists] https://developer.android.com/training/tv/playback/compose/lists: no padding guidance for focused items (checked 2026-11-05; not useful, don't re-open for this).

@@ -144,6 +144,11 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Missing-app copy in use: "X isn't installed yet. Opening the Play Store…" (then opens it after 1.2 s), "Kids Corner isn't installed yet. Run Update TV on the PC.", "YouTube isn't installed.", "Couldn't open X".
 - Hold-OK hints in use: All apps `panelHint` ("Hold OK to add an app to Kids ⭐", then "Hold OK for options: home row or Kids ⭐"), the dock's `ARRANGE_HINT` while arranging, Kids parent menu line. The home dock has no hint before arranging.
 
+Added by the whole-app audit (2026-11-05):
+- Adhan Settings row (`SettingsActivity.row` ~`:78`): rest none; focused `0x26FFFFFF` fill + 3 px `0xFFFFC24A` edge, radius 18, **no scale**; press none (OK cycles the value, or "▶" acts silently); Baloo 32/30; background flat `0xFF0B0D14`. It shows in home All apps.
+- Kids action row (`actionRow` ~`:1712`): focused background `0x26FFFFFF` only. Kids `toastIn(b, msg)` (~`:1727`) swaps a button's text to "msg ✓" for 1.2 s, which is the family's only in-place confirmation pattern and the model for answering presses.
+- Layer stack (home): pill 0 < panels (`overlay()`) 30 < player 35 < reciters 40 < splash 60. Panels with equal elevation stack by build order: pin (`:238`) < apps/calendar < quran < parent (`:241`).
+
 ## Past findings
 - 2026-11-05, PR #21 (docs only): Should: the PIN rest state from PR #20 was missing from the inventory (added, with a States checklist item); "Kids focus inverts, which matches the tv-material default" left out tv-material's 1.1 scale (reworded; Kids one-cue focus added to Known risks). Copy seeds for a later polish PR (hand to lane 10): the Kids setup line says "can't send **him** back" (`KidsActivity.java` ~`:1745`), should be "the kids"; "Too many tries. Wait 30 seconds" lacks its final full stop.
 
@@ -154,6 +159,9 @@ Seed findings from the creation research (not yet reported on a PR; confirm befo
 - Should: Kids `launch()` fails silently.
 - Nice: 10-minute reminder looks like two different components (home pill vs adhan Baloo card with another gold).
 - Nice: `closeAppMenu()` cuts out while the menu faded in.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit on `d772bcc`: Must: the PIN pad opens behind Parent settings ("Change the YouTube PIN", equal elevation 30, parent added later); the message pill (elevation 0) is hidden under every panel, so All apps, Parent settings and Quran messages are lost; remote-button rows are dead on OK when RemoteKeys isn't running. Should: wrong PIN has no words; resting pad looks live; PIN "set" copy is wrong; calendar rows look like buttons; no press states; reciter list has no loading state; app menu uses GlassFrame, not PanelBg; Kids single-cue focus; Kids value rows ignore OK; the adhan Settings screen is off-family (and mentions the removed Projectivy); the 10-minute reminder is two components; pill time is too short for two sentences. Nice: dock hold-OK hint, "›" on instant actions, player and reciter panels cut on closePanels, Up silent in arrange, stale magnify comment, no Kids PIN success flash. The seed findings from creation are all confirmed on main.
+
 
 ## Lessons learned
 - 2026-11-05: Read the long-press handler, not the hint copy: hints can promise an action the code no longer does.
@@ -162,6 +170,9 @@ Seed findings from the creation research (not yet reported on a PR; confirm befo
 - 2026-11-05: A merged PR can add a state (the PIN rest) the inventory doesn't list yet. Re-check the inventory against `main` every review.
 - 2026-11-05: "Matches tv-material" must cover scale as well as colour.
 - 2026-11-05: m3.material.io pages need JavaScript; read the generated token files in androidx (`StateTokens.kt`, `FilledButtonTokens.kt`) and the tv-material `*Defaults.kt` files with curl instead. Apple HIG pages read well from `developer.apple.com/tutorials/data/design/human-interface-guidelines/<page>.json`.
+- 2026-11-05: Check elevations and build order whenever one panel opens another. Equal elevation means the later-built panel wins, whatever opened last.
+- 2026-11-05: A message component has to sit above every layer it can be fired from. List the places that call `toast()` and check each one is visible.
+- 2026-11-05: Audit the "secondary" screens too (the adhan Settings activity is reachable from All apps but wasn't in the inventory).
 
 ## Open questions to research next
 - Which press look suits our gold-glass style best: a 0.96 dip, a brief fill flash, or tv-material's "scale back to 1.0"? Mock all three on the box at 3 m.
@@ -172,6 +183,9 @@ Seed findings from the creation research (not yet reported on a PR; confirm befo
 - Should the adhan reminder and the home pill share one design? Ask lane 11 about the two golds and lane 10 about Baloo outside Kids.
 - tvOS HIG "Buttons" has no tvOS-specific section any more; find Apple's tvOS button sizes and focus treatments (older HIG or WWDC session) to compare.
 - Find NN/g's article on toasts (fetch failed with a client error on 2026-11-05).
+- Where should the pill sit while a panel is open: bottom centre, or the panel's own hint pill? Mock both with lane 9.
+- Should the resting PIN pad dim to 40% or 50%? Check on the TV at 3 m.
+- Should the shared reminder card take 8 s or the adhan's 15 s? Ask lane 12.
 
 ## Source library
 All opened 2026-11-05; all tv-material and M3 numbers re-verified 2026-11-05 (PR #21).
@@ -213,3 +227,8 @@ All opened 2026-11-05; all tv-material and M3 numbers re-verified 2026-11-05 (PR
 - [uxm-toasts] https://uxmovement.com/forms/best-practices-to-make-your-toasts-usable-and-accessible/: toasts 2 to 5 s, 3 s ideal, 1 to 2 lines. Checked 2026-11-05.
 - [dsp-toasts] https://designsystemproblems.pages.dev/accessibility-compliance/toast-notification-accessibility: unofficial; 3 s plus 1 s per 3 words. Checked 2026-11-05.
 - Also useful: https://www.nngroup.com/videos/empty-states-in-application-design-guidelines/ (short video summary of the empty-state article).
+- [webos-notifications] https://webostv.developer.lge.com/develop/guides/notifications: TV toasts are an overlay at the bottom of the screen, last about 5 s, appear one at a time in order, and need no action. Checked 2026-11-05.
+- [uxcel-toasts] https://app.uxcel.com/glossary/toasts: 3–7 s by message length, consistent placement. Checked 2026-11-05.
+- [tv-focus] re-checked 2026-11-05: "enters a 'pressed' state until the remote button is released"; disabled = "lower prominence"; scale "can vary based on their size" (the page doesn't require identical indicators).
+- https://android.jlelse.eu/polishing-ui-android-statelistanimator-7b74a06b85a5: a `StateListAnimator` selector animates properties (translationZ, scale) per state, which is a cheap way to give every control the same press dip. Checked 2026-11-05.
+- Tried and failed: m2.material.io confirmation-acknowledgement (needs JavaScript); NN/g's toast article (not found by search).

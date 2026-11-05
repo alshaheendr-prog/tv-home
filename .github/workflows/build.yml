@@ -8,16 +8,21 @@ on:
 permissions:
   contents: write
 
+# Builds of the same branch run one at a time, in order, so an older build can never publish over a newer one.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: "21"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
         with:
           gradle-version: "8.14.3"
       # The runner image already has the Android SDK; make sure the platform we compile against is there.
@@ -39,9 +44,11 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk tv-home.apk
           cp adhan/build/outputs/apk/release/adhan-release.apk family-adhan.apk
           cp kids/build/outputs/apk/release/kids-release.apk kids-corner.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tv-home-apk
+          retention-days: 14
+          if-no-files-found: error
           path: |
             tv-home.apk
             family-adhan.apk
@@ -50,6 +57,15 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+        # Never goes back to an older build (Update TV can't install a lower version), ties the tag to the commit
+        # that was built, and tries the upload again if GitHub has a hiccup, so the TV always has a "latest" to fetch.
         run: |
+          cur=$(gh release view latest --json name -q .name 2>/dev/null | grep -o '[0-9]*$' || true)
+          if [ -n "$cur" ] && [ "$cur" -gt "$GITHUB_RUN_NUMBER" ]; then echo "Build #$cur is already published; not going back to #$GITHUB_RUN_NUMBER"; exit 0; fi
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest tv-home.apk family-adhan.apk kids-corner.apk --title "Latest build #${{ github.run_number }}" --notes "Built from ${{ github.sha }}"
+          for i in 1 2 3; do
+            gh release create latest tv-home.apk family-adhan.apk kids-corner.apk --target "$GITHUB_SHA" \
+              --title "Latest build #$GITHUB_RUN_NUMBER" --notes "Built from $GITHUB_SHA" && exit 0
+            sleep $((i*5))
+          done
+          exit 1

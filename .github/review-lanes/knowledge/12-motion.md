@@ -126,6 +126,9 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 ## Past findings
 - 2026-11-05, PR #21 (docs only): corrected the curve labels for `goldLift` (inherits `EASE`), lane 3's 0.5x animator claim (the scripts set 1.0) and lane 4's panel curves; added motion to the coverage map (Verse, Wallpaper, Quran player, PIN pads, Kids rows; new Ambient mode row).
 - Baseline audit at creation (not a PR review): inherited start delays from `introAnimation()` and the All apps fade-in (see This box); five decelerate factors plus the default curve in use; held-key restarts of `magnify()`/`BrandGlow`; lane 4's note that undecorated `animate()` calls "get AccelerateDecelerate" is true only for views that never set an interpolator.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit on `main` d772bcc: Must were the intro's inherited delays (label shows over an empty dock after closing a panel or waking, and the clock and dock linger under a new panel) and the All apps focus inheriting an 80 to 320 ms delay (moved up from Should). Should were the delayed focus restore after close (`postDelayed` 120/200 ms), IntroView and the splash timed on the wall clock, the Kids PIN shake (3×60 ms) unlike home's 420 ms keyframes, exits on decelerate curves and short fades on the default curve, and the verse cross-fade (opacity only, 250/400). Nice were the hidden `lineTimer` running all day, the BrandGlow colour snap, the prayer highlight snap, skipping unchanged tiles in `magnify()`, IntroView at scale 0, Kids hide/focus curves, and the magnify Javadoc.
+
 
 ## Lessons learned
 - 2026-11-05: `View.animate()` is stateful. Before calling an animation "default", check every earlier `animate()` on the same view for `setStartDelay` or `setInterpolator`.
@@ -134,6 +137,10 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: Copy the adhan overlay's pattern: set `setStartDelay(0)` explicitly on exit animations of views that had delayed entrances.
 - 2026-11-05: Check the owner's scripts in project files before marking a box setting as unverified.
 - 2026-11-05: When another lane's file states a motion fact, check it against this file.
+- 2026-11-05: Inherited delays show up as wrong order, not just lateness. Look for any view animated with no delay (like `dockLabel`) next to one carrying an old delay (like `bottomGroup`).
+- 2026-11-05: Time custom-drawn animations (`onDraw` + `postInvalidateOnAnimation`) with `SystemClock.uptimeMillis()` or `getDrawingTime()`, never `System.currentTimeMillis()`. The home starts at boot, when the wall clock is most likely to jump.
+- 2026-11-05: Look for animators that drive hidden views (`GONE` targets). They cost frames and show nothing.
+- 2026-11-05: Restoring focus with `postDelayed` after a fade is a responsiveness bug if the target is already focusable. Move focus at once and let the fade play.
 
 ## Open questions to research next
 - Record the panel open/close and ambient wake on the TV to confirm the inherited delays (expected: dock lingers 600 ms).
@@ -146,6 +153,10 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Should the verse cross-fade drop its 8 px movement (opacity only is calmer and not "motion" under WCAG 2.3.3)?
 - How do premium TV launchers (Apple TV, Google TV) time focus moves? Measure from screen recordings at 60 fps.
 - Open Val Head / A List Apart on motion sensitivity and Google's "Making motion meaningful" (fetch budget ran out this session).
+- Does the box's wall clock jump at boot? Check with `adb logcat -b events | grep -i time` or by comparing `date` right after a cold boot with a later reading.
+- After M1 is fixed, record panel close and ambient wake at 60 fps to confirm that the dock leads and the label never shows alone.
+- Is the M1 alternative (a deliberate 0/40/80 ms return cascade) nicer than everything at once? Compare on the TV.
+- Ask lane 3: frame cost of N1 (hidden `lineTimer`) and of N4 (skipping unchanged dock tiles).
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -181,3 +192,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [aosp-disable-anim] https://git.replicant.us/replicant-next/packages_apps_Settings/plain/src/com/android/settings/accessibility/DisableAnimationsPreferenceController.java: "Remove animations" sets all three scales. Checked 2026-11-05.
 - [gd-motion-not-hard] https://medium.com/google-design/33089196e6c2: Google Design's practical durations and easing. Checked 2026-11-05.
 - To open next: A List Apart "Designing Safer Web Animation for Motion Sensitivity" (blocked by proxy), Google Design "Making motion meaningful", m3.material.io motion pages (JS-only), Android TV "Remove animations" help page.
+- [systemclock] https://chromium.googlesource.com/android_tools/+/HEAD/sdk/sources/android-25/android/os/SystemClock.java: wall clock can jump; `uptimeMillis` is monotonic, for intervals. Checked 2026-11-05.
+- [anim-time] https://learn.microsoft.com/en-us/dotnet/api/android.views.animations.animationutils.currentanimationtimemillis?view=net-android-37.0: the animation clock is not the wall clock. Checked 2026-11-05.
+- [gd-meaningful] https://design.google/library/making-motion-meaningful: clear focal point, respond without missing a beat, avoid overlapping paths. Checked 2026-11-05 (no durations given).

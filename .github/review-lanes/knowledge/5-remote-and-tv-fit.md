@@ -102,6 +102,13 @@ These are standard ADB commands; the first four are from [mustafa], the others a
 - Long-press timeout in use: `adb shell settings get secure long_press_timeout` (empty means the 400 ms default).
 - Background start blocked: `adb logcat | grep "Background activity launch blocked"`. [bal]
 
+### Added by the whole-app audit (2026-11-05)
+- Focus search from a view goes up to the window root unless a parent overrides `focusSearch` (android14 `ViewGroup.java:1074-1084`). So a panel that doesn't handle arrows lets focus leave it for any VISIBLE focusable on screen, including alpha-0 views. The usual guards are `FOCUS_BLOCK_DESCENDANTS` on the layers below (see Kids `syncFocus()`), or overriding `focusSearch` on the panel to search only inside itself. [vg14], [ff14]
+- `FocusFinder.isCandidate` (android14 `:549-566`): Down needs `(src.top < dst.top || src.bottom <= dst.top) && src.bottom < dst.bottom`. Overlapping rects still count, so a hidden row just below a panel's last row qualifies even when it overlaps. [ff14]
+- `removeAllViews()` on a group that holds focus calls `rootViewRequestFocus()` (android14 `ViewGroup.java:5785-5835`), and so does a focused view going GONE (`View.java:17513-17519`). Both put focus on the window's first focusable view. Rebuilding a focused list causes the same flash as hiding a panel. [vg14], [view14]
+- Drawing order with elevation: children are sorted by Z, and equal Z keeps add order (android14 `ViewGroup.buildOrderedChildList` `:4468-4475`). Two panels at the same elevation stack by build order, not by which opened last, unless `bringToFront()` is called. [vg14]
+- Volume keys on Android TV never reach the foreground app: `interceptKeyBeforeDispatching` consumes `VOLUME_UP/DOWN/MUTE` when `mUseTvRouting` (platform type TELEVISION = has `FEATURE_LEANBACK`) or `config_handleVolumeKeysInWindowManager` (android14 `PhoneWindowManager.java:3138-3145`, `AudioSystem.java:2464-2473`). An app that "eats every key" doesn't break volume. [pwm14], [audiosys14]
+
 ## This box and this code
 - **Box:** Xiaomi TV Box S (3rd Gen), Google TV, 2 GB RAM, 32 GB storage, quad-core up to 2.5 GHz, Mali-G310 V2 GPU, 4K output, one HDMI 2.1 port. The spec page doesn't describe the remote buttons. [mi]
 - **SDK:** all three modules `compileSdk 35`, `targetSdk 35`; `minSdk 28` (app, adhan), `33` (kids). No `enableOnBackInvokedCallback`. (`*/build.gradle.kts`)
@@ -119,10 +126,17 @@ These are standard ADB commands; the first four are from [mustafa], the others a
 - `hideBars()` uses deprecated `setSystemUiVisibility` (`MainActivity.java:440-442`, `KidsActivity.java:251`).
 - Toasts: none in Java code since PR #20 (`grep Toast` finds none).
 
+Added by the whole-app audit (2026-11-05):
+- TV Home panels (`overlay()`) are all elevation 30 (player 35, reciter 40, splash 60). `show()` doesn't call `bringToFront()` and doesn't block the home row, which stays focusable at alpha 0. Kids Corner's `show()` does both (`syncFocus()`).
+- Parent settings focus indexes after a toggle are hard-coded (`drawParent(n)`), and they drifted by one when a row was added at the top.
+
 ## Past findings
 - **2026-11-05, PR #20 (merged):** no Must fix. Should fix: kids-lock warning was a system Toast (fixed: moved into the Parent menu); kids PIN dots stayed red during the wait (fixed). Nice to have: parent-settings set-PIN subtitle mentioned only YouTube (fixed). Rule added to the brief: nothing the family must read is a Toast. Research notes: the adhan overlay ignores Screen size and sits about 2.9%/4.1% from the corner; a Prime or Apps press does nothing if Stremio/Kodi isn't installed; Back and focus handling sound.
 - **2026-11-05, PR #21 (docs):** no Must fix. Should: §8 CEC PAUSE/PLAY arrive as `MEDIA_PAUSE`/`MEDIA_PLAY`; the key-repeat settings claim was main-only. Nice: predictive back answered, GlobalKeyManager, SCREENSHOT is 15+, secretKey line. All other file:line refs and android14 claims verified.
 - **2026-11-05, knowledge build (no PR):** from AOSP source: `VIDEO_APP_*`/`FEATURED_APP_*` keys never reach accessibility services on Android 14; `ALL_APPS` fires on UP on 14; 500 ms accessibility key timeout; Android 14 lets accessibility services start activities from the background; long-click listeners must return true; the Quran player ignores `MEDIA_PLAY_PAUSE`.
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- **2026-11-05, whole-app audit (`d772bcc`, no PR):** Must: panels don't trap focus, so it escapes to the hidden dock or layers behind (PIN pad, Parent settings, calendar, All apps last row, reciter list, hold-OK menu); Stop on the Quran page drops focus onto the hidden dock; Parent settings toggles move focus up one row; the PIN pad opens behind Parent settings; Back from the calendar skips All apps. Should: focus flash and `lastDock` reset on close or rebuild; the pill is hidden under panels; wrong "Hold OK on YouTube" hint; Back on stats closes all settings; home player media keys; Kids player OK repeat and Play toggling; adhan banner text in the bottom 5%; home top at y 34; silent Prime/Apps when the app is missing. Nice: label clamp 60, pill x 80, adhan overlay margins, alpha-only Quran page under the player, arrange vs ambient, adhan Settings `configChanges`, unused a11y events.
+
 
 ## Lessons learned
 - 2026-11-05: Read key-code numbers and framework behaviour from AOSP source at the right branch, not from summaries. A summary of the KeyEvent page invented several values.
@@ -131,6 +145,10 @@ These are standard ADB commands; the first four are from [mustafa], the others a
 - 2026-11-05: AOSP many-to-one tables (`HdmiCecKeycode`) convert by first match, so read the order.
 - 2026-11-05: Check the branch for every constant: `ViewConfiguration` and `KeyEvent` differ between 14 and `main`.
 - 2026-11-05: developer.android.com pages often hold their numbers in images or sub-pages. If a fetch returns no number, say so; don't fill it in.
+- 2026-11-05: For every panel, press every arrow at every edge in your head, and run the rects through `isCandidate` against everything still VISIBLE behind it. An "alpha 0" home row is a live target.
+- 2026-11-05: When the same project already has the right pattern (Kids `syncFocus()` and `bringToFront()`), point to it as the fix; it is cheaper and safer than inventing one.
+- 2026-11-05: Hard-coded focus indexes in rebuilt lists drift silently when a row is added. Look for them whenever a list gains a row.
+- 2026-11-05: Check whether a "consumes everything" key handler can block volume before flagging it: on TV it can't (see §2).
 
 ## Open questions to research next
 - Which key code does each button on this box's remote send (Home, Apps, Netflix, Prime Video, YouTube, Google TV/Live, the input/settings button)? Do any of them map to `VIDEO_APP_*`/`FEATURED_APP_*` and so can't be learned? (On the box: Parent settings → learn, or `adb shell getevent -l` / logcat.)
@@ -141,6 +159,8 @@ These are standard ADB commands; the first four are from [mustafa], the others a
 - Does the "Touch & hold delay" accessibility setting on Google TV change `long_press_timeout` for D-pad holds?
 - CEC: does the family's TV send repeated "pressed" so hold-OK works from the TV remote?
 - Is `KEYCODE_BUTTON_A` turned into a confirm key by the key-character-map fallback for game pads, or does it need handling?
+- Does long-press OK reach the view when the TV's own remote sends SELECT over CEC (does the TV repeat "pressed")? This is still open, and now matters for dock arranging and All apps hold-OK.
+- Does `View.requestFocus()` on a dock tile from `onNewIntent` (Home pressed while a panel is fading) ever race with the 180 ms fade? Watch on the box (checklist item 6).
 
 ## Source library
 Tags used above. All were opened on 2026-11-05 unless marked otherwise.
@@ -182,3 +202,11 @@ Tags used above. All were opened on 2026-11-05 unless marked otherwise.
 - [rd-patchwall] https://reddit.zackpollard.pro/r/AndroidTV/comments/1myx4k3/creative_ways_to_remap_the_patchwall_button_on : PatchWall button "580". Community post, weak.
 - Earlier (opened by the first review, listed in the brief): learn.microsoft.com mirror of `AccessibilityService.onKeyEvent`; developer.android.com `AccessibilityServiceInfo`; `build-adaptive-apps-for-tv`.
 - Not reachable on 2026-11-05: androidauthority.com (Projectivy block article) and hexnode forum (fetch budget ran out); retry next time.
+- [ff14] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/view/FocusFinder.java : `isCandidate`, `beamsOverlap`.
+- [vg14] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/view/ViewGroup.java : `focusSearch` up to the root, `removeAllViewsInLayout` refocus, `buildOrderedChildList` Z order.
+- [view14] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/view/View.java : `setFlags` GONE → `clearFocus`, `rootViewRequestFocus`, refocus when not in touch mode.
+- [audiosys14] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/media/java/android/media/AudioSystem.java : `getPlatformType` (leanback → TELEVISION).
+- [pwm14] (already listed) now also cited for volume routing `:3138-3145`.
+- [focus-restore] https://developer.android.com/develop/ui/compose/touch-input/focus/focus-restoration : focus should return to the last-focused child on re-entry, and to the item acted on after Back (the `saveFocusedChild`/`restoreFocusedChild` pattern). This is the Compose wording of our "return focus to where the user was" rule.
+- [adaptive-tv] https://developer.android.com/develop/adaptive-apps/guides/tv/build-adaptive-apps-for-tv : "Ensure every UI element is reachable and has a clear focused state." It has no guidance on overlays or focus traps.
+- Not useful: the `device/google/atv` overlay config URL returned 404 (moved). `config_handleVolumeKeysInWindowManager` defaults to false in core `config.xml:4612`; TV routing comes from `mUseTvRouting` instead.

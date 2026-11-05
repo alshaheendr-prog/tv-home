@@ -56,6 +56,11 @@ Line numbers drift; re-grep before you cite them.
 - [ ] If the PR adds caches or players, it handles `onTrimMemory`: on Android 14+ only `TRIM_MEMORY_UI_HIDDEN` and `TRIM_MEMORY_BACKGROUND` arrive. No `System.gc()`.
 - [ ] Check `adb shell dumpsys meminfo com.family.tvhome` before and after (Java, Native, Graphics, Total PSS) with the same clip playing. Google's budget for a 1 GB TV (Anon+Swap+Graphics under 200MB) is a good ceiling here too.
 
+**Lifecycle and hidden work** (added 2026-11-05, whole-app audit)
+- [ ] Work in `onResume`/`onStart` is cheap and cached (no rebuilding every icon, tile or grid on each return).
+- [ ] Panels that are fully opaque hide the layers beneath them (dim, scrims, wallpaper) and pause the wallpaper.
+- [ ] Finite repeating animators are checked too: Android 14 pauses only infinite ones in the background.
+
 ## Known risks already in the code
 - `lineTimer` runs a 29s ValueAnimator every verse into `lineBar`, which is GONE, so Choreographer never idles. If `lineBar` comes back, the `lineFrame` hardware layer re-renders every frame.
 - `EqualizerView` redraws every frame while the Quran plays. Never put its parent on a hardware layer.

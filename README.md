@@ -1,8 +1,8 @@
 # Family TV Home
 
-A custom home screen for the Xiaomi TV Box S (3rd Gen): Kuwait City adhan times and countdown, five animated worlds for the kids, and tiles for YouTube (PIN), Netflix, Crunchyroll, Stremio, Prime Video, Shahid, Movies and TV Shows (Kodi, or VLC), plus Kids, Browser, All apps and Settings.
+A custom home screen for the Xiaomi TV Box S (3rd Gen): a big clock with the Gregorian and Hijri dates and the weather, a verse or hadith of the day, Kuwait City prayer times with the next adhan, a soft Quran recitation, the family's own video wallpapers, and a home row for Netflix, Crunchyroll, Stremio, Prime Video, Shahid, Movies & Shows (Kodi), Browser, Quran, Kids Corner, All apps and YouTube (behind a PIN).
 
-The screen itself is `app/src/main/assets/index.html`. The Android part is a full-screen WebView in `MainActivity.java` with a small bridge to launch apps.
+It is a native Android app (Java, no WebView): the whole screen is built in `app/src/main/java/com/family/tvhome/MainActivity.java`, and the wallpaper plays through media3 (ExoPlayer). The repo builds three apps: the home screen (`app/`), Kids Corner (`kids/`) and the Adhan popup (`adhan/`).
 
 ## Get the app
 Every push to `main` builds it. Download `tv-home.apk` from the **latest** release on this repository's Releases page.

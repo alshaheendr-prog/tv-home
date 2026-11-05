@@ -58,7 +58,7 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 
 ### 5. Testing the adhan and other timed features safely
 - Use the built-in test first: Adhan, then **"Play the adhan now (test)"**. It sends the `test` action to `AdhanService`, which calls `fireAdhan(3)` (`AdhanService.java:134`, `SettingsActivity.java:187`).
-- The adhan's corner card only shows **over another app**, not over the family home. So test it from inside Netflix or another app. (A PR #20 lesson.)
+- Corrected 2026-11-05 (whole-app audit): the adhan's panel and corner card only show over a *different home launcher*, never over Netflix or the family home (`AdhanService.java` checks `homePackages`). What does show over Netflix is the adhan band at the bottom and the 10-minute reminder (top right, about 15 s). The old PR #20 lesson ("test the card from inside Netflix") was wrong.
 - The sound needs audio focus. On Android 15, focus is refused unless the app is on top or running an FGS [a15]. The adhan runs an FGS, so the sound should pause Netflix or YouTube. Check that the other app pauses and then resumes.
 - Don't change the TV's clock unless there is no other way. If he must:
   - Write the steps to set it back to automatic time afterwards.
@@ -118,6 +118,21 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 - **Wallpaper clips:** `Movies/TVWallpapers` (`MainActivity.java:1461`).
 - **Services restart after a reboot and after an update** (BootReceiver: BOOT_COMPLETED, MY_PACKAGE_REPLACED).
 
+Added by the whole-app audit (2026-11-05):
+- Dock order: Netflix, Crunchyroll, Stremio, Prime Video, Shahid, Movies & Shows, Browser, Quran, Kids Corner, All apps, YouTube (`MainActivity.java:103-115`).
+  - Quran and All apps are fixed (`:121`).
+  - "Settings" and "Islamic calendar" live in All apps (`:2278-2290`).
+- With no clips, the wallpaper is a calm gradient. There are no built-in worlds (`:1474-1481`).
+- The intro plays only on a cold start, after a reboot or an update (`coldStart`, `:1406`). Any press skips it (`:448`).
+- Ambient: the row fades after 2 min, and the first press only wakes it (`:450, 3461`). The screen dims after 15 min (`:3479`).
+- Soft Quran starts 4 s after the home resumes and fades up over 45 s (`:286, 2786`). It stops when another app opens (`onStop`, `:421`). Jumu'ah morning plays Al-Kahf once, and Ramadan nights play the surahs in order.
+- The Kids lock leads to "Kids Corner settings" (`KidsActivity.java:870`). "Leave Kids Corner" is the last row (`:1659`). Kids settings change with Left/Right, straight away.
+- Kids limits are 0 (No limit), 15, 30 … 240 min. Bedtimes run from 7:00 pm to 10:00 pm, or Off (`KidsActivity.java:1571-1572`). A star is worth 15 min, and the star buttons only show on the time's-up screen, not at bedtime (`:1149-1151`).
+- The adhan banner is non-focusable, so Back goes to the app behind. It hides 4 s after the sound, or after 60 s with "Popup only" (`AdhanService.java:171-178, 552, 576-583`).
+- The 10-minute reminder shows over any app except the family home, for 15 s (`:465-472, 408`). The panel and card show only over a different home launcher (`:507-509`).
+- RemoteKeys `BUTTONS` is at `RemoteKeys.java:21-25` and `code()` at `:41-43`. While learning, the arrows still pass through.
+- After Update TV, wireless debugging is on, so the USB drive is gone ("● Drive unplugged", `MainActivity.java:3001`) until it's switched off.
+
 ## Past findings
 - **2026-11-05, PR #20** (PIN limits, crash after restart, missed adhan, Quran text):
   - Should fix: `pin_fails` was never reset over time. Fixed: wrong tries are forgotten after 1 h, and the rest is capped at 5 min.
@@ -125,6 +140,16 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
   - Tips added to the brief: enter the right PIN before wrong-PIN tests; the adhan card only shows over another app; "Don't keep activities" for restart crashes.
   - Checklist comment (8 new steps plus the smoke test): https://github.com/alshaheendr-prog/tv-home/pull/20#issuecomment-6669904149
 - **2026-11-05, PR #21** (docs only, lane knowledge files): no TV steps. Should fix: the Home/RemoteKeys claim was wrong (RemoteKeys passes Home through), and the ALL_APPS claim conflicts with the `rk_apps` default. Comment: https://github.com/alshaheendr-prog/tv-home/pull/21#issuecomment-6670685789
+### Whole-app audit (2026-11-05, main at d772bcc, no PR)
+- 2026-11-05, whole-app audit:
+  - Must: Parent settings focus is off by one after OK (`drawParent(n)`, `:3090-3145`).
+  - Should: the PIN set-up text "Hold OK on YouTube to change it later" is stale.
+  - Should: the Adhan settings still show the Projectivy note and rows that never act over the family home.
+  - Should: Back on the stats page closes the whole menu.
+  - Should: brief smoke steps 7 and 8, the corner-card lesson, the dock list, built-in worlds, and the missing drive step were all wrong.
+  - Nice: Back from the calendar, the long walk down to "Leave Kids Corner", and raw adb lines in the Adhan set-up box.
+  - Whole-app checklist: `/mnt/project-files/tv-box/reviews/audit-2026-11/lane-8.md`.
+
 
 ## Lessons learned
 - 2026-11-05: Test the adhan card from inside another app, never from the family home.
@@ -134,6 +159,11 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 - 2026-11-05: The secret menu line numbers moved from 2968 to 3009 after PR #20. Re-check the line numbers in the brief against the code on each review.
 - 2026-11-05: A docs-only PR needs no TV steps. Say so in one line, and still check the knowledge file against the code.
 - 2026-11-05: Check claims from blog sources against our own code before writing them as facts about this box.
+- 2026-11-05: Walk every step against the code before posting. Three smoke steps (7, 8 and the card lesson) had never matched the code.
+- 2026-11-05: Every checklist ends with "turn Wireless debugging off", or the drive looks broken after every update.
+- 2026-11-05: Before writing "press OK again to put it back", check where focus lands after OK.
+- 2026-11-05: An overlay that is FLAG_NOT_FOCUSABLE can't be closed with Back. Tell the owner to wait for it, and never write "press Back to close it".
+- 2026-11-05: Timed tests with no test button: use the earliest bedtime (7:00 pm) in the evening, and a limit below "Watched today" for the time's-up screen. Always put them back.
 
 ## Open questions to research next
 (The web-fetch budget ran out on 2026-11-05 before these could be opened.)
@@ -145,6 +175,10 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 - The TV-ME memory limits for low-RAM devices (the exact MB values) and how the owner could see memory (Settings, then Storage/Memory on Xiaomi).
 - Does the Xiaomi Android TV 14 screensaver (Ambient Mode) start over the video wallpaper? How do you trigger it quickly for testing?
 - How do you make the box go to sleep and wake for a test (power button behaviour on this remote)?
+- The exact path to Wireless debugging on this box (Settings, System, Developer options?). Ask the owner to confirm in one line.
+- What the remote's power button does on the 3rd-gen box: short press and long press, sleep or off.
+- Is there a safe way for the owner to test the 10-minute reminder without changing the clock? Maybe a test row in the Adhan settings: that's a feature, so it's only for the owner to ask for.
+- The memory budget for 2 GB devices: the docs give none. Lane 3 may know a measured baseline.
 
 ## Source library
 All checked 2026-11-05 unless noted.
@@ -162,3 +196,21 @@ All checked 2026-11-05 unless noted.
 - [screenrecord] https://essential-books.onrender.com/essential/android/recording-the-display-d649a1cd7b414b78a95d35d3a54d9eaa.html: the 180 s cap, `--size`, `--bit-rate`. Checked 2026-11-05.
 - [aerialviews] https://github.com/theothernt/aerialviews: `screensaver_components`, the 6-minute timeout floor, TestActivity. Checked 2026-11-05.
 - [somnambulator] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/55405715/adb-command-to-launch-screensaver-activity: starting the screensaver from adb (results vary). Checked 2026-11-05.
+- [tv-quality] https://developer.android.com/docs/quality-guidelines/tv-app-quality: reopened.
+  - TV-DB means Back leads back toward the home screen.
+  - TV-BY means don't block Ambient Mode when there is no video or animation.
+  - TV-NP now applies to audio only (May 2024), and video must pause when you leave.
+  - TV-ME points to the memory page.
+- [tv-memory] https://developer.android.com/training/tv/playback/memory: hard limits only for 1 GB low-RAM devices.
+  - At most 280 MB total (Anon+Swap + Graphics + File), with 200 MB recommended.
+  - Per category: Anon under 160, Graphics 30-40, File 60-80.
+  - Media buffer for a 2 GB device at 2160p: 100-120 MB.
+  - It gives no limit for 2 GB devices. Measure with the Android Studio profiler, or `dumpsys meminfo` (the developer's job).
+- [hendrickson] https://www.ministryoftesting.com/articles/ab1cd85c: Test Heuristics Cheat Sheet.
+  - Interruptions: shut down, reboot, kill, disconnect, timeout, cancel.
+  - Count: 0, 1, many.
+  - Starvation: CPU, memory, network.
+  - Time and date: timeouts, reset clock.
+- [keep-screen-on] https://developer.android.com/develop/background-work/background-tasks/awake/screen-on: FLAG_KEEP_SCREEN_ON keeps the screen on only while the window is visible. Clear it when it's not needed. On TV, use it during video playback.
+- [mibox-off] https://reddit.birdcat.cafe/r/MiBox/comments/1je6blo/how_do_i_switch_it_off: 2nd-gen box. Users disagree on how the power button behaves. HDMI-CEC and an auto-off after 15 min are mentioned. Weak source, not verified on the 3rd gen.
+- [dev-options] https://www.dignited.com/95778/how-to-enable-google-tv-developer-options: it gives Settings, Device Preferences, About, Build for Developer options. That's the older Android TV path. On this Google TV 14 box the owner uses Settings, System. Not verified on the box.

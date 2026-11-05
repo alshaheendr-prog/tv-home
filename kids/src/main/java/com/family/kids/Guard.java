@@ -122,9 +122,10 @@ public class Guard extends Service {
         }
 
         if (!rest.isEmpty()) {
-            if (!ours && !passThrough.contains(foreground)) bringBack();
+            if (!ours && !passThrough.contains(foreground)) bringBack(Rules.NEVER.contains(foreground));
         } else if (!passThrough.contains(foreground) && !allowed(foreground)) {
-            bringBack();
+            // the family home, Settings and the Store are pulled back at once, never left for the 2 s pause between pulls
+            bringBack(Rules.NEVER.contains(foreground));
         }
 
         warnIfNearTheEnd(ours, rest);
@@ -138,9 +139,9 @@ public class Guard extends Service {
         return Rules.apps(this).contains(pkg);
     }
 
-    private void bringBack() {
+    private void bringBack(boolean urgent) {
         long now = System.currentTimeMillis();
-        if (now - lastBringBack < 2000) return;
+        if (!urgent && now - lastBringBack < 2000 && now >= lastBringBack) return;
         lastBringBack = now;
         try {
             startActivity(new Intent(this, KidsActivity.class)
@@ -152,6 +153,7 @@ public class Guard extends Service {
         if (usm == null) return;
         long now = System.currentTimeMillis();
         long from = lastEventQuery == 0 ? now - 6 * 3600 * 1000L : lastEventQuery - 2000;
+        from = Math.min(from, now - 2000); // the clock can jump back (network time): never ask for a window that ends before it starts
         try {
             UsageEvents ev = usm.queryEvents(from, now);
             UsageEvents.Event e = new UsageEvents.Event();
