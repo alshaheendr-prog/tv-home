@@ -81,7 +81,7 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
   - Press Back several times.
   - Reboot with kids mode on.
 - Only the parent PIN ends kids mode, through the lock at the end of the row or "Grown-ups".
-- The PIN must still be asked for: the YouTube tile, the YouTube remote button, the Parent menu (Up, Up, Down, Down within 2.5 s, `MainActivity.java:3009-3026`), and hold-OK arranging, if it needs the PIN.
+- The PIN must still be asked for: the YouTube tile, the YouTube remote button, the Parent menu (Up, Up, Down, Down within 2.5 s, `MainActivity.secretKey`), and hold-OK arranging, if it needs the PIN.
 - Never put `pm clear` in a checklist. It wipes the PINs, settings and today's time [adb-gist].
 
 ### 7. Capturing evidence
@@ -106,11 +106,11 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 
 ## This box and this code (verified 2026-11-05)
 - **Box:** Xiaomi TV Box S 3rd Gen, Android TV 14, 2 GB RAM.
-- **Remote:** arrows, OK, Back, Home, volume, plus Netflix, Prime Video, YouTube and Apps. **No Menu button and no number keys.** PIN entry is on screen, but number keys work if a remote has them (`MainActivity.java:464`).
+- **Remote:** arrows, OK, Back, Home, volume, plus Netflix, Prime Video, YouTube and Apps. **No Menu button and no number keys.** PIN entry is on screen, but number keys work if a remote has them (the PIN pad's key handling in `MainActivity.dispatchKeyEvent`).
 - **Updates:** the owner runs "Update TV" (PowerShell on Windows, wireless ADB). It installs with `-r`, grants permissions, enables RemoteKeys, sets the home activity and saves a screenshot to `C:\TVWallpapers\home.png`.
 - **UI:** native Java, not the WebView the README describes. The screens are `app/.../MainActivity.java`, `kids/.../KidsActivity.java` and `adhan/.../SettingsActivity.java`.
 - **Back handling:** `MainActivity.java:453` (plus arranging at `:1271`), `KidsActivity.java:258` (plus arranging at `:989`).
-- **Secret Parent menu:** Up, Up, Down, Down within 2500 ms, only when no panel is open (`MainActivity.java:462, 3009-3026`).
+- **Secret Parent menu:** Up, Up, Down, Down within 2500 ms, only when no panel is open (`MainActivity.secretKey`, called from `dispatchKeyEvent`).
 - **PinLock** (app and kids): 5 free tries, a 30 s rest that grows to at most 5 min, and wrong tries forgotten after 1 h (`PinLock.java:13-14,58-60`).
 - **Adhan test row:** "Play the adhan now (test)" (`SettingsActivity.java:187`). It triggers `fireAdhan(3)` (`AdhanService.java:134`).
 - **Overlays:** `AdhanService.java:174` and `Guard.java:198,245`. Both need the overlay grant from Update TV.
@@ -126,18 +126,36 @@ Added by the whole-app audit (2026-11-05):
 - The intro plays only on a cold start, after a reboot or an update (`coldStart`, `:1406`). Any press skips it (`:448`).
 - Ambient: the row fades after 2 min, and the first press only wakes it (`:450, 3461`). The screen dims after 15 min (`:3479`).
 - Soft Quran starts 4 s after the home resumes and fades up over 45 s (`:286, 2786`). It stops when another app opens (`onStop`, `:421`). Jumu'ah morning plays Al-Kahf once, and Ramadan nights play the surahs in order.
-- The Kids lock leads to "Kids Corner settings" (`KidsActivity.java:870`). "Leave Kids Corner" is the last row (`:1659`). Kids settings change with Left/Right, straight away.
+- The Kids lock leads to "Kids Corner settings" (`KidsActivity.java:870`). "Leave Kids Corner" is the last row (`:1659`). Kids settings change with Left/Right, straight away. Since PR #22, OK also steps a setting forward and wraps round to the first value (`choiceRow`).
 - Kids limits are 0 (No limit), 15, 30 … 240 min. Bedtimes run from 7:00 pm to 10:00 pm, or Off (`KidsActivity.java:1571-1572`). A star is worth 15 min, and the star buttons only show on the time's-up screen, not at bedtime (`:1149-1151`).
 - The adhan banner is non-focusable, so Back goes to the app behind. It hides 4 s after the sound, or after 60 s with "Popup only" (`AdhanService.java:171-178, 552, 576-583`).
 - The 10-minute reminder shows over any app except the family home, for 15 s (`:465-472, 408`). The panel and card show only over a different home launcher (`:507-509`).
 - RemoteKeys `BUTTONS` is at `RemoteKeys.java:21-25` and `code()` at `:41-43`. While learning, the arrows still pass through.
 - After Update TV, wireless debugging is on, so the USB drive is gone ("● Drive unplugged", `MainActivity.java:3001`) until it's switched off.
 
+Added by the PR #22 review (2026-11-05):
+- Kids settings rows: Left/Right step, and OK steps forward and wraps round (`choiceRow`).
+- Parent settings close after 90 s idle and when another app opens (`PARENT_IDLE_MS`, `onStop`). The Kids Grown-ups menu does the same.
+- Back closes one layer at a time: PIN over settings, stats, calendar back to All apps, reciters, player.
+- Wallpaper: pressing Home on the home keeps the same clip. Coming back from another app plays a new one.
+- Messages over a panel show at the bottom centre, 64 px up. On the home screen they show top left.
+
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- **2026-11-05, PR #22** (audit update 1: focus trap, Back one layer at a time, idle close, PIN notes, wallpaper, Quran, kids player and adhan fixes):
+  - No Must.
+  - Should: the stale adhan-card lesson; stale line references (secret menu, PIN keys) and the kids OK rule.
+  - Nice:
+    - Kids OK wraps the limit from 240 min to "No limit".
+    - Guard's urgent bring-back has no minimum gap.
+    - The message pill sits 64 px from the bottom over panels.
+    - Play/Pause can't be tested on this remote.
+  - Checklist (14 new steps plus the smoke test): https://github.com/alshaheendr-prog/tv-home/pull/22#issuecomment-6672557289
+
 - **2026-11-05, PR #20** (PIN limits, crash after restart, missed adhan, Quran text):
   - Should fix: `pin_fails` was never reset over time. Fixed: wrong tries are forgotten after 1 h, and the rest is capped at 5 min.
   - Should fix: the kids lock warning toast was easy to miss. Fixed: it moved into the Parent menu.
-  - Tips added to the brief: enter the right PIN before wrong-PIN tests; the adhan card only shows over another app; "Don't keep activities" for restart crashes.
+  - Tips added to the brief: enter the right PIN before wrong-PIN tests; ~~the adhan card only shows over another app~~ (corrected: only over Google TV's own home, see section 5); "Don't keep activities" for restart crashes.
   - Checklist comment (8 new steps plus the smoke test): https://github.com/alshaheendr-prog/tv-home/pull/20#issuecomment-6669904149
 - **2026-11-05, PR #21** (docs only, lane knowledge files): no TV steps. Should fix: the Home/RemoteKeys claim was wrong (RemoteKeys passes Home through), and the ALL_APPS claim conflicts with the `rk_apps` default. Comment: https://github.com/alshaheendr-prog/tv-home/pull/21#issuecomment-6670685789
 ### Whole-app audit (2026-11-05, main at d772bcc, no PR)
@@ -152,11 +170,11 @@ Added by the whole-app audit (2026-11-05):
 
 
 ## Lessons learned
-- 2026-11-05: Test the adhan card from inside another app, never from the family home.
+- ~~2026-11-05: Test the adhan card from inside another app, never from the family home.~~ Corrected 2026-11-05 (PR #22 review): see section 5. The card only shows over Google TV's own home.
 - 2026-11-05: Every wrong-PIN step needs a right-PIN step before it and a warning about the rest time.
 - 2026-11-05: A rollback is a revert PR plus Update TV, never an older APK (VERSION_DOWNGRADE, and uninstalling wipes data).
 - 2026-11-05: Any step that lowers a limit or changes a setting needs a matching "put it back" step at the end.
-- 2026-11-05: The secret menu line numbers moved from 2968 to 3009 after PR #20. Re-check the line numbers in the brief against the code on each review.
+- 2026-11-05: The secret menu line numbers moved from 2968 to 3009 after PR #20. Re-check the line numbers in the brief against the code on each review, and prefer method names (they moved again in PR #22).
 - 2026-11-05: A docs-only PR needs no TV steps. Say so in one line, and still check the knowledge file against the code.
 - 2026-11-05: Check claims from blog sources against our own code before writing them as facts about this box.
 - 2026-11-05: Walk every step against the code before posting. Three smoke steps (7, 8 and the card lesson) had never matched the code.
@@ -164,6 +182,11 @@ Added by the whole-app audit (2026-11-05):
 - 2026-11-05: Before writing "press OK again to put it back", check where focus lands after OK.
 - 2026-11-05: An overlay that is FLAG_NOT_FOCUSABLE can't be closed with Back. Tell the owner to wait for it, and never write "press Back to close it".
 - 2026-11-05: Timed tests with no test button: use the earliest bedtime (7:00 pm) in the evening, and a limit below "Watched today" for the time's-up screen. Always put them back.
+
+- 2026-11-05: This box's remote has no Play/Pause. Media-key fixes go under "Can't be tested on the TV now", unless a TV remote over HDMI-CEC is confirmed to send them.
+- 2026-11-05: Settings that close after 90 s idle: test by putting the remote down for 2 minutes, then check that reopening asks for the PIN.
+- 2026-11-05: For toggle or hold-OK steps, use a harmless row (Clock, Bedtime wind-down, add then remove a home-row app) and add the put-back step.
+- 2026-11-05: Date-bound fixes (Eid or Arafah badges, midnight) go in a "Can't be tested now" line. Don't ask for a clock change.
 
 ## Open questions to research next
 (The web-fetch budget ran out on 2026-11-05 before these could be opened.)
@@ -179,6 +202,10 @@ Added by the whole-app audit (2026-11-05):
 - What the remote's power button does on the 3rd-gen box: short press and long press, sleep or off.
 - Is there a safe way for the owner to test the 10-minute reminder without changing the clock? Maybe a test row in the Adhan settings: that's a feature, so it's only for the owner to ask for.
 - The memory budget for 2 GB devices: the docs give none. Lane 3 may know a measured baseline.
+
+- Does the TV's own remote send Play/Pause to the box over HDMI-CEC? Ask the owner whether the TV remote has those keys.
+- Does the Xiaomi Bluetooth remote send its own key repeats, or the framework's 50 ms? It changes the cartoon seek pace.
+- Replace the remaining line numbers in the brief and knowledge file with method names.
 
 ## Source library
 All checked 2026-11-05 unless noted.
@@ -214,3 +241,7 @@ All checked 2026-11-05 unless noted.
 - [keep-screen-on] https://developer.android.com/develop/background-work/background-tasks/awake/screen-on: FLAG_KEEP_SCREEN_ON keeps the screen on only while the window is visible. Clear it when it's not needed. On TV, use it during video playback.
 - [mibox-off] https://reddit.birdcat.cafe/r/MiBox/comments/1je6blo/how_do_i_switch_it_off: 2nd-gen box. Users disagree on how the power button behaves. HDMI-CEC and an auto-off after 15 min are mentioned. Weak source, not verified on the 3rd gen.
 - [dev-options] https://www.dignited.com/95778/how-to-enable-google-tv-developer-options: it gives Settings, Device Preferences, About, Build for Developer options. That's the older Android TV path. On this Google TV 14 box the owner uses Settings, System. Not verified on the box.
+
+- [remote-manual] https://manuals.plus/asin/B0F3JWFL56.pdf: the 3rd-gen box remote has Power, Assistant, D-pad, Home, Back and app buttons, and no Play/Pause. Checked 2026-11-05.
+- [key-repeat] https://gerrit.omnirom.org/plugins/gitiles/android_frameworks_base/+/5128949634c682b630a9a94517f4a6df0b5dfc21%5E%21: `DEFAULT_KEY_REPEAT_DELAY_MS = 50`, so a held key repeats every 50 ms. Checked 2026-11-05.
+- [aosp-cec] https://source.android.com/devices/tv/hdmi-cec?hl=en: names Remote Control Passthrough, but doesn't say how keys reach apps. Checked 2026-11-05.

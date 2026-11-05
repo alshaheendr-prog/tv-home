@@ -289,7 +289,9 @@ public class MainActivity extends Activity {
         hideBars();
         // a new wallpaper only after the home was really left (another app in front); Home pressed on the home
         // itself just carries on with the same clip, with no cut
-        if (wallStopped || player.getPlaybackState() == Player.STATE_IDLE) playRandomClip(); else player.play();
+        // the Quran background (borrowed wallpaper player) comes back as it was: stop() kept its playlist
+        if (wallStopped && playerVideo && playingUri != null) { videoCover.setAlpha(1); player.prepare(); player.play(); }
+        else if (wallStopped || player.getPlaybackState() == Player.STATE_IDLE) playRandomClip(); else player.play();
         wallStopped = false;
         updateDrive();
         quietStopped = false;
@@ -436,6 +438,9 @@ public class MainActivity extends Activity {
         // Pausing keeps the hardware video decoder (on a placeholder surface); stop lets it go for the film app.
         player.stop();
         wallStopped = true;
+        // the video surface goes when the screen is hidden, so the cover is up for the return (no black blink)
+        videoCover.animate().cancel();
+        videoCover.setAlpha(1);
         // Parent settings never stay open behind another app.
         if (parentPanel.getVisibility() == View.VISIBLE) closePanels();
         super.onStop();
@@ -704,6 +709,7 @@ public class MainActivity extends Activity {
         playerPanel.animate().alpha(1).setDuration(500).setInterpolator(new DecelerateInterpolator(2f)).start();
         drawPlayer();
         showPlayerControls();
+        placePill(PILL_PLAYER);
         focusLayer(playerPanel); // the surah page under it stays visible only as a dim picture
         ui.post(() -> playerPlay.requestFocus());
         ui.removeCallbacks(playerTick);
@@ -720,7 +726,8 @@ public class MainActivity extends Activity {
         if (quranPanel.getVisibility() == View.VISIBLE) {
             focusLayer(quranPanel);
             surahGrid.getChildAt((quranSurah > 0 ? quranSurah : Math.max(1, playerLast)) - 1).requestFocus();
-        } else focusLayer(null);
+            placePill(PILL_PANEL);
+        } else { focusLayer(null); placePill(PILL_HOME); }
     }
 
     private final Runnable hideControls = () -> {
@@ -888,8 +895,7 @@ public class MainActivity extends Activity {
         pillTextOverride = msg;
         // over a panel the note sits at the bottom centre, clear of the panel's title; on the home screen, top left
         boolean low = anyPanelOpen() || (reciterPanel != null && reciterPanel.getVisibility() == View.VISIBLE);
-        pillText.setLayoutParams(low ? at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 64)
-                : at(-2, -2, Gravity.TOP | Gravity.START, 80, 56));
+        placePill(playerPanel != null && playerPanel.getVisibility() == View.VISIBLE ? PILL_PLAYER : low ? PILL_PANEL : PILL_HOME);
         ui.removeCallbacks(clearOverride);
         // long enough to read: about 3 s plus 1 s for every 3 words, between 3.5 and 7 s
         int words = msg.trim().split("\\s+").length;
@@ -897,6 +903,18 @@ public class MainActivity extends Activity {
         updatePill();
     }
     private String pillTextOverride;
+    private static final int PILL_HOME = 0, PILL_PANEL = 1, PILL_PLAYER = 2;
+    private int pillAt = PILL_HOME;
+
+    /** Where the message pill sits: top left on the home screen, bottom centre over a panel, top centre over the
+     *  Quran player (its buttons are at the bottom). Only re-laid out when the place changes. */
+    private void placePill(int where) {
+        if (where == pillAt) return;
+        pillAt = where;
+        pillText.setLayoutParams(where == PILL_PLAYER ? at(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 56)
+                : where == PILL_PANEL ? at(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 64)
+                : at(-2, -2, Gravity.TOP | Gravity.START, 80, 56));
+    }
     private final Runnable clearOverride = () -> { pillTextOverride = null; updatePill(); };
 
     // ================================================================== layout
@@ -1508,6 +1526,7 @@ public class MainActivity extends Activity {
 
     /** A random clip from Movies/TVWallpapers if the parent added some, otherwise one of the built-in worlds. */
     private void playRandomClip() {
+        ui.removeCallbacks(retryClips); // one cut at a time
         List<Uri> clips = new ArrayList<>();
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "TVWallpapers");
         File[] files = dir.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".mp4"));
@@ -1533,7 +1552,7 @@ public class MainActivity extends Activity {
         currentClip = pick.toString();
         final Uri chosen = pick;
         videoCover.animate().alpha(1).setDuration(player.isPlaying() ? 300 : 0).withEndAction(() -> {
-            if (!resumed) return; // the family opened another app during the fade: start nothing behind it
+            if (!resumed) { wallStopped = true; return; } // another app opened during the fade: start nothing behind it, pick again on return
             playingUri = chosen;
             player.setMediaItem(MediaItem.fromUri(chosen));
             player.prepare();
@@ -1977,6 +1996,7 @@ public class MainActivity extends Activity {
         noAlphaLayers(v);
         v.bringToFront(); // panels share one elevation, so the one opened last must also be drawn last
         focusLayer(v);
+        placePill(v == playerPanel ? PILL_PLAYER : PILL_PANEL);
         v.setAlpha(0);
         v.setVisibility(View.VISIBLE);
         v.animate().alpha(1).setDuration(260).setInterpolator(EASE).start();
@@ -1988,7 +2008,7 @@ public class MainActivity extends Activity {
             c.setTranslationY(28);
             c.animate().translationY(0).setStartDelay(i * 40L).setDuration(420).setInterpolator(new DecelerateInterpolator(2.2f)).start();
         }
-        for (View p : homeParts()) if (p != null) p.animate().alpha(0).setDuration(220).start();
+        for (View p : homeParts()) if (p != null) p.animate().alpha(0).setStartDelay(0).setDuration(220).setInterpolator(EASE).start(); // no leftover intro delay
     }
 
     /** Everything on the home screen that steps back while a panel is open. */
@@ -2084,6 +2104,7 @@ public class MainActivity extends Activity {
         RemoteKeys.stopLearning();
         ui.removeCallbacks(learnTimeout);
         ui.removeCallbacks(parentIdle);
+        parentOpen = false;
         pinOverParent = false;
         statsShown = false;
         calendarFromApps = false;
@@ -2105,7 +2126,8 @@ public class MainActivity extends Activity {
             if (v.getVisibility() == View.VISIBLE)
                 v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
-        for (View p : homeParts()) if (p != null && !(p == nowWidget && p.getVisibility() != View.VISIBLE)) p.animate().alpha(1).setDuration(250).start();
+        for (View p : homeParts()) if (p != null && !(p == nowWidget && p.getVisibility() != View.VISIBLE)) p.animate().alpha(1).setStartDelay(0).setDuration(250).setInterpolator(EASE).start();
+        placePill(PILL_HOME);
     }
 
     // ================================================================== YouTube PIN
@@ -2219,11 +2241,13 @@ public class MainActivity extends Activity {
 
     /** True while the PIN pad was opened from Parent settings ("Change the YouTube PIN"): it closes back to them. */
     private boolean pinOverParent;
+    /** Parent settings are really open. Visibility can't say so: a fade cut short by another fade keeps the panel VISIBLE. */
+    private boolean parentOpen;
 
     private void openPin(boolean change) {
         pinLaunchAfter = !change;
         pinThen = null;
-        pinOverParent = parentPanel.getVisibility() == View.VISIBLE;
+        pinOverParent = parentOpen;
         if (pinOverParent) parentPanel.animate().alpha(0).setDuration(200).start(); // the pad is the only thing to look at
         try { pinIcon.setImageDrawable(fullBleed(getPackageManager().getApplicationIcon(DOCK[dockIndex("yt")].pkgs[0]))); }
         catch (Exception e) { pinIcon.setImageDrawable(tileFace(0xFFE62117, 0xFF8A140E)); }
@@ -2236,6 +2260,7 @@ public class MainActivity extends Activity {
 
     /** Closes the PIN pad and brings Parent settings back, with the highlight on the row it was opened from. */
     private void backToParent(int row) {
+        if (!parentOpen) { closePanels(); return; } // never brings the settings back without the PIN
         pinOverParent = false;
         ui.removeCallbacks(pinWaitTick);
         ui.removeCallbacks(pinNoteEnd);
@@ -2251,6 +2276,7 @@ public class MainActivity extends Activity {
     private void setPinMode(String m) {
         pinMode = m;
         pinEntry = "";
+        pinSub.setTextColor(DIM);
         switch (m) {
             case "old": pinTitle.setText("Change the PIN"); pinSub.setText("Enter the current PIN first"); break;
             case "set": pinTitle.setText("Choose a parent PIN"); pinSub.setText("4 digits to open YouTube.\nChange it later in Parent settings."); break;
@@ -2265,8 +2291,12 @@ public class MainActivity extends Activity {
 
     /** While the pad rests after too many wrong tries its number keys dim (still reachable; the countdown says why). */
     private final List<View> pinKeys = new ArrayList<>();
+    /** While the pad rests only the digits dim, so the focused key keeps its full gold ring. Only redrawn on a change. */
+    private boolean pinResting;
     private void restKeys(boolean resting) {
-        for (View k : pinKeys) k.animate().alpha(resting ? 0.4f : 1f).setDuration(200).start();
+        if (resting == pinResting) return;
+        pinResting = resting;
+        for (View k : pinKeys) ((TextView) k).setTextColor(resting ? 0x66FFFFFF : WHITE);
     }
 
     /** A short message under the title for two seconds (wrong PIN, PINs that didn't match), then the usual line again. */
@@ -2275,12 +2305,14 @@ public class MainActivity extends Activity {
         if (PinLock.waitLeft(prefs) > 0) return; // the rest countdown says more
         if (pinLine == null) pinLine = pinSub.getText();
         pinSub.setText(msg);
+        pinSub.setTextColor(SOFT); // brighter than the usual line, so the message is read
         ui.removeCallbacks(pinNoteEnd);
         ui.postDelayed(pinNoteEnd, 2000);
     }
     private final Runnable pinNoteEnd = () -> {
         CharSequence line = pinLine;
         pinLine = null;
+        pinSub.setTextColor(DIM);
         if (line != null && pinPanel.getVisibility() == View.VISIBLE && PinLock.waitLeft(prefs) <= 0) pinSub.setText(line);
     };
 
@@ -2328,7 +2360,7 @@ public class MainActivity extends Activity {
             case "set": newPin = pinEntry; ui.postDelayed(() -> setPinMode("confirm"), 150); break;
             case "confirm":
                 if (pinEntry.equals(newPin)) { PinLock.set(prefs, newPin); toast("PIN saved"); pinDone(); }
-                else { pinWrong(); ui.postDelayed(() -> { setPinMode("set"); pinNote("The two PINs were different. Choose one again."); }, 400); }
+                else { pinWrong(); ui.postDelayed(() -> { setPinMode("set"); pinNote("The two PINs were different.\nChoose one again."); }, 400); }
                 break;
         }
     }
@@ -2342,6 +2374,7 @@ public class MainActivity extends Activity {
         if (left <= 0) return;
         ui.removeCallbacks(pinNoteEnd);
         pinLine = null;
+        pinSub.setTextColor(DIM);
         pinSub.setText(PinLock.waitText(left));
         ui.removeCallbacks(pinWaitTick);
         ui.postDelayed(pinWaitTick, Math.min(left, 1000));
@@ -2437,7 +2470,7 @@ public class MainActivity extends Activity {
         appsTitle.setText("Hold OK for options: home row or show first ⭐");
         appGrid.removeAllViews();
         View first = null;
-        // Kids picks first, marked with a star.
+        // Apps chosen to show first come first, marked with a star.
         List<AppEntry> shown = new ArrayList<>();
         for (AppEntry a : all) if (!HIDDEN_FROM_LIST.contains(a.pkg) && kids.contains(a.pkg)) shown.add(a);
         for (AppEntry a : all) if (!HIDDEN_FROM_LIST.contains(a.pkg) && !kids.contains(a.pkg)) shown.add(a);
@@ -2812,6 +2845,7 @@ public class MainActivity extends Activity {
         boolean wasShown = recitersOpen;
         recitersOpen = true;
         focusLayer(reciterPanel);
+        placePill(PILL_PANEL);
         reciterPanel.removeAllViews();
         reciterPanel.setBackgroundColor(0xB3050810);
         GridLayout grid = new GridLayout(this);
@@ -2821,9 +2855,9 @@ public class MainActivity extends Activity {
         View focus = reciterTile(grid, "أي قارئ", "Any reciter", "A new voice every time", "");
         View any = focus;
         if (all == null) {
-            TextView wait = text("Loading reciters  ·  جارٍ التحميل…", 26, fMed, SOFT);
+            TextView wait = text("Loading reciters…  ·  جارٍ التحميل", 26, fMed, SOFT);
             wait.setIncludeFontPadding(true);
-            wait.setPadding(20, 40, 20, 0);
+            wait.setPadding(40, 40, 40, 0);
             GridLayout.LayoutParams wl = new GridLayout.LayoutParams();
             wl.columnSpec = GridLayout.spec(0, 2);
             grid.addView(wait, wl);
@@ -2900,8 +2934,11 @@ public class MainActivity extends Activity {
     private void closeReciters() {
         recitersOpen = false;
         focusLayer(quranPanel);
-        reciterBtn.requestFocus(); // first, so the highlight never passes through anything else
+        // first, so the highlight never passes through anything else; if the button is hidden (the surah ended), the surah cell
+        if (reciterBtn.getVisibility() == View.VISIBLE) reciterBtn.requestFocus();
+        else surahGrid.getChildAt((quranSurah > 0 ? quranSurah : Math.max(1, playerLast)) - 1).requestFocus();
         reciterPanel.animate().alpha(0).setDuration(180).withEndAction(() -> reciterPanel.setVisibility(View.GONE)).start();
+        placePill(playerPanel != null && playerPanel.getVisibility() == View.VISIBLE ? PILL_PLAYER : PILL_PANEL);
     }
 
     private void openQuran() {
@@ -2974,7 +3011,7 @@ public class MainActivity extends Activity {
         if (n <= 0) return;
         if (!anotherReciter) quranErrors = 0;
         final Quran.Reciter not = anotherReciter ? quranReciter : null;
-        quranNow.setText("Loading · جارٍ التحميل…");
+        quranNow.setText("Loading… · جارٍ التحميل");
         quranNowReciter.setText("");
         runBg(() -> {
             // Recitations stored on the box play first (no internet needed); otherwise stream one.
@@ -3250,6 +3287,7 @@ public class MainActivity extends Activity {
     }
 
     private void openParent() {
+        parentOpen = true;
         show(parentPanel);
         drawParent(0);
         ui.removeCallbacks(parentIdle);
@@ -3511,16 +3549,19 @@ public class MainActivity extends Activity {
         listCard(calendarPanel, "ISLAMIC CALENDAR  ·  التقويم الهجري", "Coming up", box, 1100, 940);
         show(calendarPanel);
         if (first != null) first.requestFocus(); // before All apps goes, so the highlight never drops to the home row
-        appsPanel.setVisibility(View.GONE);
+        // All apps fades out under the calendar instead of vanishing, so the screen never dips to the wallpaper
+        if (fromApps) appsPanel.animate().alpha(0).setStartDelay(0).setDuration(260).setInterpolator(EASE)
+                .withEndAction(() -> appsPanel.setVisibility(View.GONE)).start();
         calendarFromApps = fromApps;
     }
 
     private void closeCalendarToApps() {
         calendarFromApps = false;
         calendarPanel.animate().alpha(0).setDuration(180).withEndAction(() -> calendarPanel.setVisibility(View.GONE)).start();
-        appsPanel.setAlpha(1);
+        appsPanel.setAlpha(0);
         appsPanel.setVisibility(View.VISIBLE);
         appsPanel.bringToFront();
+        appsPanel.animate().alpha(1).setStartDelay(0).setDuration(220).setInterpolator(EASE).start();
         focusLayer(appsPanel);
         if (calendarItem != null) calendarItem.requestFocus();
     }
@@ -3683,7 +3724,7 @@ public class MainActivity extends Activity {
 
     private void enterAmbient() {
         ambient = true;
-        bottomGroup.animate().alpha(0).translationY(40).setDuration(1200).setInterpolator(EASE).start();
+        bottomGroup.animate().alpha(0).translationY(40).setStartDelay(0).setDuration(1200).setInterpolator(EASE).start();
         dockLabel.animate().alpha(0).setDuration(400).start();
         for (View t : topParts) t.animate().alpha(0.7f).setDuration(1500).start();
         // the clock and the verse card settle lower together, into the dock's space, keeping their gap
@@ -3710,7 +3751,7 @@ public class MainActivity extends Activity {
             dimView.animate().alpha(baseDim()).setDuration(450).start();
         }
         lastInput = System.currentTimeMillis();
-        bottomGroup.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
+        bottomGroup.animate().alpha(1).translationY(0).setStartDelay(0).setDuration(450).setInterpolator(EASE).start();
         lineFrame.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
         for (View t : topParts) t.animate().alpha(1).setDuration(450).start();
         centerGroup.animate().translationY(0).setDuration(450).setInterpolator(EASE).start();

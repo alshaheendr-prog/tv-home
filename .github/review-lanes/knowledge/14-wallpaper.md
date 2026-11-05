@@ -123,6 +123,9 @@ Corrections from the whole-app audit (2026-11-05):
 - `onResume()` (`:282`) runs `playRandomClip()` after every `onPause`, including Home presses while on the home (manifest `singleTask`).
 
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22: no Must. The decoder is released in onStop, and a Home press keeps the clip, which fixes the audit's hard-cut Should. Should: the Quran background was lost on return, and the return blinked black (both fixed in the PR). Nice: the Kids retry window is 30 s against the home's 120 s, and Kids retries the same bad pick.
+
 - 2026-11-05, PR #21 (knowledge-only PR): lane 14 reviewed its own new files. Must: the `fps=60` judder "fix" was wrong (duplication keeps the 3:2 cadence); replaced by the `setpts=N/(30*TB),fps=30` retime. Should: `preferSixtyHz()` pins 60 Hz (was missing); colour tags pass through from the source (was "none written"). Recorded for code PRs: accent re-sampled on every loop; Kids wallpaper pick stored by index.
 ### Whole-app audit (2026-11-05, main at d772bcc, no PR)
 - 2026-11-05, whole-app audit on main d772bcc: no Must. Should: Home press on the home re-picks the clip with a hard cut (onPause→onNewIntent→onResume), double pick from `closePanels`; night dim leaves the clock and words at full brightness; Studio keeps 24/25 fps; 4K 8-bit HEVC with default AQ; no colour tags or tone-map; Kids pick by index. Nice: per-loop accent, 59.94 vs 60 mode choice, 50 Hz system output means a blackout per trip home, darker cover, Kids MediaPlayer seam, Kids accepts non-mp4, fixed-px scrims.
@@ -139,6 +142,8 @@ Corrections from the whole-app audit (2026-11-05):
 - 2026-11-05: Check which layers a dim actually covers. `dimView` is under `stage`, so dimming it darkens only the video; static UI stays bright.
 - 2026-11-05: Correct §8 and §9: the 60% night dim does **not** protect the static clock from burn-in (it dims only the video).
 
+- 2026-11-05: After onStop calls player.stop(), the return always starts on an empty SurfaceView, so raise the cover in onStop. When changing resume logic, check the Quran background, which borrows the wallpaper player.
+
 ## Open questions to research next
 - Probe every clip in `/sdcard/Movies/TVWallpapers` and `QuranBackgrounds` on the box (fps, codec, bit depth, colour tags, audio). How many are 24/25 fps?
 - What refresh rate and resolution does the box output? Does `preferSixtyHz()` land on 59.94 or 60.00 Hz (`adb shell dumpsys display | grep -i mode`)?
@@ -153,6 +158,9 @@ Corrections from the whole-app audit (2026-11-05):
 - Is the family's TV (on the Xiaomi box) OLED? That decides how urgent S2 is.
 - Is the box's system output 50 Hz or 60 Hz, and does `preferSixtyHz()` cause an HDMI blackout on each trip home?
 - Does Ambient Mode or Aerial Views start over Kids Corner after the idle time, and does the owner want that for the kids?
+
+- How long does it take from onResume to the first wallpaper frame now that the codec is re-created? (Measure with screenrecord.)
+- Was the return blink visible on the TV before the fix?
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -184,3 +192,7 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [ambient-mode] https://developer.android.com/training/tv/playback/ambient-mode: Ambient Mode after 10 min idle; "apps should not prevent… when playback is stopped or paused"; auto-playing video "must not set FLAG_KEEP_SCREEN_ON"; apps cannot prevent Energy Saver; purpose is OLED burn-in. Checked 2026-11-05.
 - [aosp-newintent] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/app/Activity.java (`onNewIntent` javadoc): "If the activity was resumed, it will be paused and new intent will be delivered, followed by onResume." Checked 2026-11-05.
 - [so-loop] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/36109625/small-pause-between-looping-mediaplayer: single looping MediaPlayer has a "very noticeable" pause; workaround is two alternating players (audio, API 25 emulator). Checked 2026-11-05.
+
+- [media3-player-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/common/src/main/java/androidx/media3/common/Player.java : stop() goes to IDLE and releases resources, but keeps the playlist and position. Checked 2026-11-05.
+- [aosp-surfaceview] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/main/core/java/android/view/SurfaceView.java : the surface is created and destroyed as the window is shown and hidden. Checked 2026-11-05.
+- [exo-hello] https://developer.android.com/media/media3/exoplayer/hello-world : release frees video decoders for other apps. Checked 2026-11-05.

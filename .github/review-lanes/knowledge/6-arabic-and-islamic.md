@@ -132,6 +132,9 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - The Friday reminder runs from Thursday Maghrib to Friday Maghrib; Jumu'ah sunnahs show Friday before Dhuhr; the Jumu'ah line shows the Dhuhr time (`Widgets.java:31-39`).
 
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22 (audit update 1): Must: the `badge()` reorder put "Eid al-Adha tomorrow" ahead of today's "Day of Arafah" on 9 Dhul Hijjah (`Events.java:45`). Should: "Eid al-Fitr tomorrow" on 29 Ramadan states Umm al-Qura's prediction as fact, but Kuwait sights the moon that evening (`:44`). Nice: a trailing "…" after Arabic in LTR strings (`MainActivity.java:2824`, `:2977`). Fine: the Quran pauses only when the next prayer changes (`nextPrayer` skips sunrise); adhan banner LIFT 56 px in a 136 px band, Plex Arabic 50 px; the chime fallback; the new Arabic strings.
+
 - **2026-11-05, PR #20 (merged):** no Must fix. Should fix: adhan-card English cut at 4 lines (fixed); hadith numbers on edited lines (fixed: Bukhari 6116, Abu Dawud 5081 as words of Abu al-Darda). `withoutBismillah` verified on 2:1, 9:1, 1:1, 95:1, 2:2. Amiri Bold covers all Quranic marks and ﷺ; Baloo lacks U+06DF, U+06E5, U+06E6, ﷺ. `OFFSETS` checked against published Kuwait times (Al-Anba's Ramadan 1447 timetable "according to the Al-Ajairi calendar", awgatalsalat.com for 6 Nov 2026): exact most days, else ±1 min, so they stay 0; summer unchecked; awqaf.gov.kw unreachable. Kuwait doesn't shift Isha in Ramadan. Left open: `Content.AYAH` partial verses labelled whole; ﷺ in Kids Baloo; no Hijri offset; 9 Muharram labelled "Ashura fast"; Latin digits in Arabic (`Events.java:59`); grade of رضيت بالله ربا; missing hadith numbers elsewhere.
 - **2026-11-05, PR #21 (docs):** Should fix (docs): `badge()` shows "Fast of Ashura tomorrow" only on 8 Muharram; 13 Dhul Hijjah shows Eid and 14-15 do show White Days; the رضيت … نبياً risk now gives its grade and why. Added: Kahf and Shawwal sources, Eid 1447 in Kuwait, four new known risks (kids grades, يوم grammar, White Days in Ramadan/Shawwal, the 3-times label).
 - **2026-11-05, knowledge build (no PR):** رضينا بالله ربا = Abu Dawud 5072, Da'if per al-Albani (sunnah.com); 9 Muharram is Tasu'a (Muslim 1134a); Tashreeq ban (Muslim 1141a); 1 Muharram 1448 in Kuwait = 16 June 2026 = Umm al-Qura; Plex Arabic covers every Quranic mark and ﷺ, so it's a valid fallback for Kids' ﷺ; CLDR 46 makes plain `ar` use Western digits.
@@ -151,6 +154,10 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - 2026-11-05: A random "verse of the day" is a content risk, not just a design choice: short ayat are often fragments or quoted speech. Simulate the seed for the coming weeks and check what it will show.
 - 2026-11-05: Check both modules' copies of shared logic (adhkar windows, verse limits, digits): they drift.
 - 2026-11-05: pip install fonttools works in the container (pypi is reachable).
+
+- 2026-11-05: When badge or label priority is reordered, walk every Islamic day from the 8th to the 10th of Dhul Hijjah and the 28th to the 30th of Ramadan. A "tomorrow" check can hide today's bigger day.
+- 2026-11-05: The end of Ramadan is known only after the sighting on the evening of the 29th, so any "tomorrow" text on the 29th must be tentative. Dhul Hijjah is fixed when the month starts, so Eid al-Adha lines can be definite.
+- 2026-11-05: A neutral character (… : ·) at the end of an Arabic run in an LTR line takes the line's direction (UBA rules N1/N2), so it is drawn where the Arabic begins.
 
 ## Open questions to research next
 - Kuwait Awqaf: the official method statement and a summer-month timetable (June-August) to extend the OFFSETS check. Try awqaf.gov.kw again, or a dated Kuwaiti newspaper table.
@@ -172,6 +179,9 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - The fiqh source for when the evening adhkar start (after Asr vs after Maghrib), and which one Hisn al-Muslim's author follows.
 - Awqaf Kuwait's own imsak column (minutes before Fajr) and a summer prayer timetable from an authoritative Kuwaiti source.
 - Owner decision: hasan hadith in Kids (تهادوا تحابوا), As-Saboor, and the curated verse list.
+
+- Which committee announces Eid al-Fitr in Kuwait, and at what time that evening. Name the Kuwait Sharia Crescent Sighting Committee from a Kuwaiti source such as KUNA.
+- Umm al-Qura years where Ramadan has 29 days in 1448-1450, to test the day-29 wording. 1448 has 29 days: 1 Ramadan is 8 Feb 2027 and 1 Shawwal is 9 Mar 2027.
 
 ## Source library
 Tags used above. Opened 2026-11-05 unless marked.
@@ -209,3 +219,6 @@ Tags used above. Opened 2026-11-05 unless marked.
 - [jordannews-r1448] https://www.jordannews.jo/Section-20/Middle-East/Date-of-the-First-Day-of-Ramadan-2027-According-to-Astronomical-Calculations-52316
 - [khaleejcalc-imsak] https://khaleejcalculators.com/ramadan-imsakiyah/kuwait (secondary; it names both Umm al-Qura and "Kuwait Awqaf" as its method, so it is not an authority)
 - Not reachable 2026-11-05: dorar.net/hadith/sharh pages (client error), api.alquran.cloud by curl (proxy), GitHub API for nuqayah/quran-text (not in session scope).
+
+- [mwn-eid1447] https://www.moroccoworldnews.com/2026/03/283198/kuwait-confirms-eid-al-fitr-2026-for-march-20/ : the Shawwal moon was not seen on 29 Ramadan 1447, Ramadan ran 30 days, Eid was Fri 20 Mar 2026 in Kuwait. Checked 2026-11-05.
+- [tohed-t3604] re-checked 2026-11-05: حين يمسي ثلاث مرات, hasan per Tirmidhi.

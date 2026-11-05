@@ -136,6 +136,18 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 
 ## Past findings
 
+### PR #22 (2026-11-05, audit update 1)
+- Must: none.
+- Should:
+  - The Kids Corner wallpaper retry (`clipAgain`) is cancelled in onPause and not restarted on a short pause. A short pause happens when Guard's SINGLE_TOP pull delivers a new intent while Kids Corner is already on top. `applyWorld` only plays a clip when the world changed, and `surfaceCreated` doesn't fire again. Fix: `if (player == null) playClip();` in onResume.
+  - Events.badge reorder: on 9 Dhul Hijjah, "Eid al-Adha tomorrow" beats today's "Day of Arafah".
+- Nice:
+  - The playRandomClip `!resumed` early return leaves the cover opaque after a pause without a stop.
+  - A pending `retryClips` causes a double clip change.
+  - The cold-start missing-app note hides under the splash (elevation 60 over 50, splash at least 5.9 s).
+  - There is no floor on the urgent Guard pull.
+  - On-TV check: the takbir still plays with only READ_MEDIA_AUDIO now that MANAGE_EXTERNAL_STORAGE is removed.
+
 ### Whole-app audit (2026-11-05, main at d772bcc, no PR)
 - Must: none.
 - Should: quiet Quran starts after leaving home and pauses Netflix (no `resumed` check after the bg hop); wallpaper retry and
@@ -171,6 +183,10 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 - 2026-11-05: Pausing ExoPlayer doesn't free the decoder. On API 23 and later it keeps the codec on a placeholder surface. To free it, call `stop()` (or `release()`).
 - 2026-11-05: Every media error path should have a fallback and a retry: the adhan sound falls back to the chime, and a wallpaper retries like the home's 12 tries.
 
+- 2026-11-05: A retry or loop cancelled in onPause must be restarted in onResume. Delivering a new intent to a resumed SINGLE_TOP or singleTask activity pauses and resumes it, and the surface is not recreated, so `surfaceCreated` can't be relied on.
+- 2026-11-05: When a fix reorders "today wins / tomorrow wins" logic, walk through every day just before a tomorrow event, not only the day the fix targets.
+- 2026-11-05: When an early return skips work in an animation end-action, also leave a flag (for example `wallStopped = true`) so the next onResume redoes it. Otherwise the UI stays half-done.
+
 ## Open questions to research next
 - Does the Xiaomi TV Box S 3rd Gen suspend the CPU in standby (screen off by the remote)? If it does, `Handler` ticks stop and an adhan due while the box is in standby is missed, as the 3-minute window shows. Check with the owner (lane 8) and `dumpsys deviceidle` and `dumpsys power`.
 - Does Android TV 14 on this box send BOOT_COMPLETED to a force-stopped app? Answered 2026-11-05: no. Force-stop puts the app back in the stopped state, which lasts across reboots until the user launches it (Hackborn via CommonsWare). Android 15 also cancels its PendingIntents and sends BOOT_COMPLETED when it is un-stopped. Update TV's `am start -S` un-stops adhan by launching it. [CommonsWare stopped] [B15-all]
@@ -181,6 +197,9 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 - Does the home's paused ExoPlayer really hold a hardware decoder on this Amlogic box? Check with `adb shell dumpsys media.resource_manager` and `dumpsys media.player` while Netflix plays over the home.
 - The home sets `FLAG_KEEP_SCREEN_ON`. If the TV is switched off with its own remote while the home is in front, does the box ever go to standby (HDMI-CEC "auto power off")? If it doesn't, the wallpaper and the soft Quran run all night. With Kids Corner, `pm.isInteractive()` stays true, so screen time keeps counting while the TV is off.
 - Should `Events.badge` follow Kuwait's moon-sighting announcement rather than Umm al-Qura? (Lane 6.)
+
+- Does `File.canRead()` on an adb-pushed `Download/takbir.mp3` work with only READ_MEDIA_AUDIO, before MediaStore has scanned the file? It needs a test on the TV.
+- How long after a bringBack does ACTIVITY_RESUMED for KidsActivity show up in queryEvents on this box? That decides how many repeat urgent pulls happen.
 
 ## Source library
 
@@ -220,3 +239,6 @@ All checked 2026-11-05 unless noted. The short tags in [brackets] are used above
 - From the brief, not reopened this round: https://dev.to/rexa/how-to-block-apps-on-android-without-an-accessibilityservice-5gog (UsageStats polling pitfalls) and https://www.androidauthority.com/google-tv-update-blocks-projectivy-override-3649445 (a Google TV update broke custom HOME overrides).
 - [ExoPlayer #677] https://github.com/google/ExoPlayer/issues/677: when the surface goes away, ExoPlayer keeps the codec on a DummySurface (API 23+) instead of releasing it. Checked 2026-11-05.
 - [MP -38] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/20072786/android-mediaplayer-unknow-error-38: error -38 means INVALID_OPERATION, an invalid state transition (secondary source, Stack Overflow archive). Checked 2026-11-05. The JNI route (NULL exception, so `notify(MEDIA_ERROR)`) is from memory of `android_media_MediaPlayer.cpp` *(unverified this round)*.
+
+- [onNewIntent] https://learn.microsoft.com/dotnet/api/android.app.activity.onnewintent: a mirror of the Android reference text. It says "If the activity was resumed, it will be paused and new intent will be delivered, followed by onResume()", and that getIntent() still returns the original intent.
+- [MediaPlayer state] https://developer.android.com/media/platform/mediaplayer/state-resources: release the player in onStop, create it again on resume, and stop() needs prepare() before start().

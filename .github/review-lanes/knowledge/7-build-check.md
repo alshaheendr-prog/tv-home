@@ -206,7 +206,18 @@ Added by the whole-app audit (2026-11-05, verified from the published APKs, buil
 - `META-INF/version-control-info.textproto` holds the git revision. Use it to prove which commit an APK came from (`unzip -p x.apk META-INF/version-control-info.textproto`).
 - The `latest` release's tag is created at main's tip, not the built SHA (`target_commitish: "main"`).
 
+Added by the PR #22 review (2026-11-05):
+- The actions are pinned to SHAs: checkout v5.1.0 fbc6f39, setup-java v5.7.0 b6effb0, setup-gradle v4.4.4 748248d, upload-artifact v4.6.2 ea165f8.
+- `concurrency: build-${{ github.ref }}` with `cancel-in-progress: false`.
+- The artifact keeps `retention-days: 14` and `if-no-files-found: error`.
+- The release step skips publishing if the `#N` in `latest`'s title is higher than this run's number. It uses `--target $GITHUB_SHA` and retries the create 3 times. It still deletes `latest` before creating it.
+- adhan no longer requests MANAGE_EXTERNAL_STORAGE, because the Projectivy wallpaper swap was removed. It reads Download/takbir.mp3 via READ_MEDIA_AUDIO and falls back to the chime.
+- In the brief's "Known risks", drop the lines about tag-pinned actions and the missing concurrency group. Keep the delete-then-create risk.
+
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- **2026-11-05, PR #22** (audit update 1): CI #135 failed. javac reported `View cannot be converted to ViewGroup` at MainActivity.java:1940 (Must). Gradle stopped at :app, so adhan and kids were never built. Should: the failure comment showed only stack frames. Should: adhan lost MANAGE_EXTERNAL_STORAGE, so the takbir read now relies on READ_MEDIA_AUDIO (test on the TV). OK: the SHA pins were verified, a concurrency group was added, and the release step now refuses to publish a run number lower than the one in `latest`'s title.
+
 - **2026-11-05, PR #20** (PIN limits, crash after restart, missed adhan, Quran text):
   - CI run #122 passed: 3 × assembleRelease plus lint vital. No Must fix or Should fix.
   - Nice to have: `PinLock` used `String.format` without a Locale. Fixed by removing the `String.format`.
@@ -238,6 +249,10 @@ Added by the whole-app audit (2026-11-05, verified from the published APKs, buil
 - 2026-11-05: lintVitalRelease checks only fatal-severity issues. NewApi is not fatal by default, so a minSdk violation passes CI. On this box (API 34) it doesn't matter, but don't treat green CI as proof of minSdk safety.
 - 2026-11-05: Commit comments need a write token, so workflow-wide `contents: write` is needed while `claude/**` failure comments exist (unverified permission detail).
 
+- 2026-11-05: Gradle stops at the first failing task. A compile error in :app means :adhan and :kids were never compiled. Review their diffs by eye, and require all 3 tasks to be green on the next run.
+- 2026-11-05: The CI failure comment (tail -60 with --stacktrace) can contain only stack frames. To find the first real error, read the job log (`gh api repos/<o>/<r>/actions/jobs/<id>/logs`, then grep for `error:`).
+- 2026-11-05: Check action SHA pins with `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> refs/tags/<tag>^{}`. For an annotated tag, the pin must be the `^{}` commit (gradle/actions v4.4.4 = 748248d).
+
 ## Open questions to research next
 - `adb install -r -d`: commit f1d44db allows a downgrade only on a debuggable build or app (for system apps). Confirm the rule applies to normal release APKs; until then assume `-d` fails. [aosp-f1d44db]
 - Answered 2026-11-05: `MY_PACKAGE_REPLACED` is a listed bg-FGS exemption; the Android 15 block names only BOOT_COMPLETED; `specialUse` is OK. [fgs-bg-start]
@@ -250,6 +265,10 @@ Added by the whole-app audit (2026-11-05, verified from the published APKs, buil
 - Does creating a commit comment really need `contents: write` for GITHUB_TOKEN? Open the REST "commit comments" permission table.
 - What is the exact Node 20 removal date for GitHub-hosted runners, after which upload-artifact v4 and setup-gradle v4 stop working?
 - How much does R8 shrink tv-home's dex with media3-exoplayer 1.4.1? (Try it in a `claude/` branch and read the CI APK size.)
+
+- Does `appops set <pkg> MANAGE_EXTERNAL_STORAGE allow` error, or do nothing, when the app no longer requests the permission?
+- On Android 14, can READ_MEDIA_AUDIO read an adb-pushed Download/*.mp3 through java.io.File? In other words, is the file MediaStore-indexed when it is pushed?
+- Should the failure comment grep for the error lines before the tail? (Proposed in PR #22, not yet adopted.)
 
 ## Source library
 All checked 2026-11-05 unless noted.
@@ -292,3 +311,6 @@ All checked 2026-11-05 unless noted.
 - [upload-artifact-rel] https://github.com/actions/upload-artifact/releases: v5 adds Node 24 support; v6 runs on node24 by default and needs runner ≥ 2.327.1; latest is v7.0.2. Checked 2026-11-05.
 - [durationscale] https://learn.microsoft.com/zh-tw/dotnet/api/android.animation.valueanimator.durationscale?view=net-android-37.0: `getDurationScale` is public from API 33, read-only, with no public setter.
 - [so-durationscale] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/64226137/ignore-developer-s-settings-animation-scale-in-android: the reflection `setDurationScale` override is reset by WindowManagerGlobal if done too early, so re-apply it in onResume.
+
+- [runs-on-concurrency] https://runs-on.com/github-actions/concurrency/: with `cancel-in-progress: false`, a newer pending run replaces the older pending one. Checked 2026-11-05.
+- [datalogic-a13] https://developer.datalogic.com/mobile-computers/news/a13_new_permissions_for_file_access: the scope of Android 13's READ_MEDIA_* permissions. The page does not say whether raw File paths work. Checked 2026-11-05.

@@ -62,6 +62,8 @@ import java.util.concurrent.Executors;
  */
 public class KidsActivity extends Activity {
     static final int WHITE = 0xFFFFFFFF, SOFT = 0xE6FFFFFF, DIM = 0xB3FFFFFF;
+    // a list end that can't go further: dimmer than hint text, like the resting PIN keys
+    private static final int ENDED = 0x59FFFFFF;
     static final String[] VIDEO_EXT = {".mp4", ".mkv", ".m4v", ".webm", ".avi", ".mov", ".ts"};
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -178,6 +180,7 @@ public class KidsActivity extends Activity {
         clipTries = 0;
         hideBars();
         applyWorld();
+        if (player == null) playClip(); // a short pause cancelled the retry; the world may not have changed to start one
         refreshTiles();
         loadCartoons();
         if (Rules.on(this)) Guard.start(this);
@@ -445,7 +448,7 @@ public class KidsActivity extends Activity {
 
     private void retryClip() {
         ui.removeCallbacks(clipAgain);
-        if (resumed && ++clipTries < 10) ui.postDelayed(clipAgain, 3000);
+        if (resumed && ++clipTries < 40) ui.postDelayed(clipAgain, 3000);
     }
 
     private void stopClip() {
@@ -1752,8 +1755,8 @@ public class KidsActivity extends Activity {
             // the arrow that can't go any further dims, so the ends of the list are clear
             String mid = "  " + label.of(cur) + "  ";
             android.text.SpannableString sp = new android.text.SpannableString("◀" + mid + "▶");
-            if (at == 0) sp.setSpan(new android.text.style.ForegroundColorSpan(DIM), 0, 1, 0);
-            if (at == values.length - 1) sp.setSpan(new android.text.style.ForegroundColorSpan(DIM), sp.length() - 1, sp.length(), 0);
+            if (at == 0) sp.setSpan(new android.text.style.ForegroundColorSpan(ENDED), 0, 1, 0);
+            if (at == values.length - 1) sp.setSpan(new android.text.style.ForegroundColorSpan(ENDED), sp.length() - 1, sp.length(), 0);
             value.setText(sp);
         };
         draw.run();

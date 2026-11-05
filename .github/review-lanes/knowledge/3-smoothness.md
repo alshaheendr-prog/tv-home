@@ -206,6 +206,11 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Box: Mali-G310 V2, 2 GB, Google TV 14 (32-bit), about 1 GB free (from review, unverified on this unit). Whether the UI is composed at 1080p or 4K on this unit is **unverified**.
 
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- No Must/Should. The wallpaper player now calls stop() in onStop, which releases the decoder (verified in the 1.4.1 source). Home pressed on the home screen resumes the same clip without listFiles.
+- Nice: restKeys re-animates every second while the pad rests (home and Kids); toast() setLayoutParams relayouts the stage; Kids refreshTiles runs in onStop; videoCover is not raised in onStop.
+- Still open: LoadControl, onTrimMemory, lineTimer.
+
 ### Whole-app audit (2026-11-05, main at d772bcc, no PR)
 - 2026-11-05, whole-app audit (lane 3):
   - Must: the Quran page and player redraw about 5.6x the screen per frame (`overlay()` scrim + 3 full-screen `StarField` rects + path, over the dim and the scrims) while the hidden wallpaper keeps decoding.
@@ -236,6 +241,9 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: A whole-app audit should also check `onResume` work (icon rebuilds, tile rebuilds), not only per-frame drawing. Repeated "return home" work is the stutter people notice.
 - 2026-11-05: Look at the adhan app too: it runs every second, all day, beside Netflix.
 
+- 2026-11-05: In Media3 1.4.1, pause() keeps the codec (on a placeholder surface when the SurfaceView goes). stop() resets the renderers (foregroundMode is off by default), and MediaCodecRenderer.onReset() calls releaseCodec(). Disabling a renderer alone only calls flushOrReleaseCodec().
+- 2026-11-05: Watch for "set state" helpers called from a once-a-second tick that start animate() each time even when nothing changes. Guard them with a state flag.
+
 ## Open questions to research next
 - Is the UI composed at 1080p or 4K on this box? Check `adb shell wm size`, `adb shell dumpsys display | grep -i mode`, `dumpsys SurfaceFlinger --display-id`. If 4K, every full-screen fill costs 4x and the overdraw budget is tighter.
 - Does SurfaceFlinger put the wallpaper SurfaceView on an HWC overlay or GPU-compose it while UI layers sit above? (`dumpsys SurfaceFlinger`, look for CLIENT vs DEVICE composition.)
@@ -253,6 +261,9 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Does a hardware layer under `stage` scale 0.94 look visibly softer on the TV? (Compare at Screen size 94% with and without `cacheCards`.)
 - How much PSS does the paused wallpaper player hold behind Netflix? (Measure for S1.)
 - Is the adhan overlay band over Netflix forcing GPU composition of the film? (`dumpsys SurfaceFlinger` during an adhan.)
+
+- Measure `dumpsys meminfo com.family.tvhome` behind Netflix before and after PR #22 to size the freed decoder and buffer memory.
+- Does the stopped SurfaceView wallpaper flash black for one frame on return from another app? (Watch on the TV, or use a screen recording.)
 
 ## Source library
 All checked 2026-11-05 unless noted. Tags are used in Core expertise.
@@ -291,3 +302,7 @@ All checked 2026-11-05 unless noted. Tags are used in Core expertise.
 - [arm-hsr] https://developer.arm.com/community/arm-community-blogs/b/mobile-graphics-and-gaming-blog/posts/hidden-surface-graphics-removal-methods-in-mali-gpus: Forward Pixel Kill is a limited queue, disabled by late-Z; no promise for blended layers. Checked 2026-11-05.
 - [skia-ccpr-subpixel] https://skia.googlesource.com/skia/+/644341af03d22dfe10e8e6c47e0aa21f5346031b: on Android, Skia's (CCPR) path cache ignores sub-pixel translation "to match HWUI", so a translated, unchanged `Path` can hit the cache. CCPR is an older path renderer, so this is unverified for Android 14's renderer. Checked 2026-11-05.
 - [media3-hello] https://developer.android.com/media/media3/exoplayer/hello-world: release the player to free video decoders for other apps. Checked 2026-11-05.
+
+- [media3-exoimplinternal-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/ExoPlayerImplInternal.java: stopInternal resets renderers unless foregroundMode. Checked 2026-11-05.
+- [media3-mediacodecrenderer-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/mediacodec/MediaCodecRenderer.java: onDisabled calls flushOrReleaseCodec, onReset calls releaseCodec. Checked 2026-11-05.
+- [media3-player-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/common/src/main/java/androidx/media3/common/Player.java: stop() releases the loaded media and playback resources. Checked 2026-11-05.

@@ -276,8 +276,9 @@ public class AdhanService extends Service {
     // the band rises, then the English and Arabic lines fade in. Everything is drawn live (no cached bitmaps).
 
     // band height and the soft fade above it, in 1920-wide TV pixels. LIFT keeps the words above the bottom 5% of
-    // the screen, which some TVs crop (overscan); the dark band itself still reaches the edge.
-    static final float BAND = 136, BAND_FADE = 70, LIFT = 56;
+    // the screen, which some TVs crop (overscan); the dark band itself still reaches the edge. BAND - LIFT leaves
+    // 92 px for the words: Plex Arabic at 50 px needs about 85 px with its font padding, so nothing is cut.
+    static final float BAND = 148, BAND_FADE = 70, LIFT = 56;
     private View alertBand, alertLine, alertDot;
     private LinearLayout alertRow;
 

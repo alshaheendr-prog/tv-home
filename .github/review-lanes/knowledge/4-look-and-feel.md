@@ -156,7 +156,21 @@ Added by the whole-app audit (verified 2026-11-05):
 - Adhan app surfaces: banner = Inter Medium + Plex Arabic SemiBold, `0xF1D58A`, dark `0xE6080B14→0xF5080B14` (house style). Reminder, floating panel and corner card = Baloo / Chivo Mono, `GOLD 0xFFC24A`, `TEXT 0xF6F3FF`, fill `0xE00A0C16`/`0xD90A0C16`. Panel and card show only over a non-family launcher; the reminder shows over any app except tvhome.
 - Kids grown-up panels use violet `sheet()` `0xFF241B45→0xFF150F2B`; home panels use navy PanelBg.
 
+Added by the PR #22 review (2026-11-05):
+- `toast()` (`MainActivity.java:887`) picks the pill's place only when a message starts. Over any open panel, including the player (`anyPanelOpen()` counts `playerPanel`), it goes bottom-centre at 64. On the home screen it goes top-left at (80, 56). Elevation is 50: above panels (30), the player (35) and reciters (40), and under the intro (60). It stays up for 3.5 to 7 s, depending on word count.
+- Quran player controls are bottom-centre at 74 (`:609`): a 720x3 bar with a 34 px gap, then the button row with 16 px padding. Together they cover roughly y 860 to 1006.
+- List cards are 940 tall and centred, so their bottom edge is at y 1010 (70 px from the bottom).
+- Disabled looks: home PIN keys fade to alpha 0.4 while resting. Home learn-button rows use `DIM` (0xA6) when RemoteKeys isn't running. Kids stepper end arrows use Kids `DIM` 0xB3. Press dips: home PIN 0.94, Kids PIN 0.96.
+- Adhan banner: `BAND 136`, `BAND_FADE 70`, `LIFT 56` (`AdhanService.java:280`). The words are padded 56 px off the bottom, leaving an 80 px content area. The Arabic is 50 px Plex SemiBold with font padding, about 86 px tall (win 1128/601 on upm 1000).
+
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- Must: none. The Centre stage layout is untouched.
+- Should: the message pill overlaps the Quran player's buttons (bottom 64 vs controls at 74). If a panel closes while a message shows, the pill stays bottom-centre over the dock. Fix: a `placePill()` called from `toast()` and from the close paths. Over the player it goes top-centre at 56.
+- Nice: the disabled look differs (0.4 / 65% / 70%); make it one 40% value. PIN press dip 0.94 vs 0.96. Check the adhan band's Arabic fit on the TV (80 px area vs about 86 px line; if clipped, use BAND 142).
+- Scope creep: none. The audit's lane 4 findings (eventChip, next-prayer pill, drive colours, forecast emoji, adhan reminder style) are deferred to the visual-polish PR.
+- No screenshots: C:\TVWallpapers wasn't connected. The review used code geometry only.
+
 ### Whole-app audit (2026-11-05, main at d772bcc, no PR)
 - Must: eventChip is a Layout-0 leftover: a glass chip alone at (80, 402) on the left, shown ~100+ days a year (Ramadan, Shawwal, Dhul Hijjah 1-13, Ashura, White Days and eves); it does not follow the ambient drop. Fix: boxless gold line in centerGroup under the dates.
 - Should: next-prayer cell gets a 30% white glass pill (`:1600`) inside the boxless strip; use a gold time instead.
@@ -205,6 +219,10 @@ Added by the whole-app audit (verified 2026-11-05):
 - 2026-11-05: Check where the ambient/quiet animations look (topParts, centerGroup, lineFrame); anything outside them stays put and looks stuck.
 - 2026-11-05: Without screenshots, a quick PIL mock from the code's real positions, fonts and colours, blurred at 20 px, is a usable squint test. Say plainly that it is a mock.
 
+- 2026-11-05: A floating message placed "when shown" must be re-placed when the layer under it changes. Check every close path, not only the open.
+- 2026-11-05: Check a new bottom-centre element against every full-screen layer that already uses bottom-centre (player controls, dock). Two elements anchored to the same edge collide.
+- 2026-11-05: Keep one value for "not available now" across apps (about 38 to 40% on dark). A secondary-text grey reads as normal, not disabled.
+
 ## Open questions to research next
 - Is `fraunces_soft_light.ttf` cut at opsz 9 or 144? Stem:hairline 1.7:1 suggests a text cut (2026-11-05). Confirming needs a fresh Fraunces opsz-144 instance (font downloads were blocked); consider re-instancing at opsz 144, SOFT 100, wght 300 with `tnum` kept (fontTools `instancer`).
 - Do the Arabic parts of the kickers lose marks on the TV (`includeFontPadding` off; `elegantTextHeight`'s target-35 default doesn't apply on Android 14)?
@@ -222,6 +240,9 @@ Added by the whole-app audit (verified 2026-11-05):
 - With screenshots: re-run the 5 px / 20 px blur on the real home.png (bright and dark clips) and replace the mock.
 - Should the adhan app's floating panel and corner card (seen only over a non-family launcher) be restyled too, or retired visually once Google TV home stays disabled?
 - Is there a published Google TV / Android TV ambient-mode visual spec (clock size and placement over photos)? Not found this time.
+
+- Does a 2 to 3 px trim of Plex Arabic's padding in the adhan band clip any marks on the TV? Needs `Screens\adhan.png`.
+- Should the home note pill move to top-centre everywhere (one place) rather than top-left on home and bottom-centre in panels? Decide with lane 15 when the eventChip leftover is removed (both use the top-left).
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -263,3 +284,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [hig-color] https://developer.apple.com/design/human-interface-guidelines/color (read via .../tutorials/data/design/human-interface-guidelines/color.json): tvOS "limited color palette that coordinates with your app logo. Subtle use of color ... while deferring to the content"; use colour consistently, never the same colour for different meanings; colour sparingly on glass, reserve it for status or primary actions; don't use colour alone for focus. Checked 2026-11-05.
 - [xda-gtv-ambient] https://www.xda-developers.com/google-tv-personalized-cards-rolling-out/: Google TV's ambient redesign moved to small cards at the bottom so they don't obscure the background. Supports keeping home overlays few and small. Checked 2026-11-05.
 - [macrumors-aerials] https://www.macrumors.com/2025/08/01/tvos-26-custom-aerial-screen-saver-apple-tv/: tvOS 26 aerial playlists; says nothing about clock styling over aerials (dead end for that question). Checked 2026-11-05.
+
+- [mdc-snackbar] https://github.com/material-components/material-components-android/blob/master/docs/components/Snackbar.md: snackbars sit towards the bottom; use `setAnchorView` to place them above bottom controls and navigation, never over them. Checked 2026-11-05.
+- [flutter-white38] https://api.flutter.dev/flutter/material/Colors/white38-constant.html: white at 38% is the Material disabled colour in dark themes (disabled text and radios; `ThemeData.disabledColor`). Checked 2026-11-05.

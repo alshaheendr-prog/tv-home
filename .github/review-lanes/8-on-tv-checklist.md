@@ -64,8 +64,8 @@ Always include **the standard smoke test** (about 10 minutes) and adapt the word
 ## Known risks already in the code
 - Remote buttons are learned per box and saved in the home app's settings (`RemoteKeys.BUTTONS` at `RemoteKeys.java:21-25`, `code()` at `:41-43`; re-grep, lines drift). After an update they should still work. If they don't, the fix is Parent settings, then learn the buttons again. Say so in the checklist.
 - The accessibility service and the home activity are set by Update TV using the class names. A PR that renames them breaks the remote buttons or the Home button with no error message, so smoke steps 9 and 10 matter.
-- Back is handled specially in `MainActivity.dispatchKeyEvent` (and `arrangeKey` while arranging) and `KidsActivity.dispatchKeyEvent` (and its `arrangeKey`); re-grep for line numbers. PIN entry also takes number keys, if a remote has them (`MainActivity.java:464`).
-- The secret menu needs four presses within 2.5 seconds, and only works when no panel is open (`MainActivity.java:3009-3026`). Tell him to press quickly.
+- Back is handled specially in `MainActivity.dispatchKeyEvent` (and `arrangeKey` while arranging) and `KidsActivity.dispatchKeyEvent` (and its `arrangeKey`); re-grep for line numbers. PIN entry also takes number keys, if a remote has them (the PIN pad's key handling in `MainActivity.dispatchKeyEvent`).
+- The secret menu needs four presses within 2.5 seconds, and only works when no panel is open (`MainActivity.secretKey`). Tell him to press quickly.
 - The adhan popup is an overlay (`AdhanService.java:174`). It needs the overlay permission that Update TV grants. If no popup appears, run Update TV once more. A missing grant (overlay, usage access, accessibility, home activity) fails silently, and Update TV re-applies all of them.
 - The PIN pad rests after 5 wrong tries: 30 s at first, growing to at most 5 min. Wrong tries are forgotten after 1 hour (`PinLock.java:13-14`).
 - Kids Corner's guard and the adhan service restart on boot and after an update (`BootReceiver`). A crash there may only show up after a reboot.

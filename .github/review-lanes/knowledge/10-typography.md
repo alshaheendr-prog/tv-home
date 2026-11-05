@@ -126,6 +126,9 @@ Corrections from the whole-app audit (2026-11-05):
 - Surah names: Amiri in the grid and strip, Plex in `quranNow` and `playerSurah`.
 
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22: no Must. S1: on the reciter loading line, the "…" sat on the wrong side of the Arabic, and the Arabic is in an Inter view. Fixed by moving the "…" to the English side; the separate fAr view waits for the visual batch. Nice: the home PIN message orphaned "again." (fixed with a line break), ⭐ comes from the emoji font (use ★), and the adhan row is 80 px for an 84.8 px Plex line (the ink fits).
+
 - 2026-11-05, PR #21 (docs only): first lane 10 review. No Must fix. Should fix: Android 15 text defaults were described as if they apply on the Android 14 box; the Plex Arabic-Indic digit width claim was wrong; the tracking inventory was missing 0.22/0.14/0.1. Nice: Chivo character count, unused fonts, Fraunces width note, SF wording, missing size 50.
 ### Whole-app audit (2026-11-05, main at d772bcc, no PR)
 - 2026-11-05, whole-app audit (main `d772bcc`): no confirmed Must fix. Should fix: Arabic in Inter views drawn by the system Naskh (kickers, weather words, toasts, splash), Kids Arabic marks likely clipped by `trim()` (computed: marks reach 1.15 em vs a 1.08 em line top minus 0.2 em trim), Kids/adhan Baloo clocks without `tnum` (AM/PM jumps about 70 px), 20 px and 18 px text (kickers, Arabic prayer names, surah numbers, calendar Arabic, adhan panel), strip Arabic 26 vs English 32, 8 caps tracking values, adhan `cardEn` 1.88 em leading, Western digits in Amiri lines, ⋯ and ✕ missing from Inter, surah names in two faces. Nice: Fraunces has no `tnum` upstream, Inter v3 Light, 440 KB unused fonts, Kids symbols missing from Baloo, Hijri weight, size count, weather emoji presentation, toast digits.
@@ -144,6 +147,10 @@ Corrections from the whole-app audit (2026-11-05):
 - 2026-11-05: Negative padding "trims" must be checked against the tallest shaped string (HarfBuzz extents over the real content), not against the font's ascent.
 - 2026-11-05: Grep every non-ASCII character in the code and check it against the cmap of the face that draws it. That finds fallback glyphs (⋯, ✕, ★) that look fine on a PC mock.
 
+- 2026-11-05: Arabic followed by a neutral (… ! . :) in an LTR line needs an RLM after it, or the neutral moved to the Latin side. Check with python-bidi `get_display(s, base_dir='L')`.
+- 2026-11-05: A temporary message must keep the line count of the text it replaces, at the real column width (PIN 472 px on the home, 440 px in Kids, parent rows 728 px).
+- 2026-11-05: When a row shrinks (adhan LIFT 56 and BAND 136 leave 80 px), check the shaped ink of every string against it. Plex Arabic at 50 px has ink from +39.1 to −13.5 px.
+
 ## Open questions to research next
 - Which system Arabic font draws the kicker Arabic on this Android TV 14 box (Noto Naskh Arabic or the UI cut), and does it clash with Plex? Screenshot a kicker.
 - On the box (Android 14), screenshot a Quran line and a Plex Hijri line to confirm metrics-based line height (no elegant metrics). Repeat if the box ever gets Android 15.
@@ -160,6 +167,9 @@ Corrections from the whole-app audit (2026-11-05):
 - Which Arabic fallback face (Naskh or Naskh UI) does the box really use in kickers? Answered in practice once S1 lands, but record it.
 - After S1, do Plex spans in a 22 px Inter kicker need a size bump of +2 px for the Arabic (Apple +2 pt rule beside caps)?
 - Inter v4 Display at 44 to 60 px vs Inter Light: mock on the TV.
+
+- Screenshot the reciter loading line on the box after the fix.
+- unicode.org (UAX #9) is blocked by the proxy here, so cite rules N1/N2 from a mirror.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -201,3 +211,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [fraunces-gh] https://github.com/arrowtype/Fraunces: axes (opsz 9 to 144, wght, SOFT, WONK), static instance naming (9pt/72pt/144pt); no figure-set features documented.
 - [gf-fraunces-vf] Google Fonts `ofl/fraunces/Fraunces[SOFT,WONK,opsz,wght].ttf` (raw.githubusercontent.com/google/fonts/main/…): v1.000, GSUB `case liga rvrn ss01`, fvar default opsz 9 / wght 900 / SOFT 0.
 - [inter-site] https://rsms.me/inter/: opsz text-to-display, Display "cleaner lines … for large text", `tnum` same width across weights, `zero`, `case`.
+
+- [w3c-h34] https://www.w3.org/WAI/WCAG21/Techniques/html/H34 : an RLM after punctuation that ends an RTL phrase in LTR text.
+- [w3c-inline-bidi] https://w3c.github.io/i18n-drafts/articles/inline-bidi-markup/index.en : neutrals at the edge of a phrase.

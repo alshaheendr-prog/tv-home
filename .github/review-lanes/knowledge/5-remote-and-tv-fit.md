@@ -130,7 +130,13 @@ Added by the whole-app audit (2026-11-05):
 - TV Home panels (`overlay()`) are all elevation 30 (player 35, reciter 40, splash 60). `show()` doesn't call `bringToFront()` and doesn't block the home row, which stays focusable at alpha 0. Kids Corner's `show()` does both (`syncFocus()`).
 - Parent settings focus indexes after a toggle are hard-coded (`drawParent(n)`), and they drifted by one when a row was added at the top.
 
+Added by the PR #22 review (2026-11-05):
+- Known risks updated by PR #22: the home player media-key risk is closed. The adhan words now sit at least 56 px above the bottom (BAND 136, LIFT 56); the corner card is still at 56/44 px.
+
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22 (audit update 1): no Must or Should. TrapFrame plus focusLayer stop focus leaking out of panels. Back goes back one layer per press. MEDIA_PLAY, PAUSE and PLAY_PAUSE are handled on the Quran page and in the player, which closes that known risk. A missing Stremio or Kodi shows a message. The adhan words are lifted 56 px. Nice: closing the reciters focused a hidden button (fixed, it falls back to the surah cell); the tileFor fallback; "Show first" refocuses the first app; media keys on the home with soft Quran playing; the adhan's 80 px box.
+
 - **2026-11-05, PR #20 (merged):** no Must fix. Should fix: kids-lock warning was a system Toast (fixed: moved into the Parent menu); kids PIN dots stayed red during the wait (fixed). Nice to have: parent-settings set-PIN subtitle mentioned only YouTube (fixed). Rule added to the brief: nothing the family must read is a Toast. Research notes: the adhan overlay ignores Screen size and sits about 2.9%/4.1% from the corner; a Prime or Apps press does nothing if Stremio/Kodi isn't installed; Back and focus handling sound.
 - **2026-11-05, PR #21 (docs):** no Must fix. Should: §8 CEC PAUSE/PLAY arrive as `MEDIA_PAUSE`/`MEDIA_PLAY`; the key-repeat settings claim was main-only. Nice: predictive back answered, GlobalKeyManager, SCREENSHOT is 15+, secretKey line. All other file:line refs and android14 claims verified.
 - **2026-11-05, knowledge build (no PR):** from AOSP source: `VIDEO_APP_*`/`FEATURED_APP_*` keys never reach accessibility services on Android 14; `ALL_APPS` fires on UP on 14; 500 ms accessibility key timeout; Android 14 lets accessibility services start activities from the background; long-click listeners must return true; the Quran player ignores `MEDIA_PLAY_PAUSE`.
@@ -150,6 +156,10 @@ Added by the whole-app audit (2026-11-05):
 - 2026-11-05: Hard-coded focus indexes in rebuilt lists drift silently when a row is added. Look for them whenever a list gains a row.
 - 2026-11-05: Check whether a "consumes everything" key handler can block volume before flagging it: on TV it can't (see §2).
 
+- 2026-11-05: On Android 14, setDescendantFocusability(BLOCK) doesn't clear focus that is already inside. Block first, then requestFocus the target straight away.
+- 2026-11-05: A focusSearch override that returns the focused view makes ViewRootImpl treat the arrow as having nowhere to go.
+- 2026-11-05: With no MediaSession, unhandled media keys go to the last media-button receiver.
+
 ## Open questions to research next
 - Which key code does each button on this box's remote send (Home, Apps, Netflix, Prime Video, YouTube, Google TV/Live, the input/settings button)? Do any of them map to `VIDEO_APP_*`/`FEATURED_APP_*` and so can't be learned? (On the box: Parent settings → learn, or `adb shell getevent -l` / logcat.)
 - Does this box's Home button send `KEYCODE_HOME` or `KEYCODE_ALL_APPS`? If `ALL_APPS`, the default `rk_apps` mapping would turn Home into "open Kodi". Highest-priority check: `adb logcat | grep -i keycode` while pressing Home and Apps (lane 8 has the same step).
@@ -161,6 +171,8 @@ Added by the whole-app audit (2026-11-05):
 - Is `KEYCODE_BUTTON_A` turned into a confirm key by the key-character-map fallback for game pads, or does it need handling?
 - Does long-press OK reach the view when the TV's own remote sends SELECT over CEC (does the TV repeat "pressed")? This is still open, and now matters for dock arranging and All apps hold-OK.
 - Does `View.requestFocus()` on a dock tile from `onNewIntent` (Home pressed while a panel is fading) ever race with the 180 ms fade? Watch on the box (checklist item 6).
+
+- Should the home get a MediaSession so the TV remote's Pause works on the soft Quran? (That may count as a feature; ask first.)
 
 ## Source library
 Tags used above. All were opened on 2026-11-05 unless marked otherwise.
@@ -210,3 +222,5 @@ Tags used above. All were opened on 2026-11-05 unless marked otherwise.
 - [focus-restore] https://developer.android.com/develop/ui/compose/touch-input/focus/focus-restoration : focus should return to the last-focused child on re-entry, and to the item acted on after Back (the `saveFocusedChild`/`restoreFocusedChild` pattern). This is the Compose wording of our "return focus to where the user was" rule.
 - [adaptive-tv] https://developer.android.com/develop/adaptive-apps/guides/tv/build-adaptive-apps-for-tv : "Ensure every UI element is reachable and has a clear focused state." It has no guidance on overlays or focus traps.
 - Not useful: the `device/google/atv` overlay config URL returned 404 (moved). `config_handleVolumeKeysInWindowManager` defaults to false in core `config.xml:4612`; TV routing comes from `mUseTvRouting` instead.
+
+- android14-release ViewGroup.java (lines 826-838, descendant focusability), ViewRootImpl.java performFocusNavigation, MediaSessionService.java dispatchMediaKeyEventLocked, and TextView.java onDraw clipRect. Read 2026-11-05.

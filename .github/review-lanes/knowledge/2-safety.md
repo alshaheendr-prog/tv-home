@@ -175,6 +175,9 @@ Added by the whole-app audit (2026-11-05):
 
 ## Past findings
 
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22 (ecdab40): no Must. Should S1: Parent settings could come back without the PIN. closePanels() hid parentPanel only in withEndAction; an openPin() within the 180 ms fade cancelled that fade (dropping the end action), set pinOverParent from visibility, and Back or ✕ then called backToParent(). Fixed with a parentOpen flag. Nice: accept only known names in the `missing` extra. Audit S1-S4 are all fixed. The CI SHAs were verified against their tags, and `run:` uses env vars.
+
 ### Whole-app audit (2026-11-05, main at d772bcc, no PR)
 - **Whole-app audit (2026-11-05, main d772bcc).**
   - Must: none.
@@ -211,6 +214,9 @@ Added by the whole-app audit (2026-11-05):
 - 2026-11-05: Every parental-looking control must change the real rule. Grep where its pref is read. TV Home's `kids` set is read only by TV Home.
 - 2026-11-05: When a feature is removed (Projectivy), check which permissions existed only for it.
 
+- 2026-11-05: Never use view visibility as the "unlocked" signal. ViewPropertyAnimator cancels a running animation on the same property and drops its withEndAction, so a faded panel can stay VISIBLE at alpha 0. Keep an explicit open flag.
+- 2026-11-05: Verify action SHAs with `git ls-remote` on refs/tags/vX and vX^{} (gradle/actions uses annotated tags).
+
 ## Open questions to research next
 - The 2025 tj-actions/changed-files tag-rewrite incident: a primary write-up was not opened this round (it is the classic example for SHA pinning).
 - APK Signature Scheme v3 key rotation (source.android.com): exact steps and the minimum API, for when the owner revisits the key.
@@ -226,6 +232,8 @@ Added by the whole-app audit (2026-11-05):
 - On Google TV 14, is the quick-settings side panel (long-press Home or the gear) in `com.android.systemui`, which Guard lets through, or in launcherx? Can a child reach Settings pages from it without Settings coming to the front?
 - Prime Video's profile PIN on Android TV, and whether Shahid has a profile lock (for lane 8).
 - Does Android TV Settings use launch modes that ignore `CLEAR_TASK`? Check on the box when S2 is fixed.
+
+- On TV 14, does READ_MEDIA_AUDIO alone play an adb-pushed Download/takbir.mp3? The chime fallback covers safety, and lane 8 should check that the takbir plays.
 
 ## Source library
 
@@ -274,3 +282,5 @@ All checked 2026-11-05 unless noted. The [tags] are used above.
 - [All files] https://developer.android.com/training/data-storage/manage-all-files: MANAGE_EXTERNAL_STORAGE only as a last resort, for core features.
 - [Media] https://developer.android.com/training/data-storage/shared/media: raw File paths on 11+; another app's Downloads entries need the Storage Access Framework.
 - [Netflix lock] https://help.netflix.com/en/node/114277: 4-digit Profile Lock, set from the phone app or the web.
+
+- [VPA] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/main/core/java/android/view/ViewPropertyAnimator.java : a running animation on the same property is cancelled, and onAnimationCancel removes its end action. Checked 2026-11-05.

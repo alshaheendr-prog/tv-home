@@ -122,7 +122,21 @@ Added by the whole-app audit (2026-11-05):
 - Panels: header TOP|START (110, 56); hint TOP|END (110, 74); Quran buttons TOP|END (110, 80); Quran now-playing block (430, 96) 640 wide; surah scroller (100, 250) 1720x830; apps scroller (100, 230) 1720x850, 7 x 246 px columns. PIN card 600 wide, about 961 tall; Parent card 900 wide, about 958 tall, scroller 760, rows 76. Reciter card 1500x940, tiles 664x160; calendar card 1100x940. Kids: cartoons page padding 110, tiles 384 + 40 right margin, scale 1.08; Kids apps card 1456x900, tiles 316 + 20 right margin. (computed, d772bcc)
 - Font line heights (px, includeFontPadding as used): Inter SemiBold 44 → 53.2, 52 → 62.9; Plex Arabic Medium 30 padded → 49.8, 40 padded → 66.4; Amiri Bold 36 padded → 98.4, 52 padded → 142.1. (computed with fontTools)
 
+Added by the PR #22 review (2026-11-05):
+Add under "This box and this code". All values are (computed, ecdab40).
+- **Message pill:** 28 px Inter plus 14/16 padding makes it 64 px tall. On the home screen it sits TOP|START at (80, 56). Over panels it sits BOTTOM|CENTER with a 64 px margin, at y 952..1016. Elevation 50.
+- **Quran player controls:** bottom margin 74. The buttons are 84 px, at y 906..990. The bar is 720x3, at y 853.
+- **Adhan alert:** the window is 206 px tall (`BAND 136` plus a 70 px fade). The row's content runs from y 70 to `206 - LIFT`. Plex Arabic SemiBold 50 with font padding is 84.75 px tall, with ink +39/-12 px around the baseline. Inter Medium 46 ink is +35/-10 px.
+
 ## Past findings
+### PR #22 (2026-11-05, audit update 1)
+- 2026-11-05, PR #22 (audit update 1): 2 Must, 1 Should, 5 Nice.
+  - The message pill is placed once in `toast()` and goes stale when layers change, so it can cover the dock or a panel header.
+  - Over the Quran player, the pill covers the controls (buttons at y 906..990).
+  - Adhan `LIFT 56` cuts the padded Arabic view to 80 of 84.75 px and leaves the ink 16 px under the gold line. `LIFT 32` is suggested.
+  - All of this is (computed).
+  - Outcome: the pill now moves with each layer (`placePill`), and over the player it sits top centre. The adhan was fixed with BAND 148 rather than LIFT 32, so the words keep their 56 px overscan margin and get 92 px of room.
+
 - 2026-11-05, PR #21 (docs): self-check. Fixed the false "end tiles past 96 px" claim; added the neighbour 1.06 / lift 5 tiles and the stale `magnify()` comment; recorded the build-time verse sizes, the 4 px tile-to-label gap, the Kids 30 px gutter and the broadcast safe areas.
 ### Whole-app audit (2026-11-05, main at d772bcc, no PR)
 - 2026-11-05, whole-app audit (main d772bcc): 3 Must, 5 Should, 4 Nice, all in panels and Kids grids. Quran top-right buttons overlap the now-playing block once a reciter is named (button 1043 px for Al-Minshawi, starts x 767; block x 430..1070); Parent rows and the Kids cartoon grid clip the focused item's sides; All apps (1722 in 1720) and the surah grid clip the gold shadow; reciter list and Kids apps grid sit 20 px off-centre; Parent rows 76 px < 96. (computed)
@@ -137,6 +151,9 @@ Added by the whole-app audit (2026-11-05):
 - 2026-11-05: GridLayout margins on one side only (`0, 0, 40, 40`) leave the trailing margin as empty space, so the grid sits off-centre. Use symmetric margins, or size tiles so `cols * (w + gap) - gap` equals the content width.
 - 2026-11-05: Buttons that show user data ("Reciter: <name>") grow with it. Measure the widest real value against every neighbour, not just the default text.
 
+- 2026-11-05: Anything placed by the state at the moment it appears (toasts, hints) must be placed again when that state changes during its lifetime. Walk the flows: show it, then open or close a layer.
+- 2026-11-05: Padding a fixed-height row (`alertRow`, `BAND - LIFT`) can leave a child taller than the room that's left. TextView then clips the bottom of its font padding. Check the padded line height against the space left.
+
 ## Open questions to research next
 - Real screenshots at 100% and 88% with the stress test: do the computed y values above match (column end about 477, verse end about 685, focused tile top about 838)?
 - Does `adb exec-out screencap` capture the SurfaceView video on this box (needed to judge balance)?
@@ -148,6 +165,8 @@ Added by the whole-app audit (2026-11-05):
 - What is the family's TV size and sofa distance? It sets the real arcmin of every size (Core 8).
 - Confirm items 1 to 3 on box screenshots: the Quran panel with Al-Minshawi chosen and playing; Parent settings with a row focused; Kids cartoons with the first card focused.
 - Material 3 spacing tokens: m3.material.io and the pub.dev M3 Expressive spacing page both failed to load on 2026-11-05.
+
+- On a box screenshot: does the adhan Arabic line clip at `LIFT 56` (a padded view of 80 of 84.75 px)? Does the pill over the player cover Play?
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -180,3 +199,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [tv-layouts] re-opened 2026-11-05: "To prevent overlapping, it's important to consider the padding between items and the size increase of focused states"; points to Cards for component spacing.
 - [cliptopadding] https://codemia.io/knowledge-hub/path/android_what_does_the_cliptopadding_attribute_do: with `clipToPadding false`, children "may draw into the padded area"; "`clipChildren` controls clipping to parent outer bounds" (a secondary source; the official ViewGroup reference page did not load the method text). Checked 2026-11-05.
 - [tv-compose-lists] https://developer.android.com/training/tv/playback/compose/lists: no padding guidance for focused items (checked 2026-11-05; not useful, don't re-open for this).
+
+- [m-snackbar] https://zyun.gitbook.io/temporary-views/official/material-design/original/snackbars (a mirror of Material's snackbar page): don't place one in front of frequently used targets or navigation, show it above persistent bottom navigation, and keep it in the same spot. Checked 2026-11-05.
+- [webos-notif] https://webostv.developer.lge.com/develop/guides/notifications: TV toasts are a non-modal overlay at the bottom of the screen. Checked 2026-11-05.
