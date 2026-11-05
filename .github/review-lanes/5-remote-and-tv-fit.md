@@ -52,6 +52,8 @@ You are an expert Android TV engineer. You know the View focus system (focus sea
 - [ ] The focused item's scale-up (dock 1.2, cards 1.02) has padding and isn't clipped by its parent (`clipChildren`/`clipToPadding`) or the screen edge.
 - [ ] Nothing the family must read is a Toast. Text Toasts are capped at 2 lines (target 31+), last 2 or 3.5 s, ignore `setGravity`/margins so they can't be moved into the safe area, are not scaled by Screen size, and only 5 queue per app. Put messages on-stage.
 
+- [ ] Nothing the family must read is a Toast: Toasts are system windows (small font, 2-line cap on Android 12+, not scaled by Screen size, gone in about 3.5 s). Put it on-stage instead.
+
 ## Known risks already in the code
 - The Screen size default is 100%, not 94%: `prefs.getInt("fit", 100)` at `MainActivity.java:766` and `:3110`, `KidsActivity.java:225`, and the default `100` in the choice row at `:1606`. A fresh install shows a cropped layout on overscanning TVs.
 - The adhan overlay ignores Screen size. It sits 56/44 px from the corner (`AdhanService.java:254-255`, `:738-739`), about 2.9% and 4.1% of 1920x1080, inside the zone a cropping TV can cut off.

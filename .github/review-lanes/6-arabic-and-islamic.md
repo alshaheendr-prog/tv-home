@@ -59,6 +59,8 @@ You are an expert in Islamic timekeeping (prayer-time astronomy and Hijri calend
 - **Kids content (Nice to have):** `GoodWords.java:24` explains Ar-Raheem as "loves to forgive", which is closer to Al-Ghafoor. `dayIndex()` is the day of the year (`Worlds.java:63`), so an item can repeat across New Year.
 - **Fixed in PR #20, keep fixed:** the Basmala glued onto ayah 1; the adhan-card ayah cut by `maxLines` and drawn in Baloo; "Don't get angry" now "again and again" (Bukhari 6116); Hasbiyallah labelled as Abu al-Darda's words (Abu Dawud 5081).
 
+- **OFFSETS checked (2026-11-05).** Against the published Kuwait (Al-Ajairi / Awqaf) times for Ramadan 1447 and 6 Nov 2026, the computed times match exactly most days and are otherwise off by 1 minute either way; no constant offset does better, so `OFFSETS` stays 0. Only embedding the official tables would match every day. Summer months were not checked.
+
 ## How to report
 Group findings under **Must fix** (a wrong prayer time, wrong date for Ramadan or Eid, altered or cut Quran text, a misattributed hadith), **Should fix**, and **Nice to have**. For each one, give `file:line`, what goes wrong in plain words ("the TV shows Bismillah as part of Al-Baqarah 2:1"), the authoritative source with its URL, and a suggested fix. The owner is a beginner, so avoid jargon or explain it in one clause. Mark anything you could not verify as **unverified**. If the PR is clean for this lane, write "nothing found" and list what you checked. Then send the knowledge-file additions to the PR's thread.
 

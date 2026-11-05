@@ -73,6 +73,8 @@ You are an expert Android engineer who has shipped Android TV launchers and long
 - [ ] `swallowUp` is cleared on every path. Otherwise a stuck key leads to a half-press.
 - [ ] `onKeyEvent` consumes the down and the up of the same key, and stays fast, because it runs on the main thread for every key on the box.
 
+- [ ] A saved wall-clock deadline (lockouts, timers) clamps the stored value when the clock jumps, not only the value it returns. Anything that must happen once (adhan, reminders) is remembered across a service restart.
+
 ## Known risks already in the code
 Before you cite any of these, check them against the code. The knowledge file has the verified list and what PR #20 fixed (the onDestroy crash, the exact-minute adhan, adhan replay after a restart, the stored `pin_until`).
 - **Adhan needs the CPU awake.** The `Handler` tick plus a 3-minute window misses an adhan if the box is suspended through the whole window (`AdhanService.java:481`). *Known. Whether the box suspends in standby is unverified.*
