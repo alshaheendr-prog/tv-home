@@ -37,10 +37,10 @@ final class Widgets {
 
         // Morning and evening adhkar
         if (t != null && min >= t[0] && min < t[1] + 180)
-            out.add(new String[]{"MORNING ADHKAR · أذكار الصباح", "سبحان الله وبحمده", "SubhanAllahi wa bihamdihi, 100 times in the morning.", "Muslim"});
+            out.add(new String[]{"MORNING ADHKAR · أذكار الصباح", "سبحان الله وبحمده", "SubhanAllahi wa bihamdihi, 100 times in the morning.", "Hisn al-Muslim 102 · Muslim"});
         if (t != null && min >= t[3] && min < t[4] + 60)
             out.add(new String[]{"EVENING ADHKAR · أذكار المساء", "أعوذ بكلمات الله التامات من شر ما خلق",
-                    "I seek refuge in the perfect words of Allah from the evil of what He created. (3 times)", "Muslim"});
+                    "I seek refuge in the perfect words of Allah from the evil of what He created. (3 times)", "Hisn al-Muslim 107 · At-Tirmidhi 3604"});
 
         // Verse and hadith of the day
         String[] a = ayah != null ? ayah : Content.AYAH[Math.floorMod(doy, Content.AYAH.length)];
@@ -58,7 +58,22 @@ final class Widgets {
         return out;
     }
 
-    private static String ar(int n) { return String.format(new Locale("ar"), "%d", n); }
+    // Arabic-Indic digits by hand: Locale("ar") gives Western digits on newer Android (CLDR 46)
+    private static String ar(int n) { return arDigits(String.valueOf(n)); }
+
+    static String arDigits(String s) {
+        StringBuilder b = new StringBuilder(s.length());
+        for (char c : s.toCharArray()) b.append(c >= '0' && c <= '9' ? (char) ('\u0660' + (c - '0')) : c);
+        return b.toString();
+    }
+
+    /** "in N days" with the Arabic number agreement: غداً, بعد يومين, بعد ٣ أيام (3-10), بعد ١١ يوماً (11 and up). */
+    static String inDaysAr(int n) {
+        if (n == 1) return "غداً";
+        if (n == 2) return "بعد يومين";
+        return "بعد " + ar(n) + (n <= 10 ? " أيام" : " يوماً");
+    }
+
 
     /** Days until the next of Ramadan, Eid al-Fitr and Eid al-Adha (Umm al-Qura calendar). */
     private static String[] countdown(Calendar now) {
@@ -83,7 +98,7 @@ final class Widgets {
                 else if (mm == IslamicCalendar.SHAWWAL && dd == 1) hit = new String[]{"عيد الفطر", "Eid al-Fitr"};
                 else if (mm == IslamicCalendar.DHU_AL_HIJJAH && dd == 10) hit = new String[]{"عيد الأضحى", "Eid al-Adha"};
                 if (hit != null) {
-                    cachedCountdown = new String[]{"COUNTDOWN · العد التنازلي", hit[0] + " بعد " + ar(i) + " يوم",
+                    cachedCountdown = new String[]{"COUNTDOWN · العد التنازلي", hit[0] + " " + inDaysAr(i),
                             hit[1] + " in " + i + (i == 1 ? " day" : " days") + ".", ""};
                     break;
                 }

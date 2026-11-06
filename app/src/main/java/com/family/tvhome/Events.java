@@ -53,7 +53,9 @@ final class Events {
         String[] tomorrow = on(n[0], n[1]);
         if (tomorrow == null) return null;
         if (n[0] == IslamicCalendar.RAMADAN && n[1] == 1) return new String[]{"Ramadan starts tomorrow", "رمضان يبدأ غداً"};
-        if (n[0] == IslamicCalendar.MUHARRAM && (n[1] == 9 || n[1] == 10)) return new String[]{"Fast of Ashura tomorrow", "صيام عاشوراء غداً"};
+        // the 9th is Tasu'a (Muslim 1134), the 10th Ashura: each named on the eve before it
+        if (n[0] == IslamicCalendar.MUHARRAM && n[1] == 9) return new String[]{"Fast of Tasu'a tomorrow", "صيام تاسوعاء غداً"};
+        if (n[0] == IslamicCalendar.MUHARRAM && n[1] == 10) return new String[]{"Fast of Ashura tomorrow", "صيام عاشوراء غداً"};
         if (n[1] == 13 && n[0] != IslamicCalendar.DHU_AL_HIJJAH) return new String[]{"White Days start tomorrow", "الأيام البيض تبدأ غداً"};
         return null;
     }
@@ -62,7 +64,7 @@ final class Events {
         if (m < 0) return null;
         if (m == IslamicCalendar.RAMADAN) {
             if (d >= 21) return new String[]{"Last ten nights of Ramadan", "العشر الأواخر من رمضان"};
-            return new String[]{"Ramadan · day " + d, "رمضان · اليوم " + d};
+            return new String[]{"Ramadan · day " + d, "رمضان · اليوم " + Widgets.arDigits(String.valueOf(d))};
         }
         if (m == IslamicCalendar.SHAWWAL && d <= 3) return new String[]{"Eid al-Fitr Mubarak", "عيد فطر مبارك"};
         if (m == IslamicCalendar.SHAWWAL) return new String[]{"Six days of Shawwal", "ست من شوال"};
@@ -73,7 +75,8 @@ final class Events {
         }
         if (m == IslamicCalendar.MUHARRAM) {
             if (d == 1) return new String[]{"Islamic New Year", "رأس السنة الهجرية"};
-            if (d == 9 || d == 10) return new String[]{"Ashura fast", "صيام عاشوراء"};
+            if (d == 9) return new String[]{"Tasu'a fast", "صيام تاسوعاء"};
+            if (d == 10) return new String[]{"Ashura fast", "صيام عاشوراء"};
         }
         if (d >= 13 && d <= 15) return new String[]{"White Days fast", "صيام الأيام البيض"};
         return null;

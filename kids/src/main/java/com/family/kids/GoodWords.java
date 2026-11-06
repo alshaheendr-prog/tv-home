@@ -45,22 +45,22 @@ final class GoodWords {
     };
 
     static final Hadith[] HADITHS = {
-            new Hadith("😊", "تَبَسُّمُكَ فِي وَجْهِ أَخِيكَ لَكَ صَدَقَةٌ", "Smiling at your brother is a charity.", "Tirmidhi"),
-            new Hadith("💬", "الْكَلِمَةُ الطَّيِّبَةُ صَدَقَةٌ", "A kind word is a charity.", "Bukhari & Muslim"),
+            new Hadith("😊", "تَبَسُّمُكَ فِي وَجْهِ أَخِيكَ لَكَ صَدَقَةٌ", "Smiling at your brother is a charity.", "Tirmidhi 1956"),
+            new Hadith("💬", "الْكَلِمَةُ الطَّيِّبَةُ صَدَقَةٌ", "A kind word is a charity.", "from Bukhari 2989"),
             new Hadith("🧊", "لَا تَغْضَبْ", "Don't get angry! (He ﷺ said it again and again to a man who asked for advice.)", "Bukhari 6116"),
-            new Hadith("💪", "لَيْسَ الشَّدِيدُ بِالصُّرَعَةِ", "The strong one is not the best wrestler, but the one who stays calm when angry.", "Bukhari & Muslim"),
-            new Hadith("🫧", "الطُّهُورُ شَطْرُ الْإِيمَانِ", "Being clean is half of faith.", "Muslim"),
+            new Hadith("💪", "لَيْسَ الشَّدِيدُ بِالصُّرَعَةِ، إِنَّمَا الشَّدِيدُ الَّذِي يَمْلِكُ نَفْسَهُ عِنْدَ الْغَضَبِ", "The strong one is not the best wrestler, but the one who stays calm when angry.", "Bukhari 6114"),
+            new Hadith("🫧", "الطُّهُورُ شَطْرُ الْإِيمَانِ", "Being clean is half of faith.", "from Muslim 223"),
             new Hadith("🎁", "تَهَادَوْا تَحَابُّوا", "Give each other gifts, and you will love each other.", "Al-Adab al-Mufrad"),
-            new Hadith("🌈", "يَسِّرُوا وَلَا تُعَسِّرُوا", "Make things easy for people, not hard.", "Bukhari & Muslim"),
-            new Hadith("🌸", "إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ", "Allah is gentle and loves gentleness.", "Muslim"),
-            new Hadith("🤝", "لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ", "Love for your brother and sister what you love for yourself.", "Bukhari & Muslim"),
-            new Hadith("🏠", "خَيْرُكُمْ خَيْرُكُمْ لِأَهْلِهِ", "The best of you are the best to their family.", "Tirmidhi"),
-            new Hadith("🙏", "مَنْ لَا يَشْكُرُ النَّاسَ لَا يَشْكُرُ اللَّهَ", "Whoever doesn't thank people doesn't thank Allah.", "Abu Dawud & Tirmidhi"),
-            new Hadith("🍽️", "سَمِّ اللَّهَ، وَكُلْ بِيَمِينِكَ، وَكُلْ مِمَّا يَلِيكَ", "Say Bismillah, eat with your right hand, and eat from what is in front of you.", "Bukhari & Muslim"),
-            new Hadith("🐢", "أَحَبُّ الْأَعْمَالِ إِلَى اللَّهِ أَدْوَمُهَا وَإِنْ قَلَّ", "The good deeds Allah loves most are the ones we do every day, even small ones.", "Bukhari & Muslim"),
-            new Hadith("💗", "مَنْ لَا يَرْحَمُ لَا يُرْحَمُ", "Whoever is not kind and merciful will not be shown mercy.", "Bukhari & Muslim"),
-            new Hadith("👋", "أَفْشُوا السَّلَامَ بَيْنَكُمْ", "Say salam to each other a lot.", "Muslim"),
-            new Hadith("🕊️", "الْمُسْلِمُ مَنْ سَلِمَ الْمُسْلِمُونَ مِنْ لِسَانِهِ وَيَدِهِ", "A Muslim is someone whose words and hands never hurt others.", "Bukhari & Muslim"),
+            new Hadith("🌈", "يَسِّرُوا وَلَا تُعَسِّرُوا", "Make things easy for people, not hard.", "Bukhari 69"),
+            new Hadith("🌸", "إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ", "Allah is gentle and loves gentleness.", "from Muslim 2593"),
+            new Hadith("🤝", "لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ", "Love for your brother and sister what you love for yourself.", "Bukhari 13"),
+            new Hadith("🏠", "خَيْرُكُمْ خَيْرُكُمْ لِأَهْلِهِ", "The best of you are the best to their family.", "Tirmidhi 3895"),
+            new Hadith("🙏", "مَنْ لَا يَشْكُرُ النَّاسَ لَا يَشْكُرُ اللَّهَ", "Whoever doesn't thank people doesn't thank Allah.", "Tirmidhi 1954"),
+            new Hadith("🍽️", "سَمِّ اللَّهَ، وَكُلْ بِيَمِينِكَ، وَكُلْ مِمَّا يَلِيكَ", "Say Bismillah, eat with your right hand, and eat from what is in front of you.", "Bukhari 5376"),
+            new Hadith("🐢", "أَحَبُّ الْأَعْمَالِ إِلَى اللَّهِ أَدْوَمُهَا وَإِنْ قَلَّ", "The good deeds Allah loves most are the ones we do every day, even small ones.", "from Bukhari 6464"),
+            new Hadith("💗", "مَنْ لَا يَرْحَمُ لَا يُرْحَمُ", "Whoever is not kind and merciful will not be shown mercy.", "from Bukhari 5997"),
+            new Hadith("👋", "أَفْشُوا السَّلَامَ بَيْنَكُمْ", "Say salam to each other a lot.", "from Muslim 54"),
+            new Hadith("🕊️", "الْمُسْلِمُ مَنْ سَلِمَ الْمُسْلِمُونَ مِنْ لِسَانِهِ وَيَدِهِ", "A Muslim is someone whose words and hands never hurt others.", "Bukhari 10"),
     };
 
     static boolean nameDay() { return Worlds.dayIndex() % 2 == 0; }

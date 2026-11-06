@@ -33,7 +33,7 @@ final class Widgets {
             out.add(new String[]{"FRIDAY · الجمعة", "لا تنسَ قراءة سورة الكهف", "Don't forget to read Surat Al-Kahf.", ""});
             if (dow == Calendar.FRIDAY && min < t[2])
                 out.add(new String[]{"JUMU'AH SUNNAHS · سنن الجمعة", "الغسل والطيب والتبكير إلى الصلاة والإكثار من الصلاة على النبي ﷺ",
-                        "Ghusl, perfume, going early to the prayer, and many salawat on the Prophet ﷺ.", "Al-Bukhari, Abu Dawud"});
+                        "Ghusl, perfume, going early to the prayer, and many salawat on the Prophet ﷺ.", "Bukhari 883, 881 · Abu Dawud 1047"});
             if (dow == Calendar.FRIDAY && min < t[2] + 60)
                 out.add(new String[]{"JUMU'AH · صلاة الجمعة", "صلاة الجمعة " + arDigits(PrayerTimes.clock(t[2])), "Jumu'ah prayer at " + PrayerTimes.clock(t[2]) + ".", ""});
         }
@@ -71,37 +71,46 @@ final class Widgets {
         return 0;
     }
 
-    // {Arabic, English, source}. From Hisn al-Muslim. Check any new one on dorar.net or sunnah.com first: some (like Hasbiyallah 7 times, Abu Dawud 5081) are a Companion's words, not the Prophet's ﷺ.
+    // {Arabic, English, source}. From Hisn al-Muslim (numbers from the Mukhtasar edition, as on en.tohed.com). Check any new one on dorar.net or sunnah.com first: some (like Hasbiyallah 7 times, Abu Dawud 5081) are a Companion's words, not the Prophet's ﷺ.
     static final String[][] MORNING = {
             {"أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له",
-                    "We have reached the morning and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Muslim"},
+                    "We have reached the morning and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Hisn al-Muslim 100 · Muslim"},
             {"اللهم بك أصبحنا وبك أمسينا وبك نحيا وبك نموت وإليك النشور",
-                    "O Allah, by You we reach the morning and the evening, by You we live and die, and to You is the rising.", "At-Tirmidhi"},
+                    "O Allah, by You we reach the morning and the evening, by You we live and die, and to You is the rising.", "Hisn al-Muslim 89 · At-Tirmidhi"},
             {"بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم",
-                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Abu Dawud, At-Tirmidhi"},
+                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Hisn al-Muslim 97 · Abu Dawud, At-Tirmidhi"},
             {"رضيت بالله رباً وبالإسلام ديناً وبمحمد ﷺ نبياً",
                     "I am pleased with Allah as my Lord, Islam as my religion and Muhammad ﷺ as my Prophet. (3 times)", "Abu Dawud"},
             {"حسبي الله لا إله إلا هو عليه توكلت وهو رب العرش العظيم",
-                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Abu Dawud 5081, words of Abu al-Darda"},
+                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Hisn al-Muslim 94 · Abu Dawud 5081, words of Abu al-Darda"},
             {"سبحان الله وبحمده",
-                    "Glory be to Allah and praise be to Him. (100 times)", "Muslim"},
+                    "Glory be to Allah and praise be to Him. (100 times)", "Hisn al-Muslim 102 · Muslim"},
     };
     static final String[][] EVENING = {
             {"أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له",
-                    "We have reached the evening and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Muslim"},
+                    "We have reached the evening and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Hisn al-Muslim 100 · Muslim"},
             {"اللهم بك أمسينا وبك أصبحنا وبك نحيا وبك نموت وإليك المصير",
-                    "O Allah, by You we reach the evening and the morning, by You we live and die, and to You is the return.", "At-Tirmidhi"},
+                    "O Allah, by You we reach the evening and the morning, by You we live and die, and to You is the return.", "Hisn al-Muslim 89 · At-Tirmidhi"},
             {"أعوذ بكلمات الله التامات من شر ما خلق",
-                    "I seek refuge in the perfect words of Allah from the evil of what He has created. (3 times)", "Muslim"},
+                    "I seek refuge in the perfect words of Allah from the evil of what He has created. (3 times)", "Hisn al-Muslim 107 · At-Tirmidhi 3604"},
             {"بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم",
-                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Abu Dawud, At-Tirmidhi"},
+                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Hisn al-Muslim 97 · Abu Dawud, At-Tirmidhi"},
             {"رضيت بالله رباً وبالإسلام ديناً وبمحمد ﷺ نبياً",
                     "I am pleased with Allah as my Lord, Islam as my religion and Muhammad ﷺ as my Prophet. (3 times)", "Abu Dawud"},
             {"حسبي الله لا إله إلا هو عليه توكلت وهو رب العرش العظيم",
-                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Abu Dawud 5081, words of Abu al-Darda"},
+                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Hisn al-Muslim 94 · Abu Dawud 5081, words of Abu al-Darda"},
     };
 
-    private static String ar(int n) { return String.format(new Locale("ar"), "%d", n); }
+    // Arabic-Indic digits by hand: Locale("ar") gives Western digits on newer Android (CLDR 46)
+    private static String ar(int n) { return arDigits(String.valueOf(n)); }
+
+    /** "in N days" with the Arabic number agreement: غداً, بعد يومين, بعد ٣ أيام (3-10), بعد ١١ يوماً (11 and up). */
+    static String inDaysAr(int n) {
+        if (n == 1) return "غداً";
+        if (n == 2) return "بعد يومين";
+        return "بعد " + ar(n) + (n <= 10 ? " أيام" : " يوماً");
+    }
+
 
     /** Arabic-Indic digits for an Arabic line: Amiri has these, not the Western ones. */
     static String arDigits(String s) {
@@ -133,7 +142,7 @@ final class Widgets {
                 else if (mm == IslamicCalendar.SHAWWAL && dd == 1) hit = new String[]{"عيد الفطر", "Eid al-Fitr"};
                 else if (mm == IslamicCalendar.DHU_AL_HIJJAH && dd == 10) hit = new String[]{"عيد الأضحى", "Eid al-Adha"};
                 if (hit != null) {
-                    cachedCountdown = new String[]{"COUNTDOWN · العد التنازلي", hit[0] + " بعد " + ar(i) + " يوم",
+                    cachedCountdown = new String[]{"COUNTDOWN · العد التنازلي", hit[0] + " " + inDaysAr(i),
                             hit[1] + " in " + i + (i == 1 ? " day" : " days") + ".", ""};
                     break;
                 }

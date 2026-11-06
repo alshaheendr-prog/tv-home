@@ -1,30 +1,30 @@
 package com.family.adhan;
 
-/** Built-in texts for the widget card. Hadith are from Sahih al-Bukhari, Sahih Muslim and Jami' at-Tirmidhi. */
+/** Built-in texts for the widget card. Hadith are from Sahih al-Bukhari, Sahih Muslim and Jami' at-Tirmidhi, each with its number; "from" marks a part of a longer hadith or verse. */
 final class Content {
     private Content() { }
 
     /** {Arabic, English, reference} */
     static final String[][] HADITH = {
-            {"إنما الأعمال بالنيات", "Actions are judged by intentions.", "Bukhari & Muslim"},
-            {"الكلمة الطيبة صدقة", "A good word is charity.", "Bukhari & Muslim"},
-            {"من كان يؤمن بالله واليوم الآخر فليقل خيرا أو ليصمت", "Whoever believes in Allah and the Last Day, let him speak good or stay silent.", "Bukhari & Muslim"},
-            {"تبسمك في وجه أخيك لك صدقة", "Your smile in the face of your brother is charity.", "Tirmidhi"},
-            {"لا يؤمن أحدكم حتى يحب لأخيه ما يحب لنفسه", "None of you truly believes until he loves for his brother what he loves for himself.", "Bukhari & Muslim"},
-            {"خيركم من تعلم القرآن وعلمه", "The best of you are those who learn the Qur'an and teach it.", "Bukhari"},
-            {"الطهور شطر الإيمان", "Purity is half of faith.", "Muslim"},
-            {"يسروا ولا تعسروا وبشروا ولا تنفروا", "Make things easy and do not make them hard. Give good news and do not drive people away.", "Bukhari & Muslim"},
-            {"المسلم من سلم المسلمون من لسانه ويده", "A Muslim is one from whose tongue and hand other Muslims are safe.", "Bukhari & Muslim"},
-            {"أحب الأعمال إلى الله أدومها وإن قل", "The deeds most loved by Allah are those done regularly, even if small.", "Bukhari & Muslim"},
+            {"إنما الأعمال بالنيات", "Actions are judged by intentions.", "Bukhari 1"},
+            {"الكلمة الطيبة صدقة", "A good word is charity.", "from Bukhari 2989"},
+            {"من كان يؤمن بالله واليوم الآخر فليقل خيرا أو ليصمت", "Whoever believes in Allah and the Last Day, let him speak good or stay silent.", "from Bukhari 6018"},
+            {"تبسمك في وجه أخيك لك صدقة", "Your smile in the face of your brother is charity.", "Tirmidhi 1956, sahih (al-Albani)"},
+            {"لا يؤمن أحدكم حتى يحب لأخيه ما يحب لنفسه", "None of you truly believes until he loves for his brother what he loves for himself.", "Bukhari 13"},
+            {"خيركم من تعلم القرآن وعلمه", "The best of you are those who learn the Qur'an and teach it.", "Bukhari 5027"},
+            {"الطهور شطر الإيمان", "Purity is half of faith.", "from Muslim 223"},
+            {"يسروا ولا تعسروا وبشروا ولا تنفروا", "Make things easy and do not make them hard. Give good news and do not drive people away.", "Bukhari 69"},
+            {"المسلم من سلم المسلمون من لسانه ويده", "A Muslim is one from whose tongue and hand other Muslims are safe.", "Bukhari 10"},
+            {"أحب الأعمال إلى الله أدومها وإن قل", "The deeds most loved by Allah are those done regularly, even if small.", "from Bukhari 6464"},
     };
 
     /** Offline verses, used when the box can't reach the Qur'an service. {Arabic, English (Sahih International), reference} */
     static final String[][] AYAH = {
             {"إن مع العسر يسرا", "Indeed, with hardship comes ease.", "Ash-Sharh 94:6"},
-            {"ألا بذكر الله تطمئن القلوب", "Unquestionably, by the remembrance of Allah hearts are assured.", "Ar-Ra'd 13:28"},
-            {"فاذكروني أذكركم", "So remember Me; I will remember you.", "Al-Baqarah 2:152"},
-            {"وقل رب زدني علما", "And say, \"My Lord, increase me in knowledge.\"", "Ta-Ha 20:114"},
-            {"لا يكلف الله نفسا إلا وسعها", "Allah does not burden a soul beyond what it can bear.", "Al-Baqarah 2:286"},
+            {"ألا بذكر الله تطمئن القلوب", "Unquestionably, by the remembrance of Allah hearts are assured.", "from Ar-Ra'd 13:28"},
+            {"فاذكروني أذكركم", "So remember Me; I will remember you.", "from Al-Baqarah 2:152"},
+            {"وقل رب زدني علما", "And say, \"My Lord, increase me in knowledge.\"", "from Ta-Ha 20:114"},
+            {"لا يكلف الله نفسا إلا وسعها", "Allah does not burden a soul beyond what it can bear.", "from Al-Baqarah 2:286"},
     };
 
     /** {franchise, character, Arabic fact, English fact} */

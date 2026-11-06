@@ -410,7 +410,7 @@ public class AdhanService extends Service {
         if (!canOverlay(this) || alertShown) return;
         if (reminder == null) buildReminder();
         reminderTitle.setText(PrayerTimes.EN[i] + " in " + REMIND_MIN + " minutes");
-        reminderSub.setText(PrayerTimes.AR[i] + " بعد " + String.format(new java.util.Locale("ar"), "%d", REMIND_MIN) + " دقائق"); // Arabic-Indic digits in the Arabic line
+        reminderSub.setText(PrayerTimes.AR[i] + " بعد " + Widgets.arDigits(String.valueOf(REMIND_MIN)) + " دقائق"); // Arabic-Indic digits in the Arabic line
         reminderTime.setText(PrayerTimes.clock(today[i]));
         if (!reminderShown) {
             try { wm.addView(reminder, overlayParams(Gravity.TOP | Gravity.END)); reminderShown = true; } catch (Exception ignored) { return; }

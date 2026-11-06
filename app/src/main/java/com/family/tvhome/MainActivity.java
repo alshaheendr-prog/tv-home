@@ -436,8 +436,8 @@ public class MainActivity extends Activity {
         driveText.setVisibility(View.VISIBLE);
         fitPair(eventText, "First ten days of Dhul Hijjah", "العشر الأوائل من ذي الحجة", CHIP_W);
         showEvent(true);
-        adhanName.setText("Suhoor ends");
-        adhanAr.setText("الإمساك · الفجر");
+        adhanName.setText("Fajr · suhoor ends");
+        adhanAr.setText("الفجر · بدء الصيام");
         adhanCountdown.setText("10:59:59");
         oneLine(nowSurah, "سورة الشعراء", "Ash-Shu'ara");
         oneLine(nowReciter, "محمد صديق المنشاوي", "Mohammed Siddiq Al-Minshawi"); // the longest name, to test the strip
@@ -1769,7 +1769,8 @@ public class MainActivity extends Activity {
         if (ambient && !nightDim && System.currentTimeMillis() - lastInput > DIM_AFTER) enterNightDim();
         boolean ramadan = Events.isRamadan(now), friday = now.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
         if (ramadan && next == 4) { adhanName.setText("Iftar"); adhanAr.setText("الإفطار · المغرب"); }
-        else if (ramadan && next == 0) { adhanName.setText("Suhoor ends"); adhanAr.setText("الإمساك · الفجر"); }
+        // at Fajr itself the fast begins; الإمساك is the earlier time printed in Kuwait's timetables, so it is not used here
+        else if (ramadan && next == 0) { adhanName.setText("Fajr · suhoor ends"); adhanAr.setText("الفجر · بدء الصيام"); }
         else if (friday && next == 2) { adhanName.setText("Jumu'ah"); adhanAr.setText("صلاة الجمعة"); }
         else { adhanName.setText(PrayerTimes.EN[next]); adhanAr.setText(PrayerTimes.AR[next]); }
         if (friday && next == 2 && left <= 3600 && left > 3590 && remindedFor != -target) {
@@ -1899,7 +1900,7 @@ public class MainActivity extends Activity {
                     String text = withoutBismillah(ar.getString("text"), sur.getInt("number"), ar.getInt("numberInSurah"));
                     if (text.length() > 120) continue; // never a long one: after 12 tries the built-in verses are used
                     JSONObject surah = ar.getJSONObject("surah");
-                    String ref = surah.getString("englishName") + " " + surah.getInt("number") + ":" + ar.getInt("numberInSurah");
+                    String ref = Quran.EN[surah.getInt("number") - 1] + " " + surah.getInt("number") + ":" + ar.getInt("numberInSurah");
                     String[] a = {text, en.getString("text"), ref};
                     ui.post(() -> ayahToday = a);
                     return;
