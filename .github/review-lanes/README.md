@@ -1,6 +1,8 @@
 # Review lanes
 
-Every pull request on this repo gets fifteen Claude reviews, one per lane. Each lane has a brief in this folder (its checklist) and a growing knowledge file in [knowledge/](knowledge/) (its expertise: deep reference with sources, facts about this box and code, past findings and lessons). The owner wants every reviewer to be a super expert in its field and to get better with every PR.
+Every pull request on this repo is reviewed by expert Claude lanes. There are fifteen lanes. Each has a brief in this folder (its checklist), a core knowledge file in [knowledge/](knowledge/) (its expertise: deep reference, facts about this box and code, lessons) and an archive in [knowledge/archive/](knowledge/archive/) (past findings, open questions, the full source library). The owner wants every reviewer to be a super expert in its field and to get better with every PR.
+
+To keep usage down without lowering the bar (owner's choice, 2026-11-06), each PR gets the lanes that own what it changes, not always all fifteen. See "Which lanes review a PR" below.
 
 | # | Lane | Brief |
 |---|------|-------|
@@ -46,22 +48,38 @@ Every part of the three apps has owners. A PR that touches an area gets all its 
 | What the owner checks on the TV | 8 |
 | The whole screen as one picture, scope creep | 4 |
 
+## Which lanes review a PR
+
+1. **Always:** lanes 1 (bugs), 2 (safety), 3 (smoothness), 7 (build) and 8 (on-TV checklist), whatever the PR touches.
+2. **Plus the owners** of every area the PR changes, from the "Who covers what" table above. Lane 4 joins any PR that changes how a screen looks.
+3. **All fifteen** when the owner asks, for a whole-app audit, or when a PR changes Kids Corner broadly or touches most areas.
+4. **Paperwork-only PRs** (only notes, briefs, knowledge files, README, CLAUDE.md or skills; no app code, resources, build files or CI) get **one** quick check by a single reviewer (lane 1, or the lane whose files changed), not a full round.
+5. When unsure whether an area is touched, include its lane. The PR description lists the lanes chosen and why.
+
 ## How a review runs
 
-1. The Claude thread that opens a PR asks the project coordinator to start one review thread per lane (all 15), giving each the PR number and its brief.
-2. Each reviewer reads its brief and **its whole knowledge file first**, then **researches online** whatever the PR touches that the knowledge file doesn't already cover, before it reviews. It cites the sources it used.
+1. The Claude thread that opens a PR picks the lanes (above) and asks the project coordinator to start one review thread per chosen lane, giving each the PR number and its brief.
+2. Each reviewer reads its brief and **its core knowledge file** in full, and searches its archive only for history on what the PR touches. It **researches online** only what the PR touches that its knowledge doesn't already cover, and cites the sources it used.
 3. Each reviewer posts one comment on the PR headed `Review lane N: <name>`, with findings ranked **Must fix**, **Should fix**, **Nice to have** (or "nothing found"), and sends the same findings to the PR's thread.
 4. The PR's thread fixes every Must fix and Should fix, and pushes. Lane 8's checklist goes to the owner as-is.
-5. The PR is ready to merge only after all fifteen lanes have reported and every Must fix and Should fix is done.
+5. **Re-checks are narrow:** after the fixes, only the lanes that raised a Must fix or Should fix confirm their own items, looking only at the fix. No lane does a second full review.
+6. The PR is ready to merge only after every chosen lane has reported and every Must fix and Should fix is done.
 
-If review threads can't be started, the PR's thread runs the fifteen lanes itself as separate subagents, one per brief, with the same rules.
+If review threads can't be started, the PR's thread runs the chosen lanes itself as separate subagents, one per brief, with the same rules.
+
+## Quality watch
+
+The owner asked to be told straight away if quality slips. The PR's thread (and the coordinator) tells the owner, and puts the lane back on for that area, whenever:
+- a problem shows up on the TV, or in a later review, that a lane skipped for that PR owns;
+- a reviewer only got something right by digging in its archive, which means that lesson belongs in its core file; or
+- a lane reports it lacked the knowledge to judge something and had to guess.
 
 ## Getting more expert with every PR
 
-At the end of every review, each reviewer sends the PR's thread its additions for `knowledge/N-*.md`: dated past findings (what it found and what was fixed), lessons learned, new sources with what each is good for, and open questions to research next. The PR's thread commits them in the same PR, so the next review starts from everything learned so far. Checklist items that should apply to every PR go into the brief too.
+At the end of every review, each reviewer sends the PR's thread its additions: dated past findings (what it found and what was fixed), new sources with what each is good for, and open questions go to `knowledge/archive/N-*.md`; lessons learned and new facts every review needs go to the core `knowledge/N-*.md`, merged with older lessons on the same point so the core stays lean (about 25 KB). The PR's thread commits them in the same PR, so the next review starts from everything learned so far. Checklist items that should apply to every PR go into the brief too.
 
-Every so often (or when the owner asks), a lane can spend a review-free session working through its "Open questions" list with fresh online research and update its knowledge file.
+Every so often (or when the owner asks), a lane can spend a review-free session working through the "Open questions" in its archive with fresh online research and update its knowledge file.
 
 ## Whole-app audits
 
-Besides PR reviews, the owner can ask for a whole-app audit: every lane reviews the current app on `main` (not a diff), records its findings in its knowledge file, and the fixes go through normal PRs.
+Besides PR reviews, the owner can ask for a whole-app audit: every lane reviews the current app on `main` (not a diff), records its findings in its archive (and lessons in its core file), and the fixes go through normal PRs.
