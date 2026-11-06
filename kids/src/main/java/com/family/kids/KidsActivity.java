@@ -1304,7 +1304,7 @@ public class KidsActivity extends Activity {
         cartoonsPanel = panel();
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(110, 64, 110, 0);
+        col.setPadding(86, 64, 86, 0); // with the scroller's 24 below: tiles 110 px from each edge
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.BOTTOM);
         head.addView(text("🎬", 60, fMed, WHITE));
@@ -1337,7 +1337,7 @@ public class KidsActivity extends Activity {
         col.addView(cartoonsEmpty, el);
         ScrollView sv = new ScrollView(this);
         sv.setClipToPadding(false);
-        sv.setPadding(0, 30, 0, 60);
+        sv.setPadding(24, 30, 24, 60); // room inside the clip for a focused card (1.08 larger)
         sv.setVerticalScrollBarEnabled(false);
         cartoonGrid = new GridLayout(this);
         cartoonGrid.setColumnCount(4);
@@ -1415,7 +1415,7 @@ public class KidsActivity extends Activity {
             TextView playMark = text("▶", 56, fHeavy, 0xE6FFFFFF);
             playMark.setGravity(Gravity.CENTER);
             pic.addView(playMark, new FrameLayout.LayoutParams(-1, -1));
-            card.addView(pic, new LinearLayout.LayoutParams(-1, 216));
+            card.addView(pic, new LinearLayout.LayoutParams(-1, 222)); // 16:9 of the 395 px card
             // the whole name, on as many lines as it needs
             TextView t = text(title(f), 30, fBold, WHITE);
             t.setPadding(20, 12, 20, 16);
@@ -1429,7 +1429,7 @@ public class KidsActivity extends Activity {
             final int index = i;
             card.setOnClickListener(v -> play(index));
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-            lp.width = 384; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+            lp.width = 395; lp.height = GridLayout.LayoutParams.WRAP_CONTENT; // four across, centred
             lp.setMargins(0, 0, 40, 40);
             cartoonGrid.addView(card, lp);
             thumb(f, img);
@@ -1911,7 +1911,7 @@ public class KidsActivity extends Activity {
             cell.setOnClickListener(v -> { Rules.toggleApp(this, pkg); draw.run(); });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 316; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
-            lp.setMargins(0, 0, 20, 20);
+            lp.setMargins(10, 0, 10, 20); // even on both sides, so the grid sits centred in the card
             appGrid.addView(cell, lp);
         }
         show(appsPanel);

@@ -2486,14 +2486,14 @@ public class MainActivity extends Activity {
         clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setClipToPadding(false);
-        sv.setPadding(0, 20, 0, 60);
+        sv.setPadding(30, 20, 30, 60); // 30 px each side inside the clip for a focused tile's gold edge and glow
         appGrid = new GridLayout(this);
         appGrid.setColumnCount(7);
         appGrid.setClipChildren(false);
         sv.addView(appGrid);
         sv.setVerticalFadingEdgeEnabled(true);
         sv.setFadingEdgeLength(90);
-        appsPanel.addView(sv, at(1920 - 200, 1080 - 230, Gravity.TOP | Gravity.START, 100, 230));
+        appsPanel.addView(sv, at(1782, 1080 - 230, Gravity.TOP | Gravity.START, 69, 230)); // tiles at 109..1811, level with the header
     }
 
     private void refreshApps() {
@@ -2806,7 +2806,7 @@ public class MainActivity extends Activity {
         clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setClipToPadding(false);
-        sv.setPadding(0, 8, 0, 2); // 8 + 5 rows of 164 + 2 = 830, the scroller's height: five whole rows, always
+        sv.setPadding(30, 8, 30, 2); // 30 px each side for the focused tile's edge; 8 + 5 rows of 164 + 2 = 830, the scroller's height: five whole rows, always
         surahGrid = new GridLayout(this);
         surahGrid.setColumnCount(6);
         surahGrid.setClipChildren(false);
@@ -2852,7 +2852,7 @@ public class MainActivity extends Activity {
             surahGrid.addView(cell, gp);
         }
         sv.addView(surahGrid);
-        quranPanel.addView(sv, at(1920 - 200, 1080 - 250, Gravity.TOP | Gravity.START, 100, 250));
+        quranPanel.addView(sv, at(1780, 1080 - 250, Gravity.TOP | Gravity.START, 70, 250));
 
         // On the home screen: what is playing, at the bottom of the weather card.
         buildNowReciting();
@@ -2885,8 +2885,7 @@ public class MainActivity extends Activity {
     private FrameLayout reciterPanel;
 
     private void drawReciterBtn() {
-        String c = prefs.getString("reciter", "");
-        reciterBtn.setText(c.isEmpty() ? "Reciter: Any" : "Reciter: " + c);
+        reciterBtn.setText("Choose reciter"); // the chosen name already shows large in the now-playing lines; a long one here ran into them
     }
 
     /** A list of every reciter: "Any" (a new voice every time) first, then the ones stored on the box, then the rest. */
@@ -2947,7 +2946,7 @@ public class MainActivity extends Activity {
         f.post(f::requestFocus);
     }
 
-    static final int RECITER_TILE_W = 664;
+    static final int RECITER_TILE_W = 674; // two columns centred in the card
 
     /** One reciter: the Arabic name large, the English name under it, and a gold note when it is saved on the box. */
     private View reciterTile(GridLayout grid, String ar, String en, String note, String value) {
@@ -3343,7 +3342,11 @@ public class MainActivity extends Activity {
         scroll.setClipToPadding(false);
         scroll.setPadding(0, 6, 0, 6);
         scroll.addView(parentList, new FrameLayout.LayoutParams(-1, -2));
-        box.addView(scroll, new LinearLayout.LayoutParams(-1, 760));
+        // 30 px of room each side inside the clip, so a focused row (1.03 larger) keeps its whole gold edge
+        parentList.setPadding(30, 0, 30, 0);
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, 760);
+        slp.leftMargin = slp.rightMargin = -30;
+        box.addView(scroll, slp);
         panelCard(parentPanel, box, 900, -1);
     }
 
@@ -3662,8 +3665,8 @@ public class MainActivity extends Activity {
             v.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start();
         });
         r.setOnClickListener(v -> { parentClicked = parentList.indexOfChild(v); onClick.run(); });
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, 76);
-        p.topMargin = 6;
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, 96); // the TV list minimum (48 dp)
+        p.topMargin = 8;
         parentList.addView(r, p);
     }
 
