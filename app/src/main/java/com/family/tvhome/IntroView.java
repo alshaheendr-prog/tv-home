@@ -473,7 +473,7 @@ public class IntroView extends View {
             c.drawText("GHANIM  &  NOHA", CX, CY + 96, kicker);
             kicker.setTextSize(22);
             kicker.setAlpha(Math.round(170 * seg(t, 0.75f, 1)));
-            c.drawText("WELCOME HOME  ·  أهلاً بكم", CX, CY + 146, kicker);
+            drawWelcome(c, CY + 146);
         }
     }
 
@@ -554,7 +554,7 @@ public class IntroView extends View {
             title.setAlpha(Math.round(255 * land));
             c.drawText(BISM, CX, CY + 34, title);
             kicker.setAlpha(Math.round(180 * seg(t, 0.78f, 1)));
-            c.drawText(WELCOME, CX, CY + 124, kicker);
+            drawWelcome(c, CY + 124);
         }
     }
 

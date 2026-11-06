@@ -71,7 +71,7 @@ public class Guard extends Service {
         nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Kids Corner", NotificationManager.IMPORTANCE_MIN));
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setContentTitle("Kids Corner is on")
-                .setSmallIcon(R.drawable.icon)
+                .setSmallIcon(R.drawable.ic_notify)
                 .build();
         startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
 

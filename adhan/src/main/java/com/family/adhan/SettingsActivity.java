@@ -39,6 +39,7 @@ public class SettingsActivity extends Activity {
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(px(140), px(70), px(140), px(70));
+        list.setClipToPadding(false); // a focused row (1.03 larger) keeps both ends of its gold edge
         sv.addView(list);
         setContentView(sv);
         AdhanService.start(this);

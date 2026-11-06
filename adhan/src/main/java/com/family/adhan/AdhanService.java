@@ -115,7 +115,7 @@ public class AdhanService extends Service {
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setContentTitle("Adhan times")
                 .setContentText("Kuwait City prayer times")
-                .setSmallIcon(R.drawable.icon)
+                .setSmallIcon(R.drawable.ic_notify)
                 .build();
         startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
 

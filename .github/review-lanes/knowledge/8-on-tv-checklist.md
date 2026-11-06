@@ -58,7 +58,7 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 
 ### 5. Testing the adhan and other timed features safely
 - Use the built-in test first: Adhan, then **"Play the adhan now (test)"**. It sends the `test` action to `AdhanService`, which calls `fireAdhan(3)` (`AdhanService.java:134`, `SettingsActivity.java:187`).
-- Corrected 2026-11-05 (whole-app audit): the adhan's panel and corner card only show over a *different home launcher*, never over Netflix or the family home (`AdhanService.java` checks `homePackages`). What does show over Netflix is the adhan band at the bottom and the 10-minute reminder (top right, about 15 s). The old PR #20 lesson ("test the card from inside Netflix") was wrong.
+- Corrected 2026-11-05 (whole-app audit): the adhan's panel and corner card only show over a *different home launcher*, never over Netflix or the family home (`AdhanService.java` checks `homePackages`). What does show over Netflix is the adhan band at the bottom and the 10-minute reminder (top right, about 8 s since PR #23). The old PR #20 lesson ("test the card from inside Netflix") was wrong.
 - The sound needs audio focus. On Android 15, focus is refused unless the app is on top or running an FGS [a15]. The adhan runs an FGS, so the sound should pause Netflix or YouTube. Check that the other app pauses and then resumes.
 - Don't change the TV's clock unless there is no other way. If he must:
   - Write the steps to set it back to automatic time afterwards.
@@ -129,7 +129,7 @@ Added by the whole-app audit (2026-11-05):
 - The Kids lock leads to "Kids Corner settings" (`KidsActivity.java:870`). "Leave Kids Corner" is the last row (`:1659`). Kids settings change with Left/Right, straight away. Since PR #22, OK also steps a setting forward and wraps round to the first value (`choiceRow`).
 - Kids limits are 0 (No limit), 15, 30 … 240 min. Bedtimes run from 7:00 pm to 10:00 pm, or Off (`KidsActivity.java:1571-1572`). A star is worth 15 min, and the star buttons only show on the time's-up screen, not at bedtime (`:1149-1151`).
 - The adhan banner is non-focusable, so Back goes to the app behind. It hides 4 s after the sound, or after 60 s with "Popup only" (`AdhanService.java:171-178, 552, 576-583`).
-- The 10-minute reminder shows over any app except the family home, for 15 s (`:465-472, 408`). The panel and card show only over a different home launcher (`:507-509`).
+- The 10-minute reminder shows over any app except the family home, for 8 s (`:465-472, 408`). The panel and card show only over a different home launcher (`:507-509`).
 - RemoteKeys `BUTTONS` is at `RemoteKeys.java:21-25` and `code()` at `:41-43`. While learning, the arrows still pass through.
 - After Update TV, wireless debugging is on, so the USB drive is gone ("● Drive unplugged", `MainActivity.java:3001`) until it's switched off.
 

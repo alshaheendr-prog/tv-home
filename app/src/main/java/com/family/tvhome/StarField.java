@@ -27,6 +27,7 @@ public class StarField extends View {
     private final Paint back = new Paint(), line = new Paint(Paint.ANTI_ALIAS_FLAG), glow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Shader lineFade;
     private final Matrix lineShift = new Matrix();
+    private float shownShift = Float.NaN;
     private final Path lattice = new Path();
     private final long start = System.currentTimeMillis();
 
@@ -81,8 +82,14 @@ public class StarField extends View {
         float gx = W * 0.5f, gy = H * 0.42f;
         c.drawRect(gx - GLOW_R, Math.max(0, gy - GLOW_R), gx + GLOW_R, Math.min(H, gy + GLOW_R), glow);
         float dx = (t * 6) % STEP, dy = (t * 3) % STEP; // about a pixel every few frames: barely there, but alive
-        lineShift.setTranslate(-dx, -dy); // the fade stays put on screen while the lattice drifts
-        lineFade.setLocalMatrix(lineShift);
+        // the fade stays put on screen while the lattice drifts; it only moves up and down, by whole pixels, so the
+        // shader is changed only when that pixel changes (about 3 times a second) instead of rebuilt every frame
+        float shift = (float) Math.floor(dy);
+        if (shift != shownShift) {
+            shownShift = shift;
+            lineShift.setTranslate(0, -shift);
+            lineFade.setLocalMatrix(lineShift);
+        }
         c.save();
         c.translate(dx, dy);
         c.drawPath(lattice, line);

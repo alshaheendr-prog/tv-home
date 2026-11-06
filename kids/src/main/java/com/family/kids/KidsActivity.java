@@ -1727,6 +1727,7 @@ public class KidsActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setPadding(56, 44, 56, 30);
+        col.setClipToPadding(false); // the list reaches 24 px into this padding for its focus room
         col.setBackground(sheet(44));
         col.addView(text("Kids Corner settings", 52, fHeavy, WHITE));
         TextView hint = text("Left and right change a setting. Back closes.", 30, fMed, DIM);
@@ -1738,8 +1739,13 @@ public class KidsActivity extends Activity {
         sv.setFadingEdgeLength(90);
         parentList = new LinearLayout(this);
         parentList.setOrientation(LinearLayout.VERTICAL);
+        // 24 px each side inside the scroller, unclipped, so a focused row (1.03 larger) keeps its whole white edge
+        parentList.setPadding(24, 0, 24, 0);
+        parentList.setClipToPadding(false);
         sv.addView(parentList);
-        col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, 0, 1);
+        slp.leftMargin = slp.rightMargin = -24;
+        col.addView(sv, slp);
         parentPanel.addView(col, new FrameLayout.LayoutParams(1100, 960, Gravity.CENTER));
     }
 
@@ -1950,8 +1956,10 @@ public class KidsActivity extends Activity {
         sv.setVerticalScrollBarEnabled(false);
         sv.setVerticalFadingEdgeEnabled(true);
         sv.setFadingEdgeLength(90);
+        sv.setClipChildren(false); // a focused cell (1.05 larger) is not cut back to the grid's edge
         appGrid = new GridLayout(this);
         appGrid.setColumnCount(4);
+        appGrid.setClipChildren(false);
         sv.addView(appGrid);
         col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
         appsPanel.addView(col, new FrameLayout.LayoutParams(1456, 900, Gravity.CENTER));

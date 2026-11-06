@@ -221,10 +221,10 @@ public class MainActivity extends Activity {
         root.addView(dimView, new FrameLayout.LayoutParams(-1, -1));
         // Soft dark gradients at the top and bottom keep the text readable on any video.
         topScrim = new View(this);
-        topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x00000000}));
+        topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x80000000, 0x4D000000, 0x00000000}));
         // only the top and bottom thirds carry any shade, so each scrim covers just that third (less to paint every frame)
         topScrim.getBackground().setDither(true); // the two largest ramps on the home, over dark clips at night: no bands
-        root.addView(topScrim, new FrameLayout.LayoutParams(-1, 380, Gravity.TOP));
+        root.addView(topScrim, new FrameLayout.LayoutParams(-1, 480, Gravity.TOP)); // reaches under the event line too
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitStage());
         bottomScrim = new View(this);
 
@@ -355,7 +355,7 @@ public class MainActivity extends Activity {
      * so moving along the dock repaints just the dock instead of every card's glass, glow and text each frame.
      */
     private void cacheCards(boolean on) {
-        for (View v : new View[]{topParts[0], sunCard, lineFrame, centerGroup})
+        for (View v : new View[]{topParts[0], sunCard, lineBox, centerGroup}) // the verse text only: its shade is one cheap quad
             if (v != null) v.setLayerType(on ? View.LAYER_TYPE_HARDWARE : View.LAYER_TYPE_NONE, null);
     }
 
@@ -384,6 +384,18 @@ public class MainActivity extends Activity {
 
     /** "a · b" on one line when it fits in max pixels, otherwise a above b, so nothing is cut or crowded. */
     /** A status line in the column's own colours: only its leading dot carries the colour. */
+    /** The next prayer's mark: a 36 x 3 px rounded gold line under its time. */
+    private final android.graphics.drawable.LayerDrawable nextMark = makeNextMark();
+    private static android.graphics.drawable.LayerDrawable makeNextMark() {
+        GradientDrawable line = new GradientDrawable();
+        line.setColor(0xE6F1D58A);
+        line.setCornerRadius(1.5f);
+        line.setSize(36, 3);
+        android.graphics.drawable.LayerDrawable l = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{line});
+        l.setLayerGravity(0, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        return l;
+    }
+
     private static CharSequence dotLine(String s, int dot) {
         android.text.SpannableString sp = new android.text.SpannableString(s);
         sp.setSpan(new android.text.style.ForegroundColorSpan(dot), 0, 1, 0);
@@ -423,7 +435,7 @@ public class MainActivity extends Activity {
         driveText.setText("●  Drive unplugged");
         driveText.setVisibility(View.VISIBLE);
         fitPair(eventText, "First ten days of Dhul Hijjah", "العشر الأوائل من ذي الحجة", CHIP_W);
-        eventChip.setVisibility(View.VISIBLE);
+        showEvent(true);
         adhanName.setText("Suhoor ends");
         adhanAr.setText("الإمساك · الفجر");
         adhanCountdown.setText("10:59:59");
@@ -431,7 +443,7 @@ public class MainActivity extends Activity {
         oneLine(nowReciter, "محمد صديق المنشاوي", "Mohammed Siddiq Al-Minshawi"); // the longest name, to test the strip
         showNowReciting(true);
         lineFrame.setVisibility(View.VISIBLE);
-        lineKicker.setText("VERSE OF THE DAY  ·  آية اليوم   ·   Al-Baqarah 2:286");
+        lineKicker.setText("VERSE OF THE DAY  ·  آية اليوم   ·   AL-BAQARAH 2:286");
         lineAr.setText("رَبَّنَا لَا تُؤَاخِذْنَا إِن نَّسِينَا أَوْ أَخْطَأْنَا رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِن قَبْلِنَا");
         lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, 32);
         lineEn.setText("Our Lord, do not take us to task if we forget or make a mistake. Our Lord, do not place on us a burden like the one You placed on those before us.");
@@ -578,7 +590,7 @@ public class MainActivity extends Activity {
         mid.setOrientation(LinearLayout.VERTICAL);
         mid.setGravity(Gravity.CENTER_HORIZONTAL);
         playerSurah = text("", 168, fQuran, 0xD9FFFFFF); // Amiri, as everywhere a surah name is shown
-        playerSurah.setIncludeFontPadding(true);
+        playerSurah.setIncludeFontPadding(false); // Amiri's padding added ~180 px of air: the padding below keeps the swashes
         playerSurah.setGravity(Gravity.CENTER);
         playerSurah.setPadding(90, 40, 90, 50); // room for the Arabic swashes and the soft shadow, so neither is cut off
         playerSurah.setShadowLayer(8, 0, 4, 0x80000000);
@@ -714,7 +726,10 @@ public class MainActivity extends Activity {
         playerBgBox.setVisibility(playerVideo ? View.GONE : View.VISIBLE);
         playerShade.setVisibility(playerVideo ? View.VISIBLE : View.GONE);
         // the grid steps out of the way, so it isn't drawn under the player every frame
-        quranPanel.animate().alpha(0).setDuration(400).start();
+        // and once it has, its star field stops drawing too (at alpha 0 it still redrew every frame for the whole surah)
+        quranPanel.animate().setStartDelay(0).alpha(0).setDuration(400).withEndAction(() -> {
+            if (playerPanel.getVisibility() == View.VISIBLE && quranStars != null) quranStars.setVisibility(View.INVISIBLE);
+        }).start();
         if (playerVideo) {
             // the background video is the backdrop now: the home's layers come back (the player takes the clip below)
             ui.removeCallbacks(starsUp);
@@ -762,10 +777,16 @@ public class MainActivity extends Activity {
     }
 
     private void closePlayer() {
+        if (quranStars != null) quranStars.setVisibility(View.VISIBLE);
         quranPanel.animate().alpha(1).setStartDelay(0).setDuration(300).setInterpolator(EASE).start();
         if (playerVideo) {
             playerVideo = false;
-            if (quranPanel.getVisibility() == View.VISIBLE) { wallStopped = true; starsOver(true); } // a new wallpaper when home shows again
+            if (quranPanel.getVisibility() == View.VISIBLE) {
+                // a new wallpaper when home shows again; the layers rest only once the player has faded away
+                wallStopped = true;
+                ui.removeCallbacks(starsUp);
+                ui.postDelayed(starsUp, 320);
+            }
             else playRandomClip(); // back to a home wallpaper
         }
         playerPanel.animate().alpha(0).setDuration(250).setInterpolator(EXIT).withEndAction(() -> playerPanel.setVisibility(View.GONE)).start();
@@ -1018,7 +1039,13 @@ public class MainActivity extends Activity {
         View leftFrame = card(left, CARD_W, CARD_H, Gravity.TOP | Gravity.START, 80, 56);
 
         // A small gold chip under the card on special days: Ramadan, the Eids, Arafah, Ashura, the White Days.
-        eventText = text("", 22, fSemi, 0xFFF1D58A);
+        eventText = text("", 22, fSemi, WHITE); // white text, the gold only in its dot: gold alone sank into bright skies
+        GradientDrawable eventDot = new GradientDrawable();
+        eventDot.setShape(GradientDrawable.OVAL);
+        eventDot.setColor(GOLD);
+        eventDot.setSize(10, 10);
+        eventText.setCompoundDrawablesRelativeWithIntrinsicBounds(eventDot, null, null, null);
+        eventText.setCompoundDrawablePadding(14);
         eventText.setIncludeFontPadding(true);
         eventText.setPadding(26, 10, 28, 12);
         eventChip = glassCard(stage, eventText, -1, -1, Gravity.TOP | Gravity.START, 80, 56 + CARD_H + 16, 26, 18, 0x40F1D58A, CARD_TINT, false);
@@ -1066,7 +1093,7 @@ public class MainActivity extends Activity {
             TextView ar = text(PrayerTimes.AR[k], 24, fAr, DIM); // Arabic no smaller than the English above it
             TextView tm = text("", 24, fSemi, WHITE);
             tm.setFontFeatureSettings("tnum");
-            tm.setPadding(0, 4, 0, 0);
+            tm.setPadding(0, 4, 0, 10); // room for the next prayer's underline, the same in every cell
             for (TextView t : new TextView[]{en, ar, tm}) { t.setGravity(Gravity.CENTER); col.addView(t, new LinearLayout.LayoutParams(-1, -2)); }
             prayerTexts[i][0] = en; prayerTexts[i][1] = ar; prayerTexts[i][2] = tm;
             prayerCells[i] = col;
@@ -1113,12 +1140,25 @@ public class MainActivity extends Activity {
         sunLine.setText("Sunrise " + PrayerTimes.clock(today[1]) + "   ·   Sunset " + PrayerTimes.clock(today[4]));
     }
     private View eventChip;
+    private LinearLayout.LayoutParams clockRowLp;
 
     private void drawEventChip(Calendar now) {
         String[] b = Events.badge(now);
-        if (b == null) { eventChip.setVisibility(View.GONE); return; }
+        if (b == null) { showEvent(false); return; }
         fitPair(eventText, b[0], b[1], CHIP_W);
-        eventChip.setVisibility(View.VISIBLE);
+        showEvent(true);
+    }
+
+    /**
+     * The special-day line takes no height of its own: while it shows, the clock's spare top and bottom space closes up
+     * by the line's height, so the column still ends above the verse heading.
+     */
+    private void showEvent(boolean on) {
+        eventChip.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (clockRowLp == null) return;
+        clockRowLp.topMargin = on ? -80 : -62;
+        clockRowLp.bottomMargin = on ? -74 : -66;
+        centerGroup.requestLayout();
     }
     private ThinBar adhanBar, lineBar, nowBar;
     static final long LINE_SECONDS = 30;
@@ -1133,6 +1173,7 @@ public class MainActivity extends Activity {
         int[] digits = {R.font.fraunces_soft_light, R.font.outfit_thin, R.font.jost_extralight, R.font.cormorant_light, R.font.inter_extralight};
         Typeface tf = getResources().getFont(digits[k]);
         clockText.setTypeface(tf);
+        clockText.setFontFeatureSettings(k == 3 ? "tnum, lnum" : "tnum"); // Cormorant's digits are old-style unless asked
         ampmText.setTypeface(k == 4 ? fLight : tf);
         // each face sits a little differently on the line: tune size, spacing and the AM/PM baseline to match.
         // The clock is the centrepiece: as large as fits between the two top cards.
@@ -1147,6 +1188,7 @@ public class MainActivity extends Activity {
     /** Text shadows stay tight around the letters (a soft drop shadow, no halo box). */
     static final float TEXT_SHADOW = 4f;
     static final int LINE_FADE = 44;
+    static final int BAND_H = 330; // the verse shade: y 450 to 780, behind the verse and the prayer strip
     static final int CLOCK_TOP = 34, LINE_Y = 494, STRIP_Y = 700, STRIP_H = 124, RIGHT_EDGE = 110;
 
     private static void moveTo(View v, ViewGroup to, ViewGroup.LayoutParams lp) {
@@ -1191,6 +1233,7 @@ public class MainActivity extends Activity {
         c.addView(dayRow, new LinearLayout.LayoutParams(-2, -2));
         LinearLayout.LayoutParams crp = new LinearLayout.LayoutParams(-1, -2);
         crp.topMargin = -62; crp.bottomMargin = -66;
+        clockRowLp = crp;
         c.addView(clockRow, crp);
         LinearLayout dateRow = new LinearLayout(this);
         dateRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -1212,7 +1255,7 @@ public class MainActivity extends Activity {
         ((ViewGroup) oldChip.getParent()).removeView(oldChip);
         ((ViewGroup) eventText.getParent()).removeView(eventText);
         eventText.setTextSize(TypedValue.COMPLEX_UNIT_PX, 24);
-        eventText.setPadding(0, 6, 0, 0);
+        eventText.setPadding(0, 0, 0, 0);
         eventText.setGravity(Gravity.END);
         eventText.setShadowLayer(TEXT_SHADOW, 0, 2, 0x99000000);
         eventText.setVisibility(View.GONE);
@@ -1260,16 +1303,21 @@ public class MainActivity extends Activity {
         FrameLayout lineHolder = new FrameLayout(this);
         lineHolder.setClipChildren(false);
         lineHolder.addView(lineBox, new FrameLayout.LayoutParams(-2, -2, Gravity.END));
-        // A soft full-width fade behind the words (no box edge), so they still read over a bright sky or snow clip:
-        // clear, about 40% black across the text, then clear again.
-        GradientDrawable lineFade = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x00000000, 0x66000000, 0x66000000, 0x00000000});
-        lineFade.setDither(true);
-        lineHolder.setBackground(lineFade);
+        // A soft fade behind the words (no box edge), so they still read over a bright sky or snow clip: about 40% black
+        // across the whole text block, clear above and below it, and clear again towards the left, where there are no words.
         lineHolder.setPadding(0, LINE_FADE, RIGHT_EDGE - 56, LINE_FADE); // lineBox has 56 of its own padding
+        // The band and its shade share one frame. The shade has a fixed height, so it never jumps when the next verse is
+        // longer or shorter, and reaches past the stage's sides (no edge shows at a smaller screen size). The frame sits
+        // under the clock column, so the shade never darkens the dates or the special-day line.
+        FrameLayout band = new FrameLayout(this);
+        band.setClipChildren(false);
+        View shade = new View(this);
+        shade.setBackground(new BandFade());
+        band.addView(shade, new FrameLayout.LayoutParams(-1, BAND_H));
+        band.addView(lineHolder, at(1920, -2, Gravity.TOP | Gravity.START, BLEED, 0));
         // a long, low band between the clock and the adhan strip
-        stage.addView(lineHolder, at(1920, -2, Gravity.TOP | Gravity.START, 0, LINE_Y - LINE_FADE));
-        lineFrame = lineHolder;
+        stage.addView(band, stage.indexOfChild(centerGroup), at(1920 + 2 * BLEED, -2, Gravity.TOP | Gravity.START, -BLEED, LINE_Y - LINE_FADE));
+        lineFrame = band;
 
         // A small message pill, used for short notices like "PIN saved".
         pillText = text("", 28, fMed, WHITE);
@@ -1747,7 +1795,8 @@ public class MainActivity extends Activity {
             boolean isNext = BAR_PRAYERS[i] == next;
             // no box in the boxless strip: the next prayer is marked in the accent, its name white and its time gold
             prayerTexts[i][0].setTextColor(isNext ? WHITE : SOFT);
-            prayerTexts[i][2].setTextColor(isNext ? GOLD : WHITE);
+            prayerTexts[i][2].setTextColor(WHITE);
+            prayerTexts[i][2].setBackground(isNext ? nextMark : null); // a short gold underline, readable on any sky
             prayerCells[i].setAlpha((passedMask & (1 << i)) != 0 ? 0.55f : 1f);
         }
     }
@@ -1760,7 +1809,8 @@ public class MainActivity extends Activity {
         String[] it = items.get(lineIndex); // {kicker, ar, en, ref}
         // the most frequent motion on the home: a calm opacity-only cross-fade, about 650 ms in all
         lineBox.animate().setStartDelay(0).alpha(0).setDuration(250).setInterpolator(EXIT).withEndAction(() -> {
-            lineKicker.setText(it[0] + (it[3].isEmpty() ? "" : "   ·   " + it[3]));
+            // the kicker is letterspaced capitals, so the reference joins it in capitals too
+            lineKicker.setText(it[0] + (it[3].isEmpty() ? "" : "   ·   " + it[3].toUpperCase(Locale.ROOT)));
             lineAr.setText(it[1]);
             lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[1].length() > 110 ? 32 : 38);
             lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[2].length() > 150 ? 28 : 32);
@@ -2183,6 +2233,7 @@ public class MainActivity extends Activity {
         // the room for a growing row sits inside the scrolled list itself, so the soft fade at the top and bottom
         // edges covers whole rows evenly (no half-faded row)
         list.setPadding(30, 14, 30, 30);
+        if (list instanceof ViewGroup) ((ViewGroup) list).setClipToPadding(false); // padding alone still clips a grown row
         sv.setVerticalFadingEdgeEnabled(true);
         sv.setFadingEdgeLength(110);
         sv.addView(list);
@@ -2518,12 +2569,13 @@ public class MainActivity extends Activity {
         appsPanel = overlay();
         calendarPanel = overlay();
         panelHeader(appsPanel, "ALL APPS  ·  كل التطبيقات", "Apps");
-        appsTitle = panelHint(appsPanel, "Hold OK for options: home row or show first ⭐");
+        appsTitle = panelHint(appsPanel, "Hold OK for options: home row or show first ★");
         ScrollView sv = new ScrollView(this);
         clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setClipToPadding(false);
         sv.setPadding(30, 20, 30, 60); // 30 px each side inside the clip for a focused tile's gold edge and glow
+        sv.setClipChildren(false); // or the scroller cuts the grid's grown tiles back to the grid's own edge
         appGrid = new GridLayout(this);
         appGrid.setColumnCount(7);
         appGrid.setClipChildren(false);
@@ -2572,7 +2624,7 @@ public class MainActivity extends Activity {
         List<AppEntry> all = appCache;
         if (all == null) { refreshApps(); ui.postDelayed(() -> openApps(mode), 600); return; }
         Set<String> kids = kidPicks();
-        appsTitle.setText("Hold OK for options: home row or show first ⭐");
+        appsTitle.setText("Hold OK for options: home row or show first ★");
         // Apps chosen to show first come first, marked with a star.
         List<AppEntry> shown = new ArrayList<>();
         for (AppEntry a : all) if (!HIDDEN_FROM_LIST.contains(a.pkg) && kids.contains(a.pkg)) shown.add(a);
@@ -2610,7 +2662,7 @@ public class MainActivity extends Activity {
             // the bitmap is already rounded (fullBleed): the outline only shapes the focus shadow, with no clip
             // and no resting shadow, so the grid draws no masks and no shadows until a tile is focused
             item.addView(icon, new LinearLayout.LayoutParams(124, 124));
-            TextView label = text((kids.contains(a.pkg) ? "⭐ " : "") + a.label, 24, fMed, SOFT);
+            TextView label = text((kids.contains(a.pkg) ? "★ " : "") + a.label, 24, fMed, SOFT); // Inter's own star
             label.setGravity(Gravity.CENTER);
             label.setLineSpacing(0, 1.05f);
             label.setPadding(0, 14, 0, 0);
@@ -2670,14 +2722,16 @@ public class MainActivity extends Activity {
             if (home) removeFromDock(a.pkg); else addToDock(a.pkg, a.label);
         });
         // the star only moves an app to the front of this list (Kids Corner keeps its own list, behind its PIN)
-        menuButton(col, kid ? "Stop showing it first" : "Show it first in All apps ⭐", () -> { closeAppMenu(from); toggleKid(a.pkg); });
+        menuButton(col, kid ? "Stop showing it first" : "Show it first in All apps ★", () -> { closeAppMenu(from); toggleKid(a.pkg); });
         menuButton(col, "Cancel", () -> closeAppMenu(from));
         appMenuBox = new TrapFrame(this); // the arrows stay in the menu, never on the apps behind it
         appMenuBox.setBackgroundColor(0x8C000000);
         appMenuBox.setClickable(true);
+        col.setClipToPadding(false);
         col.setPadding(40, 30, 40, 30); // room inside the card's rounded clip for a focused button (1.03 larger)
         panelCard(appMenuBox, col, 640, -1); // the same card family as every other panel card
         appsPanel.addView(appMenuBox, bleed());
+        noAlphaLayers(appMenuBox); // the full-screen menu fades without an off-screen copy
         appMenuBox.setAlpha(0);
         appMenuBox.animate().alpha(1).setDuration(200).setInterpolator(EASE).start();
         first.requestFocus();
@@ -2715,7 +2769,7 @@ public class MainActivity extends Activity {
         boolean added = kids.add(pkg);
         if (!added) kids.remove(pkg);
         prefs.edit().putStringSet("kids", kids).apply();
-        appsTitle.setText(added ? "Now shown first ⭐" : "No longer shown first");
+        appsTitle.setText(added ? "Now shown first ★" : "No longer shown first");
         ui.postDelayed(() -> openApps(appsMode), 700);
     }
 
@@ -2818,10 +2872,12 @@ public class MainActivity extends Activity {
     static final int SURAH_STEP = 164, QNOW_W = 640;
     private TextView quranNowReciter;
 
+    private StarField quranStars;
+
     private void buildQuran() {
         quranPanel = overlay();
         quranPanel.getChildAt(0).setVisibility(View.GONE); // the star field is opaque: the overlay scrim would never be seen
-        StarField field = new StarField(this);
+        StarField field = quranStars = new StarField(this);
         field.setTag("bg");
         quranPanel.addView(field, bleed());
         TextView title = panelHeader(quranPanel, "THE HOLY QURAN  ·  A NEW RECITER EVERY TIME", "القرآن الكريم");
@@ -2872,6 +2928,7 @@ public class MainActivity extends Activity {
         clipToBounds(sv); // overlays don't clip their children (for the edge bleed), so a scroller must clip itself
         sv.setVerticalScrollBarEnabled(false);
         sv.setClipToPadding(false);
+        sv.setClipChildren(false);
         sv.setPadding(30, 8, 30, 2); // 30 px each side for the focused tile's edge; 8 + 5 rows of 164 + 2 = 830, the scroller's height: five whole rows, always
         surahGrid = new GridLayout(this);
         surahGrid.setColumnCount(6);
@@ -2888,21 +2945,20 @@ public class MainActivity extends Activity {
             // a small gold medallion with the surah number, the name in Amiri, then the English name
             LinearLayout top = new LinearLayout(this);
             top.setGravity(Gravity.CENTER_VERTICAL);
-            TextView num = text(String.valueOf(n), 22, fSemi, 0xFFF1D58A);
-            num.setFontFeatureSettings("tnum");
+            TextView num = text(String.valueOf(n), 22, fSemi, 0xFFF1D58A); // proportional: 100-114 fit the ring
             num.setGravity(Gravity.CENTER);
             GradientDrawable medal = new GradientDrawable();
             medal.setShape(GradientDrawable.OVAL);
             medal.setColor(0x1AF1D58A);
             medal.setStroke(2, 0x99F1D58A);
             num.setBackground(medal);
-            top.addView(num, new LinearLayout.LayoutParams(46, 46));
+            top.addView(num, new LinearLayout.LayoutParams(52, 52));
             TextView ar = text(Quran.AR[i], 36, fQuran, WHITE);
             ar.setIncludeFontPadding(true);
             ar.setPadding(14, 0, 0, 0);
             top.addView(ar);
             TextView en = text(Quran.EN[i], 22, fMed, DIM);
-            en.setPadding(60, 2, 0, 0); // under the name, past the medallion
+            en.setPadding(66, 2, 0, 0); // under the name, past the medallion
             cell.addView(top);
             cell.addView(en);
             cell.setOnFocusChangeListener((v, has) -> {
@@ -3267,7 +3323,8 @@ public class MainActivity extends Activity {
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(20, 0, 0, 0);
         TextView k = kicker(text("NOW RECITING  ·  يُتلى الآن", 20, fSemi, DIM));
-        nowSurah = text("", 26, fQuran, WHITE);
+        nowSurah = text("", 26, fMed, WHITE); // the English half in Inter (Amiri's file has no Latin)
+        ((MixText) nowSurah).arabicIn(fQuran); // the surah name in Amiri
         nowSurah.setIncludeFontPadding(true);
         nowReciter = text("", 24, fAr, SOFT);
         nowReciter.setIncludeFontPadding(true);
@@ -3410,6 +3467,7 @@ public class MainActivity extends Activity {
         scroll.addView(parentList, new FrameLayout.LayoutParams(-1, -2));
         // 30 px of room each side inside the clip, so a focused row (1.03 larger) keeps its whole gold edge
         parentList.setPadding(30, 0, 30, 0);
+        parentList.setClipToPadding(false); // padding alone still clips a grown row to it
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, 760);
         slp.leftMargin = slp.rightMargin = -30;
         box.addView(scroll, slp);
@@ -3635,7 +3693,7 @@ public class MainActivity extends Activity {
             if (min > 0 || "Kids".equals(k[0]))
                 statLine((("Kids".equals(k[0])) ? "Kids Corner" : k[0]) + "   " + Stats.hm(min) + (k[2].isEmpty() ? "" : "  ·  most: " + k[2]), WHITE);
             else
-                statLine(k[0] + "   ⭐ " + k[3] + " stars used this week  ·  " + k[4] + " saved", SOFT);
+                statLine(k[0] + "   ★ " + k[3] + " stars used this week  ·  " + k[4] + " saved", SOFT);
         }
         statHeading("QURAN THIS WEEK  ·  القرآن هذا الأسبوع");
         Object[] q = Stats.quranWeek(this);
@@ -3687,7 +3745,7 @@ public class MainActivity extends Activity {
             r.setPadding(26, 14, 30, 14);
             r.setFocusable(true);
             // a reading guide, not a button (OK does nothing here): a soft fill on the row you're on, no gold edge or zoom
-            r.setOnFocusChangeListener((v, has) -> v.setBackground(has ? glass(20, 0x14FFFFFF, 0) : null));
+            r.setOnFocusChangeListener((v, has) -> v.setBackground(has ? glass(20, 0x26FFFFFF, 0x59FFFFFF) : null));
             LinearLayout names = new LinearLayout(this);
             names.setOrientation(LinearLayout.VERTICAL);
             names.addView(text((String) e[0], 28, fMed, WHITE));
@@ -3908,7 +3966,7 @@ public class MainActivity extends Activity {
         for (View t : topParts) t.animate().setStartDelay(0).alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
     }
 
-    static final float NIGHT_TEXT = 0.55f;
+    static final float NIGHT_TEXT = 0.7f;
 
     private void leaveAmbient() {
         ambient = false;
