@@ -410,7 +410,7 @@ public class AdhanService extends Service {
         if (!canOverlay(this) || alertShown) return;
         if (reminder == null) buildReminder();
         reminderTitle.setText(PrayerTimes.EN[i] + " in " + REMIND_MIN + " minutes");
-        reminderSub.setText(PrayerTimes.AR[i] + " بعد " + REMIND_MIN + " دقائق");
+        reminderSub.setText(PrayerTimes.AR[i] + " بعد " + String.format(new java.util.Locale("ar"), "%d", REMIND_MIN) + " دقائق"); // Arabic-Indic digits in the Arabic line
         reminderTime.setText(PrayerTimes.clock(today[i]));
         if (!reminderShown) {
             try { wm.addView(reminder, overlayParams(Gravity.TOP | Gravity.END)); reminderShown = true; } catch (Exception ignored) { return; }
@@ -419,7 +419,7 @@ public class AdhanService extends Service {
         reminder.setTranslationY(-px(20));
         reminder.animate().alpha(1).translationY(0).setDuration(500).start();
         ui.removeCallbacks(hideReminder);
-        ui.postDelayed(hideReminder, 15_000);
+        ui.postDelayed(hideReminder, 8_000); // as long as a two-line notice needs, the same in both apps
     }
 
     private final Runnable hideReminder = () -> {

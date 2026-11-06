@@ -487,6 +487,7 @@ public class MainActivity extends Activity {
         if (playerOpen() && playerKey(e)) return true;
         if (ambient) { if (e.getAction() == KeyEvent.ACTION_UP) leaveAmbient(); return true; } // the first press only wakes the screen
         if (arrangeTile != null && arrangeKey(e)) return true;
+        pressDip(e, getCurrentFocus());
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) {
                 // Back closes exactly one layer
@@ -2256,6 +2257,7 @@ public class MainActivity extends Activity {
             key.setGravity(Gravity.CENTER);
             key.setFocusable(true);
             key.setClickable(true);
+            key.setTag("dip"); // has its own press dip
             GradientDrawable off = new GradientDrawable();
             off.setShape(GradientDrawable.OVAL);
             off.setColor(digit ? 0x1FFFFFFF : 0x0DFFFFFF);
@@ -2605,7 +2607,6 @@ public class MainActivity extends Activity {
         appMenuFrom = from;
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(40, 30, 40, 30);
         TextView title = text(a.label, 34, fSemi, WHITE);
         title.setPadding(10, 0, 10, 16);
         col.addView(title);
@@ -2620,7 +2621,8 @@ public class MainActivity extends Activity {
         appMenuBox = new TrapFrame(this); // the arrows stay in the menu, never on the apps behind it
         appMenuBox.setBackgroundColor(0x8C000000);
         appMenuBox.setClickable(true);
-        glassCard(appMenuBox, col, 640, -1, Gravity.CENTER, 0, 0, 34, 28, 0x40FFFFFF, 0x99101418, false);
+        col.setPadding(40, 30, 40, 30); // room inside the card's rounded clip for a focused button (1.03 larger)
+        panelCard(appMenuBox, col, 640, -1); // the same card family as every other panel card
         appsPanel.addView(appMenuBox, bleed());
         appMenuBox.setAlpha(0);
         appMenuBox.animate().alpha(1).setDuration(200).setInterpolator(EASE).start();
@@ -2631,8 +2633,10 @@ public class MainActivity extends Activity {
         if (appMenuBox == null) return;
         View box = appMenuBox;
         appMenuBox = null;
-        appsPanel.removeView(box);
-        if (back != null) back.requestFocus();
+        if (back != null) back.requestFocus(); // first, so the highlight never passes through anything else
+        box.setFocusable(false);
+        if (box instanceof ViewGroup) ((ViewGroup) box).setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        box.animate().alpha(0).setDuration(180).setInterpolator(EXIT).withEndAction(() -> appsPanel.removeView(box)).start();
     }
 
     private TextView menuButton(LinearLayout col, String label, Runnable run) {
@@ -2640,7 +2644,11 @@ public class MainActivity extends Activity {
         b.setPadding(30, 18, 30, 18);
         b.setFocusable(true);
         b.setClickable(true);
-        b.setOnFocusChangeListener((v, has) -> { v.setBackground(has ? focusGlass(22) : null); b.setTextColor(has ? WHITE : SOFT); });
+        b.setOnFocusChangeListener((v, has) -> {
+            v.setBackground(has ? focusGlass(22) : null);
+            b.setTextColor(has ? WHITE : SOFT);
+            v.animate().setStartDelay(0).scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start(); // like a parent row
+        });
         b.setOnClickListener(v -> run.run());
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
         p.topMargin = 6;
@@ -3353,6 +3361,19 @@ public class MainActivity extends Activity {
         panelCard(parentPanel, box, 900, -1);
     }
 
+    /**
+     * Every control answers OK the moment it goes down: a small dip (x 0.96 over 70 ms) and back, the PIN key's press
+     * scaled to the item. The PIN keys keep their own deeper dip (tagged "dip").
+     */
+    static void pressDip(KeyEvent e, View f) {
+        int c = e.getKeyCode();
+        if (e.getAction() != KeyEvent.ACTION_DOWN || e.getRepeatCount() != 0 || f == null || !f.isClickable() || "dip".equals(f.getTag())) return;
+        if (c != KeyEvent.KEYCODE_DPAD_CENTER && c != KeyEvent.KEYCODE_ENTER && c != KeyEvent.KEYCODE_NUMPAD_ENTER) return;
+        float sx = f.getScaleX(), sy = f.getScaleY();
+        f.animate().setStartDelay(0).scaleX(sx * 0.96f).scaleY(sy * 0.96f).setDuration(70).setInterpolator(EASE).withEndAction(() ->
+                f.animate().scaleX(sx).scaleY(sy).setDuration(140).setInterpolator(EASE).start()).start();
+    }
+
     /** A small side-to-side nudge: "heard you, but that can't be done yet". */
     private static void nudge(View v) {
         if (v == null) return;
@@ -3600,10 +3621,8 @@ public class MainActivity extends Activity {
             r.setGravity(Gravity.CENTER_VERTICAL);
             r.setPadding(26, 14, 30, 14);
             r.setFocusable(true);
-            r.setOnFocusChangeListener((v, has) -> {
-                v.setBackground(has ? focusGlass(20) : null);
-                v.animate().scaleX(has ? 1.02f : 1f).scaleY(has ? 1.02f : 1f).setDuration(180).setInterpolator(EASE).start();
-            });
+            // a reading guide, not a button (OK does nothing here): a soft fill on the row you're on, no gold edge or zoom
+            r.setOnFocusChangeListener((v, has) -> v.setBackground(has ? glass(20, 0x14FFFFFF, 0) : null));
             LinearLayout names = new LinearLayout(this);
             names.setOrientation(LinearLayout.VERTICAL);
             names.addView(text((String) e[0], 28, fMed, WHITE));

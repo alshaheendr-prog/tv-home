@@ -264,6 +264,7 @@ public class KidsActivity extends Activity {
         int code = e.getKeyCode();
         if (vis(parentPanel) || vis(appsPanel)) { ui.removeCallbacks(parentIdle); ui.postDelayed(parentIdle, PARENT_IDLE_MS); }
         if (arrangeTile != null && !vis(pinPanel)) return arrangeKey(e);
+        pressDip(e, getCurrentFocus());
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) back();
             return true; // Kids Corner never closes itself
@@ -1510,8 +1511,9 @@ public class KidsActivity extends Activity {
                 ink(key, has ? 0xFF161028 : WHITE);
                 key.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start();
             });
+            key.setTag("dip"); // has its own press dip
             key.setOnClickListener(v -> {
-                v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(70).withEndAction(() ->
+                v.animate().scaleX(0.94f).scaleY(0.94f).setDuration(70).withEndAction(() -> // the same dip as the family home's keys
                         v.animate().scaleX(v.isFocused() ? 1.06f : 1f).scaleY(v.isFocused() ? 1.06f : 1f).setDuration(140).start()).start();
                 pinPress(k);
             });
@@ -1617,6 +1619,16 @@ public class KidsActivity extends Activity {
     private void setPinModeLater(String m, String note) {
         pinNote(note);
         ui.postDelayed(() -> { setPinMode(m); pinNote(note); }, 650);
+    }
+
+    /** Every control answers OK the moment it goes down: a small dip and back (the PIN keys keep their own, tagged "dip"). */
+    private static void pressDip(KeyEvent e, View f) {
+        int c = e.getKeyCode();
+        if (e.getAction() != KeyEvent.ACTION_DOWN || e.getRepeatCount() != 0 || f == null || !f.isClickable() || "dip".equals(f.getTag())) return;
+        if (c != KeyEvent.KEYCODE_DPAD_CENTER && c != KeyEvent.KEYCODE_ENTER && c != KeyEvent.KEYCODE_NUMPAD_ENTER) return;
+        float sx = f.getScaleX(), sy = f.getScaleY();
+        f.animate().setStartDelay(0).scaleX(sx * 0.96f).scaleY(sy * 0.96f).setDuration(70).withEndAction(() ->
+                f.animate().scaleX(sx).scaleY(sy).setDuration(140).start()).start();
     }
 
     private void wrong() {
@@ -1767,7 +1779,7 @@ public class KidsActivity extends Activity {
             value.setText(sp);
         };
         draw.run();
-        row.setOnFocusChangeListener((v, has) -> row.setBackground(has ? solid(0x26FFFFFF, 22, 0) : null));
+        row.setOnFocusChangeListener((v, has) -> focusRow(row, has, 1.03f, 22));
         row.setOnKeyListener((v, code, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
             boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
@@ -1803,7 +1815,7 @@ public class KidsActivity extends Activity {
         TextView t = text(name, 32, fBold, WHITE);
         row.addView(t);
         if (!sub.isEmpty()) row.addView(text(sub, 30, fMed, DIM));
-        row.setOnFocusChangeListener((v, has) -> row.setBackground(has ? solid(0x26FFFFFF, 22, 0) : null));
+        row.setOnFocusChangeListener((v, has) -> focusRow(row, has, 1.03f, 22));
         row.setOnClickListener(v -> run.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.bottomMargin = 6;
@@ -1911,7 +1923,7 @@ public class KidsActivity extends Activity {
                 icon.setImageAlpha(on ? 255 : 115); // the picture only, no offscreen layer
             };
             draw.run();
-            cell.setOnFocusChangeListener((v, has) -> cell.setBackground(has ? solid(0x24FFFFFF, 30, 0x30) : null));
+            cell.setOnFocusChangeListener((v, has) -> focusRow(cell, has, 1.05f, 30));
             cell.setOnClickListener(v -> { Rules.toggleApp(this, pkg); draw.run(); });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 316; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
@@ -2024,8 +2036,15 @@ public class KidsActivity extends Activity {
         b.setOnFocusChangeListener((v, has) -> {
             b.setBackground(solid(has ? WHITE : 0x26FFFFFF, 40, 0));
             ink(b, has ? 0xFF161028 : WHITE);
+            b.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start(); // like the gold buttons
         });
         return b;
+    }
+
+    /** A focused row or cell: a soft fill, a clear white edge and a little lift, so focus never rests on a tint alone. */
+    private static void focusRow(View v, boolean has, float scale, float radius) {
+        v.setBackground(has ? solid(0x26FFFFFF, radius, 0xE6) : null);
+        v.animate().scaleX(has ? scale : 1f).scaleY(has ? scale : 1f).setDuration(160).start();
     }
 
     /** A gradient drawn with dithering, so dark fades stay smooth on the TV instead of showing stripes. */
