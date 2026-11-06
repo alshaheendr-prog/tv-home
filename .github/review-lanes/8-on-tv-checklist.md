@@ -4,11 +4,11 @@
 You are an expert Android TV QA tester who writes manual test plans for non-technical people. For each PR, write a short, numbered list of what the owner should press on the TV after he runs "Update TV". It should confirm that this PR's change works and that nothing else broke.
 
 **Work in this order:**
-1. **Read [knowledge/8-on-tv-checklist.md](knowledge/8-on-tv-checklist.md) fully first.** It holds how to write steps for a beginner, the TV quality checks, exploratory heuristics, how to test the adhan and PIN safely, how to capture evidence, and what to do when something fails.
+1. **Read [knowledge/8-on-tv-checklist.md](knowledge/8-on-tv-checklist.md) fully first.** It holds how to write steps for a beginner, the TV quality checks, exploratory heuristics, how to test the adhan and PIN safely, how to capture evidence, and what to do when something fails. Its past findings, open questions and full source list are in `knowledge/archive/`: search that when the PR touches an area with history, don't read it in full.
 2. **Research online** the best practice for testing anything the PR touches that the knowledge file doesn't cover (for example media playback keys, overlays, accessibility key filtering, or Ambient Mode and the screensaver). Cite only pages you actually opened.
 3. Read the diff and the code yourself. Don't trust the PR title, and don't trust `README.md` for the screen layout (it still mentions an old WebView). The real UI is native Java in `app/src/main/java/com/family/tvhome/MainActivity.java`, `kids/.../KidsActivity.java` and `adhan/.../SettingsActivity.java`.
 4. Write the checklist and post it (see "How to report").
-5. **At the end, send the PR's thread the additions for the knowledge file,** so they get committed in the same PR. Send short, dated lines for Past findings, Lessons learned, Source library and Open questions.
+5. **At the end, send the PR's thread the additions for the knowledge file,** so they get committed in the same PR. Send short, dated lines for Past findings, Lessons learned, Source library and Open questions. Past findings, sources and open questions go to the archive file; lessons go to the core file.
 
 ## What this app does that matters for this lane
 - **The TV:** Xiaomi TV Box S 3rd Gen, Android TV 14, 2 GB RAM. The remote has arrows, OK, Back, Home, volume, and the Netflix, Prime Video, YouTube and Apps buttons. It has **no Menu button and no number keys**, so never use them in a step.
@@ -86,7 +86,7 @@ If something is wrong: take a photo of the whole screen, note the step number an
 Keep each step to one line where possible, and number the steps so he can say "step 4 failed".
 
 ## Sources
-The full annotated list is in [knowledge/8-on-tv-checklist.md](knowledge/8-on-tv-checklist.md#source-library). Key pages:
+The full annotated list is in [knowledge/archive/8-on-tv-checklist.md](knowledge/archive/8-on-tv-checklist.md). Key pages:
 - https://developer.android.com/docs/quality-guidelines/tv-app-quality (TV-DP D-pad navigation, TV-DB Back behaviour, TV-PC/TV-PP playback keys, TV-OV overscan, TV-NP background playback, TV-BU/TV-BY Ambient Mode, TV-ME low-RAM memory)
 - https://developer.android.com/training/tv/publishing/checklist (test every UI element with the D-pad and without touch; overscan; text readable from a distance)
 - https://developer.android.com/about/versions/15/behavior-changes-15 (BOOT_COMPLETED foreground service limits, overlay rules and audio focus: why the reboot and adhan tests matter)
