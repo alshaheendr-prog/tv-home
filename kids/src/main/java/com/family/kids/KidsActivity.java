@@ -413,6 +413,7 @@ public class KidsActivity extends Activity {
         android.content.SharedPreferences p = Rules.prefs(this);
         int v = p.getInt("wallpaper", -1);
         if (v < 0) return v;
+        if (clips.isEmpty()) return -1; // storage not ready yet (just after boot): keep the choice for later
         String name = p.getString("wallpaper_name", null);
         if (name == null) {
             if (v >= clips.size()) return -1;
@@ -827,7 +828,8 @@ public class KidsActivity extends Activity {
         sortByOrder(items);
         int n = items.size();
         boolean icons = Rules.prefs(this).getInt("icons", 0) == 0;
-        StringBuilder key = new StringBuilder(icons + "|" + System.identityHashCode(world) + "|");
+        // the lock tile's red setup dot is part of the row too: it must come and go with the permissions
+        StringBuilder key = new StringBuilder(icons + "|" + System.identityHashCode(world) + "|" + setupComplete() + "|");
         for (String[] it : items) key.append(it[0]).append('=').append(it[1]).append(';');
         if (onlyIfChanged && key.toString().equals(tilesKey) && tiles.size() == n) return;
         tilesKey = key.toString();

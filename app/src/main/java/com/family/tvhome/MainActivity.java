@@ -2646,6 +2646,7 @@ public class MainActivity extends Activity {
     /** The grid fades in row by row. */
     private static void fadeTileIn(View item, int index) {
         item.animate().cancel();
+        item.setScaleX(1); item.setScaleY(1); item.setTranslationZ(0); // nothing half-lifted from a quick close and reopen
         item.setAlpha(0);
         item.setTranslationY(18);
         item.animate().alpha(1).translationY(0).setStartDelay(Math.min(index, 28) / 7 * 60L + 80).setDuration(360).setInterpolator(EASE).start();
