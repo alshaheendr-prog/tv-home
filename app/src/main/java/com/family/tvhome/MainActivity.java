@@ -197,6 +197,7 @@ public class MainActivity extends Activity {
         fArSemi = getResources().getFont(R.font.plex_arabic_semibold);
         fQuran = getResources().getFont(R.font.amiri_bold);
         fSerif = getResources().getFont(R.font.cormorant_semibold_italic);
+        MixText.arabic = fAr; MixText.arabicSemi = fArSemi; MixText.quran = fQuran; // Arabic inside Latin labels: Plex
 
         // The home screen never times out or starts a screensaver while it is in front.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -878,10 +879,12 @@ public class MainActivity extends Activity {
     // ================================================================== helpers
 
     private TextView text(String s, float px, Typeface tf, int color) {
-        TextView t = new TextView(this);
+        TextView t;
+        if (tf == fAr || tf == fArSemi || tf == fQuran) t = new TextView(this);
+        else { MixText m = new MixText(this); m.boldArabic(tf == fSemi || tf == fBold); t = m; }
+        t.setTypeface(tf);
         t.setText(s);
         t.setTextSize(TypedValue.COMPLEX_UNIT_PX, px);
-        t.setTypeface(tf);
         t.setTextColor(color);
         t.setIncludeFontPadding(false);
         if (px >= 100) t.setShadowLayer(5, 0, 2, 0x66000000);
@@ -964,7 +967,10 @@ public class MainActivity extends Activity {
     static final int CARD_TINT = 0x3A000000;
 
     /** Small spaced capitals over each block, in a soft gold so every card shares one accent. */
-    private static TextView kicker(TextView t) { t.setLetterSpacing(CAPS_TRACK); t.setTextColor(GOLD); return t; }
+    private static TextView kicker(TextView t) {
+        t.setTextSize(TypedValue.COMPLEX_UNIT_PX, 22); // the size floor for anything read from the sofa
+        t.setLetterSpacing(CAPS_TRACK); t.setTextColor(GOLD); return t;
+    }
     /** One letter spacing for every caps label in the three apps. */
     static final float CAPS_TRACK = 0.12f;
 
@@ -1023,7 +1029,7 @@ public class MainActivity extends Activity {
         adhanName = text("", 38, fSemi, WHITE);
         adhanName.setMaxLines(1); // a long name ("Suhoor ends") shrinks a little to stay on one line beside the countdown
         adhanName.setAutoSizeTextTypeUniformWithConfiguration(30, 38, 1, TypedValue.COMPLEX_UNIT_PX);
-        adhanAr = text("", 26, fArSemi, SOFT);
+        adhanAr = text("", 30, fArSemi, SOFT); // Arabic a touch larger than the 32 px English beside it reads as equal
         adhanAr.setIncludeFontPadding(true);
         names.addView(adhanName, new LinearLayout.LayoutParams(-2, -2));
         names.addView(adhanAr, new LinearLayout.LayoutParams(-2, -2));
@@ -1049,7 +1055,7 @@ public class MainActivity extends Activity {
             col.setGravity(Gravity.CENTER_HORIZONTAL);
             col.setPadding(0, 8, 0, 8);
             TextView en = text(PrayerTimes.EN[k], 22, fMed, SOFT);
-            TextView ar = text(PrayerTimes.AR[k], 20, fAr, DIM);
+            TextView ar = text(PrayerTimes.AR[k], 24, fAr, DIM); // Arabic no smaller than the English above it
             TextView tm = text("", 24, fSemi, WHITE);
             tm.setFontFeatureSettings("tnum");
             tm.setPadding(0, 4, 0, 0);
@@ -1217,7 +1223,7 @@ public class MainActivity extends Activity {
         lineBox.setOrientation(LinearLayout.VERTICAL);
         lineBox.setGravity(Gravity.END);
         lineBox.setPadding(56, 6, 56, 10);
-        lineKicker = text("", 20, fSemi, SOFT);
+        lineKicker = text("", 22, fSemi, SOFT);
         lineKicker.setLetterSpacing(CAPS_TRACK);
         lineAr = text("", 38, fQuran, WHITE);
         lineAr.setIncludeFontPadding(true);
@@ -1343,7 +1349,8 @@ public class MainActivity extends Activity {
             mark.setIncludeFontPadding(true);
             mark.setBackground(tileFace(0xFF14504A, 0xFF0A2A27));
         } else if (d.id.equals("apps")) {
-            mark = text("⋯", 60, fBold, WHITE);
+            mark = text("•••", 44, fBold, WHITE); // Inter has these dots; "⋯" came from another font
+            mark.setLetterSpacing(CAPS_TRACK);
             mark.setBackground(new Glass(30, 0, 0, 0x33000000));
         } else {
             mark = text(d.name.substring(0, 1), 64, fBold, WHITE);
@@ -2239,7 +2246,7 @@ public class MainActivity extends Activity {
         keys.setColumnCount(3);
         keys.setPadding(0, 30, 0, 0);
         keys.setClipChildren(false);
-        String[] labels = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "✕", "0", "⌫"};
+        String[] labels = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "×", "0", "⌫"};
         for (String label : labels) {
             boolean digit = Character.isDigit(label.charAt(0));
             TextView key = text(label, digit ? 40 : 32, fSemi, digit ? WHITE : SOFT);
@@ -2406,7 +2413,7 @@ public class MainActivity extends Activity {
     }
 
     private void pinPress(String k) {
-        if (k.equals("✕")) { if (pinOverParent) backToParent(1); else closePanels(); return; }
+        if (k.equals("×")) { if (pinOverParent) backToParent(1); else closePanels(); return; }
         if (k.equals("⌫")) { if (!pinEntry.isEmpty()) pinEntry = pinEntry.substring(0, pinEntry.length() - 1); drawDots(); return; }
         if (pinEntry.length() >= 4) return;
         boolean checking = pinMode.equals("check") || pinMode.equals("old");
@@ -2763,7 +2770,7 @@ public class MainActivity extends Activity {
         LinearLayout nowBox = new LinearLayout(this);
         nowBox.setOrientation(LinearLayout.VERTICAL);
         nowBox.setGravity(Gravity.CENTER_HORIZONTAL);
-        quranNow = text("", 40, fAr, WHITE);
+        quranNow = text("", 40, fQuran, WHITE); // Amiri, as everywhere a surah name is shown
         quranNow.setIncludeFontPadding(true);
         quranNow.setGravity(Gravity.CENTER);
         quranNowReciter = text("", 30, fAr, SOFT);
@@ -2815,20 +2822,21 @@ public class MainActivity extends Activity {
             // a small gold medallion with the surah number, the name in Amiri, then the English name
             LinearLayout top = new LinearLayout(this);
             top.setGravity(Gravity.CENTER_VERTICAL);
-            TextView num = text(String.valueOf(n), 18, fSemi, 0xFFF1D58A);
+            TextView num = text(String.valueOf(n), 22, fSemi, 0xFFF1D58A);
+            num.setFontFeatureSettings("tnum");
             num.setGravity(Gravity.CENTER);
             GradientDrawable medal = new GradientDrawable();
             medal.setShape(GradientDrawable.OVAL);
             medal.setColor(0x1AF1D58A);
             medal.setStroke(2, 0x99F1D58A);
             num.setBackground(medal);
-            top.addView(num, new LinearLayout.LayoutParams(40, 40));
+            top.addView(num, new LinearLayout.LayoutParams(46, 46));
             TextView ar = text(Quran.AR[i], 36, fQuran, WHITE);
             ar.setIncludeFontPadding(true);
             ar.setPadding(14, 0, 0, 0);
             top.addView(ar);
             TextView en = text(Quran.EN[i], 22, fMed, DIM);
-            en.setPadding(54, 2, 0, 0); // under the name, past the medallion
+            en.setPadding(60, 2, 0, 0); // under the name, past the medallion
             cell.addView(top);
             cell.addView(en);
             cell.setOnFocusChangeListener((v, has) -> {
@@ -3593,7 +3601,7 @@ public class MainActivity extends Activity {
             LinearLayout names = new LinearLayout(this);
             names.setOrientation(LinearLayout.VERTICAL);
             names.addView(text((String) e[0], 28, fMed, WHITE));
-            TextView ar = text(g.format(new java.util.Date((long) e[3])) + "   ·   " + e[1], 22, fAr, DIM);
+            TextView ar = text(g.format(new java.util.Date((long) e[3])) + "   ·   " + e[1], 26, fAr, DIM);
             ar.setIncludeFontPadding(true);
             ar.setTextDirection(View.TEXT_DIRECTION_LTR);
             ar.setGravity(Gravity.START);

@@ -188,6 +188,7 @@ public class AdhanService extends Service {
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.BOTTOM);
         clock = text("--:--", 64, fHeavy, TEXT);
+        clock.setFontFeatureSettings("tnum"); // even-width digits: the time never jumps sideways each minute
         ampm = text("", 26, fBold, MUTED);
         ampm.setPadding((int) px(8), 0, 0, (int) px(8));
         weather = text("", 40, fBold, TEXT);
@@ -219,8 +220,8 @@ public class AdhanService extends Service {
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER_HORIZONTAL);
             cell.setPadding(0, (int) px(6), 0, (int) px(8));
-            TextView en = text(PrayerTimes.EN[i], 20, fBold, TEXT);
-            TextView ar = text(PrayerTimes.AR[i], 20, fMedium, MUTED);
+            TextView en = text(PrayerTimes.EN[i], 22, fBold, TEXT);
+            TextView ar = text(PrayerTimes.AR[i], 24, fMedium, MUTED); // Arabic no smaller than its English
             TextView tm = text("", 26, fMono, TEXT);
             tm.setPadding(0, (int) px(4), 0, 0);
             cell.addView(en);
@@ -686,7 +687,7 @@ public class AdhanService extends Service {
         GradientDrawable bg = rounded(0xE00A0C16, px(28));
         bg.setStroke(Math.max(1, (int) px(2)), 0x33FFFFFF);
         box.setBackground(bg);
-        cardKicker = text("", 20, fBold, GOLD);
+        cardKicker = text("", 22, fBold, GOLD);
         cardKicker.setLetterSpacing(.12f);
         box.addView(cardKicker);
         // Amiri has every Qur'anic mark (small high letters, ﷺ); the rounded Baloo face drops some.
@@ -699,10 +700,10 @@ public class AdhanService extends Service {
         cardAr.setPadding(0, (int) px(12), 0, 0);
         box.addView(cardAr, new LinearLayout.LayoutParams(-1, -2));
         cardEn = text("", 26, fMedium, TEXT);
-        cardEn.setLineSpacing(0, 1.1f);
+        cardEn.setLineSpacing(0, 0.8f); // Baloo's own line height is already 1.71 em
         cardEn.setPadding(0, (int) px(10), 0, 0);
         box.addView(cardEn);
-        cardRef = text("", 20, fMedium, MUTED);
+        cardRef = text("", 22, fMedium, MUTED);
         cardRef.setPadding(0, (int) px(10), 0, 0);
         box.addView(cardRef);
         card.addView(box, new FrameLayout.LayoutParams((int) px(560), -2));

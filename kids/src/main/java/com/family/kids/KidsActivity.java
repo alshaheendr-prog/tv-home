@@ -517,6 +517,7 @@ public class KidsActivity extends Activity {
         LinearLayout clockRow = new LinearLayout(this);
         clockRow.setGravity(Gravity.BOTTOM);
         clockText = text("", 112, fHeavy, WHITE);
+        clockText.setFontFeatureSettings("tnum"); // even-width digits: the time never jumps sideways each minute
         clockText.setIncludeFontPadding(false);
         clockRow.addView(clockText);
         ampmText = text("", 38, fHeavy, DIM);
@@ -601,6 +602,8 @@ public class KidsActivity extends Activity {
         wordKick.setLetterSpacing(0.12f);
         t.addView(wordKick);
         wordArabic = text("", 42, fBold, 0xFFFFD45A);
+        // no trimmed top on the Arabic: its stacked marks (shadda with damma) reach 1.15 em, above Baloo's line top
+        wordArabic.setPadding(0, Math.round(42 * 0.1f), 0, 0);
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2);
         al.topMargin = 8;
         t.addView(wordArabic, al);

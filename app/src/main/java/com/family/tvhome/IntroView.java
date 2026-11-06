@@ -207,7 +207,7 @@ public class IntroView extends View {
         title.setAlpha(Math.round(255 * e));
         c.drawText(BISM, CX, y + 24 * (1 - e), title);
         kicker.setAlpha(Math.round(180 * seg(a, 0.35f, 1)));
-        c.drawText(WELCOME, CX, y + 90, kicker);
+        drawWelcome(c, y + 90);
         // a hairline under the welcome line that draws out from the centre
         float half = 150 * easeOut(seg(a, 0.5f, 1));
         line.setStrokeWidth(2);
@@ -249,7 +249,7 @@ public class IntroView extends View {
         }
         float k = seg(t, 0.6f, 0.9f);
         kicker.setAlpha(Math.round(180 * k));
-        c.drawText(WELCOME, CX, CY + 90, kicker);
+        drawWelcome(c, CY + 90);
         line.setStrokeWidth(2);
         line.setColor(alpha(GOLD, 0.55f * k));
         float half = 150 * easeOut(k);
@@ -589,5 +589,23 @@ public class IntroView extends View {
         p.setColor(alpha(NIGHT, 0.35f * seg(t, 0.55f, 0.85f)));
         c.drawRect(0, 0, W, H, p);
         drawTitle(c, seg(t, 0.55f, 0.88f), 400);
+    }
+
+    /** "WELCOME HOME · أهلاً بكم": the Latin half in Inter with its caps spacing, the Arabic half in Plex Arabic, never letterspaced. */
+    private final Paint wLatin = new Paint(Paint.ANTI_ALIAS_FLAG), wArabic = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private void drawWelcome(Canvas c, float y) {
+        int cut = WELCOME.indexOf('\u0623');
+        if (MixText.arabicSemi == null || cut < 0) { c.drawText(WELCOME, CX, y, kicker); return; }
+        wLatin.set(kicker);
+        wLatin.setTextAlign(Paint.Align.LEFT);
+        wArabic.set(kicker);
+        wArabic.setTextAlign(Paint.Align.LEFT);
+        wArabic.setTypeface(MixText.arabicSemi);
+        wArabic.setLetterSpacing(0);
+        wArabic.setTextSize(kicker.getTextSize() * 1.1f); // Arabic a touch larger than the caps beside it
+        String en = WELCOME.substring(0, cut), ar = WELCOME.substring(cut);
+        float we = wLatin.measureText(en), wa = wArabic.measureText(ar), x = CX - (we + wa) / 2f;
+        c.drawText(en, x, y, wLatin);
+        c.drawText(ar, x + we, y, wArabic);
     }
 }
