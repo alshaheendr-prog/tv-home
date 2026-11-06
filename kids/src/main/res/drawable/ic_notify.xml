@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status-bar icon: Android draws only its shape, so it is white on clear. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.2" android:strokeLineJoin="round" android:pathData="M12.00,1.80 L14.70,9.08 L22.46,9.40 L16.37,14.22 L18.47,21.70 L12.00,17.40 L5.53,21.70 L7.63,14.22 L1.54,9.40 L9.30,9.08 Z"/>
+</vector>

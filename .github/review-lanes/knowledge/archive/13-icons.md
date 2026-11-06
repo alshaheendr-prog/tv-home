@@ -3,6 +3,9 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, new launcher art): no Must. Audit S1–S8 confirmed fixed. S1: notification small icons are opaque PNGs and will show as white squares; use white vector `ic_notify.xml`. S2: the Adhan crescent is 82% of the tile and its visual centre is 10 dp low-left; scale it to 0.85 around (54,54) and move it +5 right, -5 up. Nice: draw `❚❚` with a Path inside its new disc; a Kids adaptive icon; one banner left inset (~28 px xhdpi) and mark height; `⭐`→`★` in All apps.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (no asset changes): no Must. S1: the Kids settings end arrows dim to the hint colour 0xB3, so use 0x66FFFFFF. N1: ⭐ now means "shown first in All apps", but the stats panel still uses ⭐ for Kids stars. N2: ❚❚ now also shows on onPause. N3: OK wraps past a dimmed ▶.
 
@@ -41,6 +44,9 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [disabled-38] https://api.flutter.dev/flutter/material/ButtonThemeData/getDisabledTextColor.html : Material disabled text is at 0.38 opacity. Opened 2026-11-05.
 - [cp-275a] https://codepoints.net/U+275A : not an emoji; the glyph comes from Noto Sans Symbols 2. Opened 2026-11-05.
 
+- [notif-icon] https://documentation.onesignal.com/docs/en/./notification-icons (opened 2026-11-06): small notification icons use only the alpha channel; opaque art shows as a filled square; 24 dp, 24/36/48/72/96 px densities; tinted from Android 12.
+- Tried: the VectorDrawable reference (developer.android.com, ?hl=it) for the order of group transforms. The fetched part had no attribute text, so the "scale and rotate around the pivot, then translate" order is **(unverified)**.
+
 ## Open questions to research next
 - Is the box UI composed at 1080p or 4K (`adb shell wm size`, `dumpsys SurfaceFlinger`)? If 4K, raise `fullBleed` to about 320 px (lane 3 to weigh the memory).
 - What density does the box report (`adb shell wm density`: 320 xhdpi or 213 tvdpi)? It decides whether our bare-`drawable/` art is upscaled ×2 or ×1.33.
@@ -57,3 +63,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 
 - Does the box's fallback font have U+275A? android.googlesource.com is blocked by the proxy, so check on the box, or draw it with a Path.
 
+- Does Google TV on this box show foreground-service notifications (Adhan) anywhere a family member will see them? It decides how visible S1 is.
+- What is the exact order of VectorDrawable `<group>` transforms? Check the attribute docs, or render one on the box.
+- Does `getApplicationIcon` for Kids return the 160 px (xhdpi) or the 320 px PNG on this box? Check with `adb shell wm density`.

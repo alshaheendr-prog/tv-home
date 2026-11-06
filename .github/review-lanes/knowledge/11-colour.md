@@ -141,6 +141,20 @@ Added by the PR #22 review (2026-11-05):
 - Home PIN keys: off `0x1FFFFFFF` with a `0x2EFFFFFF` ring (1.78:1, so focus is the gold ring plus the 1.12 scale). On: `0x59`->`0x26` white with a 3 px `0xE6F1D58A` ring (9.3:1).
 - `WHITE` on the top of `focusGlass` is 5.9:1 / Lc 81; `DIM` there is 3.8:1 / Lc 52.
 
+Added by the PR #23 review (2026-11-06):
+- One gold: `AdhanService.GOLD` is now `0xFFF1D58A`; adhan settings value and focus edge `F1D58A`/`E6F1D58A`. `FFC24A` and `E8CB86` are gone from home and adhan. Kids keep `FFC233`/`FFD45A` (deliberately playful).
+- `kicker()` now forces `GOLD` at 22 px with `CAPS_TRACK 0.12` (Lc 83 / 14.6:1 on black; was Lc 59).
+- `DIM` is `0xB8FFFFFF` (72%): Lc 64 / 10.6:1 on black. `SOFT` vs `DIM` step is only 1.41:1 on black.
+- Verse band: `lineFade` `{0,0x66,0x66,0}` dithered, on `lineHolder` (`lineFrame`), `LINE_FADE 44` px top and bottom. `lineKicker` is `SOFT` 22 px.
+- Event line: boxless `GOLD` 24 px under the dates in the clock column (about stage y 330-360), shadow 4/2/`0x99`. It sits just below the 380 px top scrim.
+- Next prayer: no pill. Name `WHITE` (others `SOFT`), time `GOLD` (others `WHITE`), passed cells alpha 0.55.
+- Night dim: `NIGHT_TEXT 0.55` alpha on `centerGroup`, `lineFrame` (which also fades the verse's own fade) and `topParts`.
+- Dithered now: `topScrim`, `bottomScrim`, `lineFade`, Quran `playerShade` (`{0x80,0x59,0x59,0xA6}`), `PanelBg` fill and warm glow, StarField backdrop (64 px wide ARGB_8888 bitmap painted once with dither, tiled), StarField glow, Kids player bar `{0xE6,0x8C,0}`. Still not: `Glass.java`, Kids `panel()` (`KidsActivity.java:2024`).
+- Quran player: `playerReciter` `0xE6` white, shadow 5/2/`0xB3`.
+- Kids `focusRow()`: `0x26` white fill, 3 px `0xE6` white stroke, 1.03-1.05 scale. Kids player pause: `0x8C` black disc and a 16 px shadow.
+- Calendar rows: focus is a `0x14` white fill only (1.26:1 against the panel).
+- `drive` line: `dotLine()` colours only the leading dot (`DIM` found, `GOLD` unplugged), and the words are `SOFT`/`WHITE`.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/11-colour.md](archive/11-colour.md). Search it when a PR touches an area with history; don't read it in full.
@@ -160,3 +174,8 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: A lightness-only state cue between `WHITE` and `SOFT`/`DIM` is under 3:1 (`WHITE` vs `SOFT` 1.24:1, vs Kids `DIM` 1.87:1). An "off" glyph needs about 35% white (`0x59FFFFFF`: 5.0:1 step, still 3.2:1 on a `0x1A` chip).
 - 2026-11-05: Error or status text that temporarily replaces a `DIM` line should switch to `SOFT` while it shows.
 
+- 2026-11-06: Gold is the first colour to vanish on a bright clip (L 0.68, close to sky and snow). When a label loses its box, move the gold to a dot or mark and make the words white.
+- 2026-11-06: A `GradientDrawable` with N evenly spaced colours is at full strength only between 1/(N-1) and 1-1/(N-1). Check where the text actually sits in the ramp, not just the peak alpha. `setColors(int[], float[])` needs API 29, and our minSdk is 28.
+- 2026-11-06: View alpha on a holder also fades its background. Night-dimming `lineFrame` thins the verse's own protection.
+- 2026-11-06: Making the "important" item gold can make it the least readable on bright video. Mark importance with shape (an underline or dot) and keep the key number white.
+- 2026-11-06: Measure every "boxless" move: when a chip or pill goes, compute the text against the zone it lands in (scrims end at 380 px top and 600 px bottom).

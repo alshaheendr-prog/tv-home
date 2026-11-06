@@ -3,6 +3,14 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- Must: the boxless gold event line was added as the last row of the clock column (`:1219`). The column already ends at about y 477, so the line covers y 477..524 and prints over the verse heading at y 500. It shows on about 1/3 of the year, and `stressTest()` forces it on. Fix: no extra column height. Put it on the verse heading row as a steady gold item outside `lineBox` (recommended), or on the date row.
+- Should: the new verse fade (`lineHolder`, `:1260-1271`) is a 1920-wide 40% black band, which puts a dark stripe across the empty picture side. Feather it horizontally toward the text (ComposeShader DST_IN), as JetStream does.
+- Should: the same band wraps its content, so its height snaps by 38 to 67 px at each 30 s verse change. Give it a fixed height.
+- Nice: verse heading SOFT vs gold elsewhere; DIM 72% vs SOFT 85% too close (lane 11); Home banner's cartoon sun (lane 13).
+- Good: the audit's direction breaks are all fixed (chip, next-prayer box, emoji, two golds in adhan, Baloo reminder). One family across the three apps, no scope creep.
+- No TV screenshots. Used a code-built mock on two clip frames (`/mnt/project-files/tv-box/reviews/pr23-lane4/`, `mock.py` reusable).
+
 ### PR #22 (2026-11-05, audit update 1)
 - Must: none. The Centre stage layout is untouched.
 - Should: the message pill overlaps the Quran player's buttons (bottom 64 vs controls at 74). If a panel closes while a message shows, the pill stays bottom-centre over the dock. Fix: a `placePill()` called from `toast()` and from the close paths. Over the player it goes top-centre at 56.
@@ -85,6 +93,11 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [mdc-snackbar] https://github.com/material-components/material-components-android/blob/master/docs/components/Snackbar.md: snackbars sit towards the bottom; use `setAnchorView` to place them above bottom controls and navigation, never over them. Checked 2026-11-05.
 - [flutter-white38] https://api.flutter.dev/flutter/material/Colors/white38-constant.html: white at 38% is the Material disabled colour in dark themes (disabled text and radios; `ThemeData.disabledColor`). Checked 2026-11-05.
 
+- [tv-immersive-list] https://developer.android.com/design/ui/tv/guides/components/immersive-list: the anatomy names a "cinematic scrim", with no values in the text (they're in the Figma kit). Checked 2026-11-06.
+- [jetstream-moviedetails] https://raw.githubusercontent.com/android/tv-samples/main/JetStreamCompose/jetstream/src/main/java/com/google/jetstream/presentation/screens/movies/MovieDetails.kt: Google's TV sample protects text with a horizontal gradient (x 300 to 1000) plus a vertical one (from y 600) toward the text, and the text column is 55% wide. Checked 2026-11-06.
+- [smashing-text-over-images] https://smashingmagazine.com/2023/08/designing-accessible-text-over-images-part1: scrims should be subtle, overlays make the image "stand out less", and the Optimal Overlay Finder calculates the opacity needed for WCAG. Checked 2026-11-06.
+- [sky-hero] https://sky-ui.cf.sky.com/sections/hero/usage: the hero scrim is optional, used only when the image gives too little contrast. Checked 2026-11-06.
+
 ## Open questions to research next
 - Is `fraunces_soft_light.ttf` cut at opsz 9 or 144? Stem:hairline 1.7:1 suggests a text cut (2026-11-05). Confirming needs a fresh Fraunces opsz-144 instance (font downloads were blocked); consider re-instancing at opsz 144, SOFT 100, wght 300 with `tnum` kept (fontTools `instancer`).
 - Do the Arabic parts of the kickers lose marks on the TV (`includeFontPadding` off; `elegantTextHeight`'s target-35 default doesn't apply on Android 14)?
@@ -106,3 +119,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - Does a 2 to 3 px trim of Plex Arabic's padding in the adhan band clip any marks on the TV? Needs `Screens\adhan.png`.
 - Should the home note pill move to top-centre everywhere (one place) rather than top-left on home and bottom-centre in panels? Decide with lane 15 when the eventChip leftover is removed (both use the top-left).
 
+- What are the Google TV design kit's "cinematic scrim" values? They're in the Figma file at goo.gle/tv-desing-kit, which can't be opened here.
+- If the event line moves to the verse heading row, should the verse heading turn gold on non-event days, or stay SOFT so the event stands out?
+- Does 40% black behind the verse still give 4.5:1 on the brightest clip once the band is feathered? Lane 11 to measure.

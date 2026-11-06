@@ -3,6 +3,15 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, visual polish): 2 Must, 2 Should, 2 Nice. All (computed).
+  - Must: the special-day line overlaps the verse kicker on special days. The column ends at about y 520, the band starts at y 494, and the ink overlaps by 7 to 10 px.
+  - Must: Kids settings rows clip their 1.03 focus edge, about 15 px each side.
+  - Should: the verse fade is painted over the column's text.
+  - Should: the verse fade doesn't bleed, so its ends show at Screen size under 100%.
+  - Nice: use 56/44 for the reminder card. Nice: the verse band has only 6 px of slack above the strip.
+  - Confirmed fixed: the audit's Quran button overlap, the grid centring, and the focus room in All apps, Surah, Reciter, Parent and Kids cartoons.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (audit update 1): 2 Must, 1 Should, 5 Nice.
   - The message pill is placed once in `toast()` and goes stale when layers change, so it can cover the dock or a panel header.
@@ -51,6 +60,9 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [m-snackbar] https://zyun.gitbook.io/temporary-views/official/material-design/original/snackbars (a mirror of Material's snackbar page): don't place one in front of frequently used targets or navigation, show it above persistent bottom navigation, and keep it in the same spot. Checked 2026-11-05.
 - [webos-notif] https://webostv.developer.lge.com/develop/guides/notifications: TV toasts are a non-modal overlay at the bottom of the screen. Checked 2026-11-05.
 
+- [fallback-ls] https://learn.microsoft.com/fr-fr/dotnet/api/android.widget.textview.fallbacklinespacing?view=net-android-36.0: fallback line spacing is on by default (API 28 and up); fallback fonts can raise a line's ascent and descent. Checked 2026-11-06.
+- [apl-background] https://www.developer.amazon.com/en-US/alexa/alexa-haus/visual-design/apl-components/apl-background: gradient overlays as a safe area for text, especially near screen edges; 4.5:1 contrast. Checked 2026-11-06.
+
 ## Open questions to research next
 - Real screenshots at 100% and 88% with the stress test: do the computed y values above match (column end about 477, verse end about 685, focused tile top about 838)?
 - Does `adb exec-out screencap` capture the SurfaceView video on this box (needed to judge balance)?
@@ -65,3 +77,5 @@ All checked 2026-11-05. Tags are used in Core expertise.
 
 - On a box screenshot: does the adhan Arabic line clip at `LIFT 56` (a padded view of 80 of 84.75 px)? Does the pill over the player cover Play?
 
+- On a box screenshot of a special day (for example the stress test, which forces the event line): confirm the overlap and the fix's gap (target about 20 px of ink gap).
+- Should the verse fade also fade horizontally, so the left half of the video stays clear? (Lane 4's call.)

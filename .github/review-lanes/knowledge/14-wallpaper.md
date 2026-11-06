@@ -126,6 +126,11 @@ Corrections from the whole-app audit (2026-11-05):
 - `enterNightDim()` (`:3483`) animates only `dimView`; `centerGroup`, `lineFrame`, and the dates/weather stay at alpha 1 / 0.7.
 - `onResume()` (`:282`) runs `playRandomClip()` after every `onPause`, including Home presses while on the home (manifest `singleTask`).
 
+Added by the PR #23 review (2026-11-06):
+- `starsOver(on)` (`MainActivity.java:~752`): while the opaque star field shows, `dimView`, both scrims and `skyTint` are INVISIBLE and the wallpaper is paused, but not stopped, so the decoder stays held. `show(quranPanel)` posts `starsUp` after 300 ms. `closePanels` calls `starsOver(false)`. `onResume` skips the wallpaper while `starsOn`. `playRandomClip`'s end action bails out if `starsOn`.
+- The scrims, `playerShade` (now `0x80/0x59/0x59/0xA6`) and the verse fade `lineFade` (`0x00/0x66/0x66/0x00`, 1920 wide, `LINE_FADE 44` padding) are dithered GradientDrawables. The StarField backdrop is a 64 x 1480 bitmap dithered once on the CPU and tiled.
+- Kids: `wallpaper` int pref plus `wallpaper_name` string. `wallpaperPick()` (`KidsActivity.java:~412`) migrates an old index to a name once, and re-finds the index by name.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/14-wallpaper.md](archive/14-wallpaper.md). Search it when a PR touches an area with history; don't read it in full.
@@ -143,3 +148,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 
 - 2026-11-05: After onStop calls player.stop(), the return always starts on an empty SurfaceView, so raise the cover in onStop. When changing resume logic, check the Quran background, which borrows the wallpaper player.
 
+- 2026-11-06: When a PR hides layers to save GPU work, check both edges of every transition that shows or hides them. Hide only after the covering view is fully opaque, and show before it starts to fade.
+- 2026-11-06: "Forget the setting if the file is gone" must not run while the storage or the list might be empty for a moment. Treat an empty list as "unknown", not "gone".
+- 2026-11-06: A legibility scrim added for text is also a change to the wallpaper. Look at its width and stops over a bright clip, not only at the text's contrast.
+- 2026-11-06: In HWUI/Skia, gradients are not dithered by default (Paint has no DITHER_FLAG), so `setDither(true)` on a GradientDrawable does work. Dithering a gradient once into a bitmap on the CPU avoids the GPU cost.

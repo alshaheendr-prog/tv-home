@@ -133,6 +133,14 @@ Add under "This box and this code". All values are (computed, ecdab40).
 - **Quran player controls:** bottom margin 74. The buttons are 84 px, at y 906..990. The bar is 720x3, at y 853.
 - **Adhan alert:** the window is 206 px tall (`BAND 136` plus a 70 px fade). The row's content runs from y 70 to `206 - LIFT`. Plex Arabic SemiBold 50 with font padding is 84.75 px tall, with ink +39/-12 px around the baseline. Inter Medium 46 ink is +35/-10 px.
 
+Added by the PR #23 review (2026-11-06):
+- **Special-day line** (`eventText`): it is now a gold 24 px line inside the right column, under the dates (`buildCenter()`). Its line is 36 px tall, because the Plex Arabic run sets the height at 1.5 em. With its 6 px padding it brings the column's end from about y 478 to about y 520, past `LINE_Y 494`.
+- **Verse fade:** `lineHolder` is now 1920 wide at x 0, from y 450 (`LINE_Y - LINE_FADE 44`). Its background is a clear → 40% → 40% → clear fade over y 450..729. It is drawn above the column and doesn't bleed.
+- **Verse band:** the kicker is now 22 px and its line is 33 px (Plex run). The band is about 494..694, 6 px above the strip.
+- **Grids after PR #23:** All apps at (69, 230), 1782 wide with 30 px padding, 1722 content (7 × 246). Surah grid at (70, 250), 1780 wide with 30 padding (6 × 286 = 1716). Reciter tiles 674, 2 × 694 = 1388 content. Home Parent rows 96 tall + 8 gap, list padding 30 with -30 margins. Kids cartoons: column padding 86, scroller padding 24, cards 395 + 40, 4 across = 1700. Kids apps cells 316 with 10/10 margins = 1344.
+- **Adhan reminder card:** 60/50 px from the top-right corner (not 56/44). It now has 4 lines: hair, title, Arabic, time.
+- **Kids settings rows** now scale 1.03 (`focusRow`), inside a scroller with no side room (`buildParent()`).
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/9-layout.md](archive/9-layout.md). Search it when a PR touches an area with history; don't read it in full.
@@ -149,3 +157,8 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: Anything placed by the state at the moment it appears (toasts, hints) must be placed again when that state changes during its lifetime. Walk the flows: show it, then open or close a layer.
 - 2026-11-05: Padding a fixed-height row (`alertRow`, `BAND - LIFT`) can leave a child taller than the room that's left. TextView then clips the bottom of its font padding. Check the padded line height against the space left.
 
+- 2026-11-06: An element moved into the right column eats the column's 16 px of slack above `LINE_Y`. Re-add the column's height every time something joins it.
+- 2026-11-06: A Latin label holding an Arabic run in Plex (`MixText` spans) takes Plex's 1.5 em line height, not Inter's 1.21 em. Every MixText label with Arabic is taller than the Inter-only maths says.
+- 2026-11-06: Views added later in the same parent draw on top. A background fade on a later sibling darkens the text of earlier siblings it overlaps. Put fades in their own view, added before the text.
+- 2026-11-06: Any background added to the stage (fades, bands) must use `bleed()` widths, or its ends show at Screen size under 100%.
+- 2026-11-06: When a PR adds a focus scale to rows, check every scroller those rows sit in for side room, in all three apps.

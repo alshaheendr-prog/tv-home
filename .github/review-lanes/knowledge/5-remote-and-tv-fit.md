@@ -114,6 +114,15 @@ These are standard ADB commands; the first four are from [mustafa], the others a
 - Drawing order with elevation: children are sorted by Z, and equal Z keeps add order (android14 `ViewGroup.buildOrderedChildList` `:4468-4475`). Two panels at the same elevation stack by build order, not by which opened last, unless `bringToFront()` is called. [vg14]
 - Volume keys on Android TV never reach the foreground app: `interceptKeyBeforeDispatching` consumes `VOLUME_UP/DOWN/MUTE` when `mUseTvRouting` (platform type TELEVISION = has `FEATURE_LEANBACK`) or `config_handleVolumeKeysInWindowManager` (android14 `PhoneWindowManager.java:3138-3145`, `AudioSystem.java:2464-2473`). An app that "eats every key" doesn't break volume. [pwm14], [audiosys14]
 
+Added by the PR #23 review (2026-11-06):
+- 2026-11-06: How clipping works (android14). A child is clipped to its own bounds when its parent has clipChildren (`View.setDisplayListProperties` `:23483`, `renderNode.setClipToBounds`). That clip is applied before the child's scale, so it doesn't cut a scaled child. Two things do cut a scaled child:
+  - (a) the parent's **clipToPadding**. It is on by default and only takes effect when the padding is non-zero (`ViewGroup.dispatchDraw` `:4277` clips to the padded area).
+  - (b) the parent's own bounds clip, which comes from the **grandparent's** clipChildren.
+
+  So room for a focus grow must be padding on a parent that has `setClipToPadding(false)`, or space inside a parent whose own parent has `clipChildren(false)`. Padding on a ScrollView does nothing for a grid inside it unless that ScrollView has `clipChildren(false)` (an outline clip on the ScrollView still clips the scrolled content). [vg14], [view14], [cliptopad]
+
+- 2026-11-06: A ViewPropertyAnimator that starts on a property that is already animating takes that property away from the running animator. If the running animator has no properties left, it is cancelled (`:943-960`). A cancelled animator's `withEndAction` is dropped (`:1088-1093`). `setStartDelay` and the interpolator stay set on that view for later `animate()` calls. [vpa14]
+
 ## This box and this code
 - **Box:** Xiaomi TV Box S (3rd Gen), Google TV, 2 GB RAM, 32 GB storage, quad-core up to 2.5 GHz, Mali-G310 V2 GPU, 4K output, one HDMI 2.1 port. The spec page doesn't describe the remote buttons. [mi]
 - **SDK:** all three modules `compileSdk 35`, `targetSdk 35`; `minSdk 28` (app, adhan), `33` (kids). No `enableOnBackInvokedCallback`. (`*/build.gradle.kts`)
@@ -138,6 +147,15 @@ Added by the whole-app audit (2026-11-05):
 Added by the PR #22 review (2026-11-05):
 - Known risks updated by PR #22: the home player media-key risk is closed. The adhan words now sit at least 56 px above the bottom (BAND 136, LIFT 56); the corner card is still at 56/44 px.
 
+Added by the PR #23 review (2026-11-06):
+- 2026-11-06 (PR #23):
+  - `pressDip` (`MainActivity` ~`:3421`, Kids ~`:1677`) dips any clickable focused view on OK DOWN (repeat 0). It never consumes the key, so long-press still works. Views tagged "dip" (the PIN keys) are skipped.
+  - All apps reuses its tiles when `gridKey` matches, and focuses tile 0.
+  - `closeAppMenu` refocuses the tile first, then blocks and fades the menu for 180 ms.
+  - Kids `refreshTiles(true)` keeps the row on resume.
+  - Calendar rows are focusable but not clickable (a reading guide).
+  - The adhan Settings rows now scale 1.03.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/5-remote-and-tv-fit.md](archive/5-remote-and-tv-fit.md). Search it when a PR touches an area with history; don't read it in full.
@@ -158,3 +176,5 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: A focusSearch override that returns the focused view makes ViewRootImpl treat the arrow as having nowhere to go.
 - 2026-11-05: With no MediaSession, unhandled media keys go to the last media-button receiver.
 
+- 2026-11-06: When a PR says "added padding so focus isn't clipped", check clipToPadding on that same group and clipChildren on its parent. Padding on its own usually does nothing.
+- 2026-11-06: A press effect must return to the target value for the view's state (focused or resting), never to a value read part-way through an animation. TV Material defines `pressedScale` as a fixed state value.

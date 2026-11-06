@@ -3,6 +3,9 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2): no Must. Should: (1) `pressDip` restores the scale it read on DOWN, so OK during the focus grow freezes the item at an in-between size (cancelling a ViewPropertyAnimator drops its end action); (2) the calendar reading-guide fill (8% white, no edge) is about 1.26:1, nearly invisible, and it is the panel's only focusable thing; (3) Kids parent and action rows at 1.03 lose their left and right white edge to the ScrollView clip (home was fixed, Kids not). Nice: "Choose reciter" hides the saved choice; the 10-minute reminder is still 5 s one line at home vs 8 s three lines in other apps; "Playing ✓" goes back to ▶ while the takbir still plays; the Kids dip uses the default curve. Carried over: Kids `launch()` silent, no dock hold-OK hint.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22: no Must. Should: (1) the pill is placed only when `toast()` starts, so a panel opening or closing mid-message leaves it over the All apps header (80,56 vs 110,56) or bottom centre over the home row; (2) the resting home PIN pad's alpha 0.4 also dims the gold focus edge to about 2.6:1 (from 9.8:1); (3) calendar to All apps cuts both ways (apps alpha 1 + `bringToFront` at once on Back, apps `GONE` at once on open). Nice: two wordings for the learn-row "not running" state, focus jumps from "Any reciter" when the list fills in, no offline line for reciters, Kids Right at the last value is silent, PIN line changes height after a PIN mismatch.
 
@@ -69,6 +72,10 @@ All opened 2026-11-05; all tv-material and M3 numbers re-verified 2026-11-05 (PR
 - [mdc-snackbar] re-checked 2026-11-05: anchor snackbars above bottom navigation (`setAnchorView`).
 - [mdc-motion] https://raw.githubusercontent.com/material-components/material-components-android/master/docs/theming/Motion.md: shared axis for parent/child moves, where backward is the mirror of forward; fade through for unrelated moves. Checked 2026-11-05.
 
+- [aosp-vpa] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/view/ViewPropertyAnimator.java: `animatePropertyBy` cancels the running animator for the same property (the whole animator if no properties are left); `onAnimationCancel` removes its `withEndAction` runnable, so a cancelled step never runs its follow-up. Checked 2026-11-06.
+- [wcag-focus-visible] https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html: the focus indicator must be visible and "must not be time limited"; subject to 1.4.11; failure F78 (styling that renders the indicator non-visible). Checked 2026-11-06.
+- developer.android.com's Kotlin `ViewPropertyAnimator` reference page didn't render its member docs through the fetcher on 2026-11-06. Read the AOSP source instead.
+
 ## Open questions to research next
 - Which press look suits our gold-glass style best: a 0.96 dip, a brief fill flash, or tv-material's "scale back to 1.0"? Mock all three on the box at 3 m.
 - Should Kids keep the inverted white focus (tv-material's focused colours, but without its 1.1 scale) while home uses gold glass, or should home buttons invert too? Find Google TV launcher screenshots or specs for its own buttons (not opened yet).
@@ -85,3 +92,6 @@ All opened 2026-11-05; all tv-material and M3 numbers re-verified 2026-11-05 (PR
 - Over a panel, should the pill take the panel's own hint spot instead of bottom centre?
 - Is 0x66 digit text enough for a resting PIN key at 3 m?
 
+- Is `0x24FFFFFF` + 2 px `0x59FFFFFF` enough for the calendar reading guide over PanelBg at 3 m, while still not looking like a button? Measure with lane 11.
+- Should the press dip move to one shared helper (a `StateListAnimator` or a shared static class) so home, Kids and adhan Settings can't drift apart?
+- Should the adhan Settings screen get the same press dip? Its rebuild-and-regrow already answers OK, but it looks different from the dip.

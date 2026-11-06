@@ -24,7 +24,7 @@ final class Widgets {
         if (!Double.isNaN(dust) && dust > 150)
             out.add(new String[]{"WEATHER ALERT · تنبيه الطقس", "غبار كثيف في الكويت. أغلق النوافذ.", "Heavy dust in Kuwait. Keep the windows closed.", ""});
         if (!Double.isNaN(temp) && temp >= 45)
-            out.add(new String[]{"WEATHER ALERT · تنبيه الطقس", "حر شديد، " + Math.round(temp) + "°. اشرب الماء وابقَ في الظل.",
+            out.add(new String[]{"WEATHER ALERT · تنبيه الطقس", "حر شديد، " + ar((int) Math.round(temp)) + "°. اشرب الماء وابقَ في الظل.",
                     "Extreme heat, " + Math.round(temp) + "°. Drink water and stay out of the sun.", ""});
 
         // Friday
@@ -35,7 +35,7 @@ final class Widgets {
                 out.add(new String[]{"JUMU'AH SUNNAHS · سنن الجمعة", "الغسل والطيب والتبكير إلى الصلاة والإكثار من الصلاة على النبي ﷺ",
                         "Ghusl, perfume, going early to the prayer, and many salawat on the Prophet ﷺ.", "Al-Bukhari, Abu Dawud"});
             if (dow == Calendar.FRIDAY && min < t[2] + 60)
-                out.add(new String[]{"JUMU'AH · صلاة الجمعة", "صلاة الجمعة " + PrayerTimes.clock(t[2]), "Jumu'ah prayer at " + PrayerTimes.clock(t[2]) + ".", ""});
+                out.add(new String[]{"JUMU'AH · صلاة الجمعة", "صلاة الجمعة " + arDigits(PrayerTimes.clock(t[2])), "Jumu'ah prayer at " + PrayerTimes.clock(t[2]) + ".", ""});
         }
 
         // Morning adhkar from Fajr, evening adhkar from Maghrib: while it is their time they take over the card.
@@ -102,6 +102,13 @@ final class Widgets {
     };
 
     private static String ar(int n) { return String.format(new Locale("ar"), "%d", n); }
+
+    /** Arabic-Indic digits for an Arabic line: Amiri has these, not the Western ones. */
+    static String arDigits(String s) {
+        StringBuilder b = new StringBuilder(s.length());
+        for (char c : s.toCharArray()) b.append(c >= '0' && c <= '9' ? (char) ('\u0660' + (c - '0')) : c);
+        return b.toString();
+    }
 
     /** Days until the next of Ramadan, Eid al-Fitr and Eid al-Adha (Umm al-Qura calendar). */
     private static String[] countdown(Calendar now) {

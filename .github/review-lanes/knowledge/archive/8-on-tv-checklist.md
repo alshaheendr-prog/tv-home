@@ -3,6 +3,15 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- **2026-11-06, PR #23** (update 2: visual and UI polish):
+  - No Must.
+  - Should: the reminder is now 8 s, not 15 s (brief and knowledge), and the code facts above.
+  - Nice:
+    - "Every control dips" doesn't cover Kids settings rows or the Adhan settings app.
+    - `pressDip` restores the scale it read at key-down, so an OK pressed during a focus zoom settles slightly small.
+  - Checklist (13 new steps, 4 can't-test-now items, plus the smoke test): link above.
+
 ### PR #22 (2026-11-05, audit update 1)
 - **2026-11-05, PR #22** (audit update 1: focus trap, Back one layer at a time, idle close, PIN notes, wallpaper, Quran, kids player and adhan fixes):
   - No Must.
@@ -70,6 +79,11 @@ All checked 2026-11-05 unless noted.
 - [key-repeat] https://gerrit.omnirom.org/plugins/gitiles/android_frameworks_base/+/5128949634c682b630a9a94517f4a6df0b5dfc21%5E%21: `DEFAULT_KEY_REPEAT_DELAY_MS = 50`, so a held key repeats every 50 ms. Checked 2026-11-05.
 - [aosp-cec] https://source.android.com/devices/tv/hdmi-cec?hl=en: names Remote Control Passthrough, but doesn't say how keys reach apps. Checked 2026-11-05.
 
+- [tv-icons] https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines: the banner is mandatory at 16:9 (320x180 xhdpi, 640x360 xxxhdpi, in mipmap folders) and is used in the TV launcher. The launcher icon shows in Settings, the Now Playing card and the Google TV "Your apps" row. Themed icons aren't supported on TV. It gives no test procedure. Checked 2026-11-06.
+- [adaptive-icons] https://medium.com/google-design/515af294c783: 108 dp layers, masked to at most 72 dp, a 66 dp safe circle in the centre. Launchers may add parallax or scale. Checked 2026-11-06.
+- [adaptive-clip] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/49661571/adaptive-icon-not-displaying-properly: art outside the safe zone gets clipped. The fix is scaling it into the centre. Checked 2026-11-06.
+- [tv-update-fix] https://www.guidingtech.com/best-ways-to-fix-apps-not-updating-on-android-tv/: Play Store update fixes only. It says nothing about launcher icon caches. Checked 2026-11-06.
+
 ## Open questions to research next
 (The web-fetch budget ran out on 2026-11-05 before these could be opened.)
 - Answered 2026-11-05: the publishing checklist lists requirements only, no test procedures.
@@ -89,3 +103,5 @@ All checked 2026-11-05 unless noted.
 - Does the Xiaomi Bluetooth remote send its own key repeats, or the framework's 50 ms? It changes the cartoon seek pace.
 - Replace the remaining line numbers in the brief and knowledge file with method names.
 
+- Does Google TV's own launcher ("Your apps", Settings > Apps) refresh a sideloaded app's icon or banner straight after `install -r`, or only after a reboot? No source found on 2026-11-06. Ask the owner what they see after this update.
+- Adaptive Icon Playground ([adaptive-icons]) could preview masks on the box. It's for the developer only, if lane 13 wants it.

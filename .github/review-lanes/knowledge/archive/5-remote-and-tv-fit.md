@@ -3,6 +3,11 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, visual polish): no Must.
+  - Should: the new focus room is undone by clipToPadding or clipChildren in Parent settings, the hold-OK menu, the reciter list, the All apps and surah glow, Adhan settings, and Kids settings and the app picker. `pressDip` springs back to a scale read mid-animation, so a dock tile can stay at about 1.1 instead of 1.2.
+  - Nice: the adhan test row renders twice (focus flash and a double bounce); the Kids dip has no `startDelay(0)`; the adhan reminder sits 60/50 px from the corner (known); `pressDip` dips disabled views.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (audit update 1): no Must or Should. TrapFrame plus focusLayer stop focus leaking out of panels. Back goes back one layer per press. MEDIA_PLAY, PAUSE and PLAY_PAUSE are handled on the Quran page and in the player, which closes that known risk. A missing Stremio or Kodi shows a message. The adhan words are lifted 56 px. Nice: closing the reciters focused a hidden button (fixed, it falls back to the surah cell); the tileFor fallback; "Show first" refocuses the first app; media keys on the home with soft Quran playing; the adhan's 80 px box.
 
@@ -64,6 +69,11 @@ Tags used above. All were opened on 2026-11-05 unless marked otherwise.
 
 - android14-release ViewGroup.java (lines 826-838, descendant focusability), ViewRootImpl.java performFocusNavigation, MediaSessionService.java dispatchMediaKeyEventLocked, and TextView.java onDraw clipRect. Read 2026-11-05.
 
+- [cliptopad] https://learn.microsoft.com/dotnet/api/android.views.viewgroup.setcliptopadding : by default, children are clipped to the parent's padding, only when the padding is non-zero.
+- [tvm-scale] https://composables.com/jetpack-compose/androidx.tv/tv-material/objects/ClickableSurfaceDefaults/api.md : `scale()` defaults are `scale` 1f, `focusedScale` 1.1f and `pressedScale = scale`. The developer.android.com page was too long to fetch, so this mirror was used.
+- [vpa14] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/view/ViewPropertyAnimator.java : how a new animation takes over a property and cancels the old one; the end action is dropped on cancel.
+- [vg14] and [view14] (already listed) are now also cited for `dispatchDraw` `:4277`, `setClipChildren` `:4603` and `setDisplayListProperties` `:23483`.
+
 ## Open questions to research next
 - Which key code does each button on this box's remote send (Home, Apps, Netflix, Prime Video, YouTube, Google TV/Live, the input/settings button)? Do any of them map to `VIDEO_APP_*`/`FEATURED_APP_*` and so can't be learned? (On the box: Parent settings → learn, or `adb shell getevent -l` / logcat.)
 - Does this box's Home button send `KEYCODE_HOME` or `KEYCODE_ALL_APPS`? If `ALL_APPS`, the default `rk_apps` mapping would turn Home into "open Kodi". Highest-priority check: `adb logcat | grep -i keycode` while pressing Home and Apps (lane 8 has the same step).
@@ -78,3 +88,4 @@ Tags used above. All were opened on 2026-11-05 unless marked otherwise.
 
 - Should the home get a MediaSession so the TV remote's Pause works on the soft Quran? (That may count as a feature; ask first.)
 
+- Is the elevation shadow (`goldLift` translationZ) of an outer-column tile clipped at the grid's bounds on this box's HWUI? This is inferred from the source; confirm it with lane 8's photo.

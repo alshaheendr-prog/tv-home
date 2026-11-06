@@ -39,6 +39,7 @@ public class SettingsActivity extends Activity {
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(px(140), px(70), px(140), px(70));
+        list.setClipToPadding(false); // a focused row (1.03 larger) keeps both ends of its gold edge
         sv.addView(list);
         setContentView(sv);
         AdhanService.start(this);
@@ -75,6 +76,8 @@ public class SettingsActivity extends Activity {
         return t;
     }
 
+    private long testAnswer;
+
     private void row(String label, String value, Runnable onClick) {
         LinearLayout r = new LinearLayout(this);
         r.setGravity(Gravity.CENTER_VERTICAL);
@@ -82,14 +85,15 @@ public class SettingsActivity extends Activity {
         r.setFocusable(true);
         r.setClickable(true);
         r.addView(text(label, 32, fBold, 0xFFF6F3FF), new LinearLayout.LayoutParams(0, -2, 1));
-        TextView v = text(value, 30, fMedium, 0xFFFFC24A);
+        TextView v = text(value, 30, fMedium, 0xFFF1D58A);
         r.addView(v);
         r.setOnFocusChangeListener((view, has) -> {
             GradientDrawable d = new GradientDrawable();
             d.setCornerRadius(px(18));
             d.setColor(has ? 0x26FFFFFF : Color.TRANSPARENT);
-            if (has) d.setStroke(px(3), 0xFFFFC24A);
+            if (has) d.setStroke(px(3), 0xE6F1D58A); // the family home's focus edge
             view.setBackground(d);
+            view.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).start(); // and its lift
         });
         r.setOnClickListener(x -> { onClick.run(); render(); });
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
@@ -99,14 +103,14 @@ public class SettingsActivity extends Activity {
 
     private void header(String s) {
         TextView t = text(s, 26, fMedium, 0xB8F6F3FF);
-        t.setLetterSpacing(.1f);
+        t.setLetterSpacing(.12f);
         t.setPadding(px(28), px(34), 0, px(6));
         list.addView(t);
     }
 
     /** The panel and the card only ever show over Google TV's own home, never over the family home (it has them built in). */
     private void onlyOtherHome() {
-        TextView t = text("Only shows over Google TV's own home, not the family home.", 24, fMedium, 0xB8F6F3FF);
+        TextView t = text("Only shows over Google TV's own home, not the family home.", 26, fMedium, 0xB8F6F3FF);
         t.setPadding(px(28), 0, px(28), px(4));
         list.addView(t);
     }
@@ -173,11 +177,13 @@ public class SettingsActivity extends Activity {
             row(PrayerTimes.EN[i] + "  " + PrayerTimes.AR[i], on ? "Sound on" : "Popup only", () ->
                     prefs.edit().putBoolean(key, !prefs.getBoolean(key, true)).apply());
         }
-        row("Play the adhan now (test)", "▶", () -> {
+        row("Play the adhan now (test)", System.currentTimeMillis() < testAnswer ? "Playing ✓" : "▶", () -> {
             Intent i = new Intent(this, AdhanService.class).setAction("test");
             startForegroundService(i);
+            testAnswer = System.currentTimeMillis() + 1200; // the row answers in place, then goes back to ▶
+            list.postDelayed(this::render, 1300);
         });
-        TextView note = text("The adhan plays the opening takbir of the Makkah adhan (Download/takbir.mp3, prepared by Update TV). Until it is there a soft chime plays.", 24, fMedium, 0xB8F6F3FF);
+        TextView note = text("The adhan plays the opening takbir of the Makkah adhan (Download/takbir.mp3, prepared by Update TV). Until it is there a soft chime plays.", 26, fMedium, 0xB8F6F3FF);
         note.setPadding(px(28), px(14), px(28), 0);
         list.addView(note);
 

@@ -62,7 +62,7 @@ SFDPO is a memory aid for test ideas [sfdpo]: Structure, Function, Data, Platfor
 
 ### 5. Testing the adhan and other timed features safely
 - Use the built-in test first: Adhan, then **"Play the adhan now (test)"**. It sends the `test` action to `AdhanService`, which calls `fireAdhan(3)` (`AdhanService.java:134`, `SettingsActivity.java:187`).
-- Corrected 2026-11-05 (whole-app audit): the adhan's panel and corner card only show over a *different home launcher*, never over Netflix or the family home (`AdhanService.java` checks `homePackages`). What does show over Netflix is the adhan band at the bottom and the 10-minute reminder (top right, about 15 s). The old PR #20 lesson ("test the card from inside Netflix") was wrong.
+- Corrected 2026-11-05 (whole-app audit): the adhan's panel and corner card only show over a *different home launcher*, never over Netflix or the family home (`AdhanService.java` checks `homePackages`). What does show over Netflix is the adhan band at the bottom and the 10-minute reminder (top right, about 8 s since PR #23). The old PR #20 lesson ("test the card from inside Netflix") was wrong.
 - The sound needs audio focus. On Android 15, focus is refused unless the app is on top or running an FGS [a15]. The adhan runs an FGS, so the sound should pause Netflix or YouTube. Check that the other app pauses and then resumes.
 - Don't change the TV's clock unless there is no other way. If he must:
   - Write the steps to set it back to automatic time afterwards.
@@ -133,7 +133,7 @@ Added by the whole-app audit (2026-11-05):
 - The Kids lock leads to "Kids Corner settings" (`KidsActivity.java:870`). "Leave Kids Corner" is the last row (`:1659`). Kids settings change with Left/Right, straight away. Since PR #22, OK also steps a setting forward and wraps round to the first value (`choiceRow`).
 - Kids limits are 0 (No limit), 15, 30 … 240 min. Bedtimes run from 7:00 pm to 10:00 pm, or Off (`KidsActivity.java:1571-1572`). A star is worth 15 min, and the star buttons only show on the time's-up screen, not at bedtime (`:1149-1151`).
 - The adhan banner is non-focusable, so Back goes to the app behind. It hides 4 s after the sound, or after 60 s with "Popup only" (`AdhanService.java:171-178, 552, 576-583`).
-- The 10-minute reminder shows over any app except the family home, for 15 s (`:465-472, 408`). The panel and card show only over a different home launcher (`:507-509`).
+- The 10-minute reminder shows over any app except the family home, for 8 s since PR #23 (`:465-472, 408`). The panel and card show only over a different home launcher (`:507-509`).
 - RemoteKeys `BUTTONS` is at `RemoteKeys.java:21-25` and `code()` at `:41-43`. While learning, the arrows still pass through.
 - After Update TV, wireless debugging is on, so the USB drive is gone ("● Drive unplugged", `MainActivity.java:3001`) until it's switched off.
 
@@ -143,6 +143,23 @@ Added by the PR #22 review (2026-11-05):
 - Back closes one layer at a time: PIN over settings, stats, calendar back to All apps, reciters, player.
 - Wallpaper: pressing Home on the home keeps the same clip. Coming back from another app plays a new one.
 - Messages over a panel show at the bottom centre, 64 px up. On the home screen they show top left.
+
+Added by the PR #23 review (2026-11-06):
+- The 10-minute reminder card has a short gold hairline, the English, the Arabic in gold with Arabic-Indic digits, and the time (`showReminder`, `hideReminder`).
+  - Special-days line: a boxless white line with a gold dot under the dates (right column; changed from gold text in the PR #23 fixes), no longer a chip on the left (`drawEventChip`). It shows only on special days (Events.badge).
+  - Drive line: "● Drive unplugged" is white with a gold dot. "● USB … free" is soft white with a grey dot. It is no longer red or green (`updateDrive`, `dotLine`).
+  - Prayer strip: the next prayer has a short gold underline under its time (name and time white), with no box.
+  - Tomorrow's weather is a word (`skyWord`), not an emoji.
+  - The All apps dock tile shows "•••". The PIN pad's cancel key is "×" (bottom left). Focus starts on 1, so Down three times reaches it.
+  - The Quran page (star field) pauses the wallpaper and hides the layers under it (`starsOver`, 300 ms after it opens). Closing it, or pressing Home, starts the wallpaper again. A Quran background video brings the layers back.
+  - The reciter button always reads "Choose reciter". The list still opens on the saved reciter.
+  - Night dim (15 min idle) now also fades the clock, the verse and the top parts to 0.55 (`NIGHT_TEXT`). One press brings everything back.
+  - The All apps grid is reused when nothing changed (`gridKey`), so the second opening is instant. Icons are cached by the app's lastUpdateTime (`cachedIcon`), so an updated app shows its new icon.
+  - Press dip (`pressDip`): on the home and Kids Corner, for clickable views only. Kids settings rows (not clickable) and the Adhan settings app have none.
+  - Adhan settings: the test row says "Playing ✓" for about 1.2 s, then "▶". Rows grow to 1.03 with a gold edge.
+  - Kids: settings rows get a white edge and grow to 1.03 (`focusRow`). The "Apps along the bottom" row switches between "App icons" and "Big banners". In Big banners, an app with no banner shows its icon on its own colour. The Kids wallpaper choice is kept by file name (`wallpaperPick`, pref `wallpaper_name`). The PIN shake is a damped 420 ms animation.
+  - Kids player: OK pauses and resumes. The pause sign sits on a dark 220 px disc.
+  - Launcher art: Home and Adhan use adaptive vector icons (`mipmap-anydpi-v26/icon.xml`). Banners are in mipmap-xhdpi/xxxhdpi. Kids uses PNG icons in mipmap folders. `drawable/icon.png` stays in kids and adhan for the notification small icon.
 
 ## Past findings and sources
 
@@ -167,3 +184,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: For toggle or hold-OK steps, use a harmless row (Clock, Bedtime wind-down, add then remove a home-row app) and add the put-back step.
 - 2026-11-05: Date-bound fixes (Eid or Arafah badges, midnight) go in a "Can't be tested now" line. Don't ask for a clock change.
 
+- 2026-11-06: Check where focus starts before writing directions on a grid. The first draft said "Down three times, then Left" for the PIN ×, but focus starts on 1, so it's just Down three times. Grep for the first focused view (`firstPinKey`) before writing a path.
+- 2026-11-06: For a polish PR, write "just look" steps with one visible detail each (colour, a word, a box or no box), plus a "Broken:" line. Then add interruption steps wherever the PR changed what pauses or plays: the Quran page pausing the wallpaper, then Home or Netflix.
+- 2026-11-06: Date-bound looks (special days line, Friday Jumu'ah line, the prayer reminder) go in "Can't be tested now" with the next real date worked out (White Days around 22 to 25 Nov 2026).
+- 2026-11-06: A PR claim like "every control" needs a grep of where it's wired (`pressDip` callers, `isClickable`). Don't promise it on screens it doesn't reach.

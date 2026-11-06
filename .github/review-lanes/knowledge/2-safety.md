@@ -190,3 +190,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: Never use view visibility as the "unlocked" signal. ViewPropertyAnimator cancels a running animation on the same property and drops its withEndAction, so a faded panel can stay VISIBLE at alpha 0. Keep an explicit open flag.
 - 2026-11-05: Verify action SHAs with `git ls-remote` on refs/tags/vX and vX^{} (gradle/actions uses annotated tags).
 
+- Cached views or tiles: every filter (HIDDEN_FROM_LIST, NEVER, the allowed list) must run before the cache key is built, and clicks must re-check the rule.
+- When a label or glyph changes, grep for string compares on it (for example pinPress).
+- When art moves to mipmap, the FGS notifications (Guard, AdhanService) still need a valid setSmallIcon drawable, or the kids lock can fail to start.
+- New binary assets: scan the PNG chunks (only IHDR, IDAT and IEND should be there). This catches file paths and GPS data.

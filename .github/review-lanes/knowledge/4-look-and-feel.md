@@ -192,3 +192,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: Check a new bottom-centre element against every full-screen layer that already uses bottom-centre (player controls, dock). Two elements anchored to the same edge collide.
 - 2026-11-05: Keep one value for "not available now" across apps (about 38 to 40% on dark). A secondary-text grey reads as normal, not disabled.
 
+- 2026-11-06: Before approving "move X into the column", add its height to the column budget. The clock column ends near y 477 and the verse band has only about 15 px to spare, so any new row in either collides. Check against `LINE_Y` and `STRIP_Y` every time.
+- 2026-11-06: A background on a wrap-content holder changes size with its text. If the text cross-fades but the background is on the parent, the background snaps. Put fades and scrims on fixed-size views.
+- 2026-11-06: A text-protection scrim should fade toward the text and clear away from it, not span the screen. A full-width band is a new surface even without edges.
+- 2026-11-06: The mock script in `tv-box/reviews/pr23-lane4/mock.py` uses the repo's fonts and Android metrics (hhea without font padding, head bbox with it). Reuse it when no screenshots are reachable.

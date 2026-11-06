@@ -154,3 +154,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: When a fix reorders "today wins / tomorrow wins" logic, walk through every day just before a tomorrow event, not only the day the fix targets.
 - 2026-11-05: When an early return skips work in an animation end-action, also leave a flag (for example `wallStopped = true`) so the next onResume redoes it. Otherwise the UI stays half-done.
 
+- 2026-11-06: A "skip if unchanged" cache key must cover every piece of state the skipped code sets, not only what it builds. The Kids `setupDot` was set inside `refreshTiles`.
+- 2026-11-06: Never treat an empty file list as "the file is gone". Shared storage can read as empty right after boot, so don't erase saved choices because of it.
+- 2026-11-06: An animation that reads `getScaleX()` as its return target captures mid-animation values, so store the resting target instead. A ViewPropertyAnimator that takes over a property cancels the earlier animation, and the earlier one's `withEndAction` does not run.
+- 2026-11-06: Gating UI updates on `resumed` also hides them while the activity is visible but paused (under a translucent activity). Use a `visible` flag based on onStart/onStop when "on screen" is what matters.

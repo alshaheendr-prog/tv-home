@@ -229,3 +229,6 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: In Media3 1.4.1, pause() keeps the codec (on a placeholder surface when the SurfaceView goes). stop() resets the renderers (foregroundMode is off by default), and MediaCodecRenderer.onReset() calls releaseCodec(). Disabling a renderer alone only calls flushOrReleaseCodec().
 - 2026-11-05: Watch for "set state" helpers called from a once-a-second tick that start animate() each time even when nothing changes. Guard them with a state flag.
 
+- 2026-11-06: `Shader.setLocalMatrix` with a changed matrix discards the native shader, and the next draw creates a new one. Never call it every frame: quantise the value, or change only the axis the gradient actually uses.
+- 2026-11-06: A view added to a panel after `show()` misses `noAlphaLayers`. Check every view that is added later and then faded.
+- 2026-11-06: Put the hardware layer on the view whose alpha animates, not on its parent. Otherwise the parent layer re-renders on every frame of the fade.

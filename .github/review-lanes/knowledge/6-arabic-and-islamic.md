@@ -109,6 +109,11 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - Kuwait timetables (secondary site) print suhoor ~10 min before Fajr [khaleejcalc-imsak]; Awqaf's own column is unverified.
 - The verse seed `(seed+attempt)*7919 % 6236` with `seed = doy + year*400` overlaps day to day: day N attempt k = day N+1 attempt k−1.
 
+Added by the PR #23 review (2026-11-06):
+- Section 8 (Fonts): the bundled `amiri_bold.ttf` is a **subset** (1104 cmap entries). It has no U+0030-0039, U+002E, U+003A, U+00B0, U+00B7 and no Latin letters. It does have U+0660-0669, U+060C, parentheses, `!` and ZWNJ. Plex Arabic medium and semibold have the Latin digits and `. : °` (fontTools, 2026-11-06).
+- Section 7 (Digits): Android 14 (API 34) ships ICU 72.1 / CLDR 42 / Unicode 15.0; Android 15 ships ICU 75.1 / CLDR 45 [android-icu]. So a bare `Locale("ar")` gives Arabic-Indic digits on the box today, and the CLDR 46 change would only arrive with a later OS.
+- Section 9 (Rendering): UAX #9 rule W4 says a single common separator (`:` `,` `.`) between two Arabic-Indic numbers becomes AN, so "١١:٣٢" stays together in RTL text [uax9-w4]. `MixText` (app) puts IBM Plex Arabic on whole Arabic runs inside Latin TextViews and never splits a word; span boundaries are hard shaping breaks [devto].
+
 ## This box and this code
 - **The owner's own rules** (project skill `islamic-content-check`, read 2026-11-05), which reviews apply on top of the above:
   - Kids content uses only sahih hadith, short and simple; drop anything da'if or mawdu' from what the kids see.
@@ -157,3 +162,5 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: The end of Ramadan is known only after the sighting on the evening of the 29th, so any "tomorrow" text on the 29th must be tentative. Dhul Hijjah is fixed when the month starts, so Eid al-Adha lines can be definite.
 - 2026-11-05: A neutral character (… : ·) at the end of an Arabic run in an LTR line takes the line's direction (UBA rules N1/N2), so it is drawn where the Arabic begins.
 
+- 2026-11-06: When a view's typeface changes to Amiri, check every string that view can show for Latin text, because the bundled Amiri is a subset.
+- 2026-11-06: Look up the box's ICU/CLDR version in developer.android.com's internationalization table before rating a locale-data risk.

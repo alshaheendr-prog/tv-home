@@ -3,6 +3,14 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, visual polish): CI #145 for 809f108 passed, with 3 × assembleRelease and lint vital. No Must or Should.
+  - The manifests changed only icon/banner (@drawable to @mipmap).
+  - Adaptive icons were added to app and adhan (mipmap-anydpi-v26 with drawable/icon_back and icon_fore vectors).
+  - Banners were added to mipmap-xhdpi (320×180) and mipmap-xxxhdpi (640×360) in all three apps. Kids got legacy icon PNGs in mipmap-x/xx/xxxhdpi.
+  - drawable/icon.png is kept in adhan and kids for notification small icons.
+  - Nice: the -v26 qualifier is redundant at minSdk 28. The javac deprecation notes in app and kids are likely from GradientDrawable.setDither. Banners ship only at xhdpi and xxxhdpi.
+
 ### PR #22 (2026-11-05, audit update 1)
 - **2026-11-05, PR #22** (audit update 1): CI #135 failed. javac reported `View cannot be converted to ViewGroup` at MainActivity.java:1940 (Must). Gradle stopped at :app, so adhan and kids were never built. Should: the failure comment showed only stack frames. Should: adhan lost MANAGE_EXTERNAL_STORAGE, so the takbir read now relies on READ_MEDIA_AUDIO (test on the TV). OK: the SHA pins were verified, a concurrency group was added, and the release step now refuses to publish a run number lower than the one in `latest`'s title.
 
@@ -70,6 +78,14 @@ All checked 2026-11-05 unless noted.
 - [runs-on-concurrency] https://runs-on.com/github-actions/concurrency/: with `cancel-in-progress: false`, a newer pending run replaces the older pending one. Checked 2026-11-05.
 - [datalogic-a13] https://developer.datalogic.com/mobile-computers/news/a13_new_permissions_for_file_access: the scope of Android 13's READ_MEDIA_* permissions. The page does not say whether raw File paths work. Checked 2026-11-05.
 
+- [tv-icons] https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines: android:icon and android:banner are both mandatory.
+  - The banner is 16:9, in mipmap-* folders, from mdpi 160×90 to xxxhdpi 640×360 (xhdpi 320×180).
+  - Adaptive banners are supported.
+  - Themed (monochrome) icons are not supported on Android TV or Google TV.
+  - roundIcon is deprecated.
+  - Checked 2026-11-06.
+- [so-manifest-res] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/50832824/lint-error-when-using-adaptive-launcher-icon: the lint error "Resources referenced from the manifest cannot vary by configuration" (version qualifiers are exempt). Checked 2026-11-06.
+
 ## Open questions to research next
 - `adb install -r -d`: commit f1d44db allows a downgrade only on a debuggable build or app (for system apps). Confirm the rule applies to normal release APKs; until then assume `-d` fails. [aosp-f1d44db]
 - Answered 2026-11-05: `MY_PACKAGE_REPLACED` is a listed bg-FGS exemption; the Android 15 block names only BOOT_COMPLETED; `specialUse` is OK. [fgs-bg-start]
@@ -87,3 +103,5 @@ All checked 2026-11-05 unless noted.
 - On Android 14, can READ_MEDIA_AUDIO read an adb-pushed Download/*.mp3 through java.io.File? In other words, is the file MediaStore-indexed when it is pushed?
 - Should the failure comment grep for the error lines before the tail? (Proposed in PR #22, not yet adopted.)
 
+- Does the ManifestResource lint check exempt density qualifiers (mipmap-xhdpi/xxxhdpi banners)? CI #145 passed, so it seems to in practice. Confirm in the lint docs.
+- Does Google TV's launcher refresh a sideloaded app's banner right after `adb install -r`, or only after a reboot?

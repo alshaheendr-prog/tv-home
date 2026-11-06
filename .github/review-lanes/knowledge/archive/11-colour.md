@@ -3,6 +3,17 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- Must: the event line went boxless gold into an unprotected zone. Over sky it is 1.44:1 / Lc 19, over snow 1.04:1 / Lc 0 (the old chip gave Lc 41 over sky). Fix: `WHITE` words with a gold `dotLine` dot.
+- Should:
+  - The verse fade's 4 even stops give only about 25% black under the kicker and the last line (Lc 57 sky / 48 snow). Use 6 stops.
+  - Extend the top scrim to 480 px `{0x80,0x4D,0}`.
+  - `NIGHT_TEXT 0.55` gives the verse Lc 31-38. Use 0.7.
+  - The next prayer is marked by colour only (1.04-1.32:1), and its gold time is weaker than white (Lc 42 vs 61 over sky). Keep it `WHITE` with a 3x36 px gold underline.
+  - Calendar focus fill 1.26:1: add a gold start tick and a `SOFT` date line.
+- Nice: reciter Lc 55 over snow (shade mid stops `0x66`); `SOFT`/`DIM` step 1.41:1; `Glass` and Kids panel are still undithered.
+- Fine: one gold, kickers, `DIM` raise, drive dot, Kids focus and pause disc, Kids player text, adhan reminder card.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05 PR #22: no new palette colours or gradients. The new disabled/resting states use view alpha and `DIM`:
   - Should: the focused PIN key at 0.4 alpha while the pad rests has a gold ring of 2.6:1 / Lc 19 (it is 9.3:1 / Lc 69 normally).
@@ -64,6 +75,10 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [tv-focus-system] https://developer.android.com/design/ui/tv/guides/styles/focus-system: default focus scales 1.025, 1.05 and 1.1x; mix scale and colour cues; disabled shows "lower prominence". It gives no focus-contrast ratio.
 - Couldn't read: m3.material.io and m2.material.io need JavaScript. Next time, get Material's disabled opacity (38%?) from the material-components-android source.
 
+- [wcag-2413] https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance: AAA. Focus area at least a 2 CSS px perimeter, and 3:1 between the same pixels focused and unfocused; a background change from black to dark grey fails. Checked 2026-11-06.
+- [gd-setcolors] https://learn.microsoft.com/pl-pl/dotnet/api/android.graphics.drawables.gradientdrawable.setcolors?view=net-android-35.0: `setColors(int[], float[])` with offsets is API 29; null offsets space the colours evenly. Checked 2026-11-06.
+- Material disabled alpha 0.38: the androidx ContentAlpha page did not show the values when fetched. Still **(unverified)**.
+
 ## Open questions to research next
 - Measure real contrast behind the verse band and strip on the brightest clip in `Movies/TVWallpapers` (shared with lane 4). Does `screencap` include the SurfaceView video on this box?
 - Does the Xiaomi box output full or limited RGB range, and does the TV match? (Settings > Display; check for grey blacks.)
@@ -81,3 +96,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 
 - Which single alpha should every "disabled" state use across the three apps (home keys 0.4, passed prayers 0.55, Kids `DIM` arrows)? Pick one documented value and find Material's figure in the MDC-Android source.
 
+- Does the extended top scrim (480 px, `0x4D` middle) read as a grey band on dark clips? Mock it with lane 4.
+- Is `NIGHT_TEXT 0.7` calm enough in a dark room? Check on the TV at night, at 3 m.
+- Does a 3 px gold underline under the next prayer time fit lane 4's boxless strip?

@@ -56,17 +56,27 @@ public class PlayerActivity extends Activity {
         paused.setText("❚❚");
         paused.setTextColor(0xE6FFFFFF);
         paused.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(120));
+        // a dark disc and a shadow, so the sign still shows on a white or sky-blue frame
+        paused.setShadowLayer(px(16), 0, px(3), 0xB3000000);
+        paused.setGravity(Gravity.CENTER);
+        GradientDrawable disc = new GradientDrawable();
+        disc.setShape(GradientDrawable.OVAL);
+        disc.setColor(0x8C000000);
+        paused.setBackground(disc);
         paused.setVisibility(View.GONE);
-        root.addView(paused, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
+        root.addView(paused, new FrameLayout.LayoutParams(px(220), px(220), Gravity.CENTER));
 
         bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.VERTICAL);
         bar.setPadding(px(90), px(40), px(90), px(60));
-        bar.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xCC000000, 0x00000000}));
+        GradientDrawable barBg = new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xE6000000, 0x8C000000, 0x00000000});
+        barBg.setDither(true);
+        bar.setBackground(barBg);
         title = new TextView(this);
         title.setTextColor(Color.WHITE);
         title.setTypeface(heavy);
         title.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(48));
+        title.setShadowLayer(px(8), 0, px(2), 0xB3000000);
         bar.addView(title);
         FrameLayout track = new FrameLayout(this);
         GradientDrawable t = new GradientDrawable();
@@ -84,7 +94,8 @@ public class PlayerActivity extends Activity {
         tl.topMargin = px(16);
         bar.addView(track, tl);
         time = new TextView(this);
-        time.setTextColor(0xB3FFFFFF);
+        time.setTextColor(0xE6FFFFFF);
+        time.setShadowLayer(px(8), 0, px(2), 0xB3000000);
         time.setTypeface(bold);
         time.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(30));
         time.setPadding(0, px(8), 0, 0);

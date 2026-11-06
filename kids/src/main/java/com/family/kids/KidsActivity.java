@@ -181,7 +181,7 @@ public class KidsActivity extends Activity {
         hideBars();
         applyWorld();
         if (player == null) playClip(); // a short pause cancelled the retry; the world may not have changed to start one
-        refreshTiles();
+        refreshTiles(true); // coming back from a cartoon or an app: the same tiles stay, nothing freezes
         loadCartoons();
         if (Rules.on(this)) Guard.start(this);
         tick();
@@ -264,6 +264,7 @@ public class KidsActivity extends Activity {
         int code = e.getKeyCode();
         if (vis(parentPanel) || vis(appsPanel)) { ui.removeCallbacks(parentIdle); ui.postDelayed(parentIdle, PARENT_IDLE_MS); }
         if (arrangeTile != null && !vis(pinPanel)) return arrangeKey(e);
+        pressDip(e, getCurrentFocus());
         if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) back();
             return true; // Kids Corner never closes itself
@@ -392,7 +393,7 @@ public class KidsActivity extends Activity {
      */
     private File clipFor(Worlds.World w) {
         List<File> home = wallpapers(), fits = new ArrayList<>();
-        int pick0 = Rules.prefs(this).getInt("wallpaper", -1);
+        int pick0 = wallpaperPick(home);
         if (pick0 >= 0 && pick0 < home.size()) return home.get(pick0); // the grown-up chose this one
         if (pick0 == -2 && !home.isEmpty()) return home.get(random.nextInt(home.size()));
         for (File f : home) {
@@ -401,6 +402,31 @@ public class KidsActivity extends Activity {
         }
         List<File> pick = !fits.isEmpty() ? fits : home;
         return pick.isEmpty() ? null : pick.get(random.nextInt(pick.size()));
+    }
+
+    /**
+     * The grown-up's wallpaper choice: -1 matches the world, -2 any, or the chosen clip's place in today's list, found by
+     * its file name. A clip that has gone falls back to matching the world. An older choice kept only by place is
+     * turned into a name once.
+     */
+    private int wallpaperPick(List<File> clips) {
+        android.content.SharedPreferences p = Rules.prefs(this);
+        int v = p.getInt("wallpaper", -1);
+        if (v < 0) return v;
+        if (clips.isEmpty()) return -1; // storage not ready yet (just after boot): keep the choice for later
+        String name = p.getString("wallpaper_name", null);
+        if (name == null) {
+            if (v >= clips.size()) return -1;
+            p.edit().putString("wallpaper_name", clips.get(v).getName()).apply();
+            return v;
+        }
+        for (int i = 0; i < clips.size(); i++)
+            if (clips.get(i).getName().equals(name)) {
+                if (i != v) p.edit().putInt("wallpaper", i).apply();
+                return i;
+            }
+        p.edit().putInt("wallpaper", -1).remove("wallpaper_name").apply();
+        return -1;
     }
 
     /** The family home's own video wallpapers, by name, so a chosen one keeps its place in the list. */
@@ -469,7 +495,7 @@ public class KidsActivity extends Activity {
         LinearLayout kick = new LinearLayout(this);
         kick.setGravity(Gravity.CENTER_VERTICAL);
         TextView welcome = text("WELCOME", 30, fBold, DIM);
-        welcome.setLetterSpacing(0.2f);
+        welcome.setLetterSpacing(0.12f);
         kick.addView(welcome);
         worldChip = text("", 30, fBold, WHITE);
         worldChip.setLetterSpacing(0.12f);
@@ -517,6 +543,7 @@ public class KidsActivity extends Activity {
         LinearLayout clockRow = new LinearLayout(this);
         clockRow.setGravity(Gravity.BOTTOM);
         clockText = text("", 112, fHeavy, WHITE);
+        clockText.setFontFeatureSettings("tnum"); // even-width digits: the time never jumps sideways each minute
         clockText.setIncludeFontPadding(false);
         clockRow.addView(clockText);
         ampmText = text("", 38, fHeavy, DIM);
@@ -546,7 +573,7 @@ public class KidsActivity extends Activity {
         t.setOrientation(LinearLayout.VERTICAL);
         // the show's name is the heading ("SONIC THE HEDGEHOG"), the character's name is big below it
         charFrom = text("", 30, fBold, WHITE);
-        charFrom.setLetterSpacing(0.16f);
+        charFrom.setLetterSpacing(0.12f);
         t.addView(charFrom);
         charName = text("", 64, fHeavy, WHITE);
         LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-1, -2);
@@ -598,9 +625,11 @@ public class KidsActivity extends Activity {
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
         wordKick = text("", 30, fBold, DIM);
-        wordKick.setLetterSpacing(0.2f);
+        wordKick.setLetterSpacing(0.12f);
         t.addView(wordKick);
         wordArabic = text("", 42, fBold, 0xFFFFD45A);
+        // no trimmed top on the Arabic: its stacked marks (shadda with damma) reach 1.15 em, above Baloo's line top
+        wordArabic.setPadding(0, Math.round(42 * 0.1f), 0, 0);
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2);
         al.topMargin = 8;
         t.addView(wordArabic, al);
@@ -725,7 +754,7 @@ public class KidsActivity extends Activity {
             float sc = dist == 0 ? 1.12f : dist == 1 ? 1.03f : 1f;
             float lift = dist == 0 ? -12 : dist == 1 ? -3 : 0;
             float side = focused < 0 || dist == 0 ? 0 : Math.signum(i - focused) * (dist == 1 ? 16 : 20);
-            t.animate().scaleX(sc).scaleY(sc).translationX(side).translationY(lift).setDuration(250).setInterpolator(GROW).start();
+            rest(t, sc).animate().scaleX(sc).scaleY(sc).translationX(side).translationY(lift).setDuration(250).setInterpolator(GROW).start();
         }
         if (focused < 0 || focused >= tileColors.size()) { glow.moveTo(-1, 0); return; }
         View f = tileRow.getChildAt(focused);
@@ -782,12 +811,12 @@ public class KidsActivity extends Activity {
     }
 
     /** Their tiles: My cartoons, then each allowed app that is installed, then the small parent lock. */
-    private void refreshTiles() {
-        View focused = getCurrentFocus();
-        boolean hadFocus = focused != null && tiles.contains(focused);
-        tileRow.removeAllViews();
-        tiles.clear();
-        tileColors.clear();
+    private void refreshTiles() { refreshTiles(false); }
+
+    /** What the row was last built from: the apps in order, icons or banners, and the world. */
+    private String tilesKey;
+
+    private void refreshTiles(boolean onlyIfChanged) {
         PackageManager pm = getPackageManager();
         List<String[]> items = new ArrayList<>(); // {pkg or "", label}
         items.add(new String[]{"", "My cartoons"});
@@ -799,6 +828,16 @@ public class KidsActivity extends Activity {
         sortByOrder(items);
         int n = items.size();
         boolean icons = Rules.prefs(this).getInt("icons", 0) == 0;
+        // the lock tile's red setup dot is part of the row too: it must come and go with the permissions
+        StringBuilder key = new StringBuilder(icons + "|" + System.identityHashCode(world) + "|" + setupComplete() + "|");
+        for (String[] it : items) key.append(it[0]).append('=').append(it[1]).append(';');
+        if (onlyIfChanged && key.toString().equals(tilesKey) && tiles.size() == n) return;
+        tilesKey = key.toString();
+        View focused = getCurrentFocus();
+        boolean hadFocus = focused != null && tiles.contains(focused);
+        tileRow.removeAllViews();
+        tiles.clear();
+        tileColors.clear();
         // app icons are square like on the family home, a little bigger for small hands on the remote;
         // banners are 16:9 like the TV's own, so nothing gets cropped
         int w = Math.max(60, icons ? Math.min(136, 1340 / n - 44) : Math.min(250, 1460 / n - 52)), h = icons ? w : w * 9 / 16;
@@ -834,16 +873,20 @@ public class KidsActivity extends Activity {
                 tile.setClipToOutline(true);
                 tile.setOutlineProvider(rounded(26));
                 img.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                Drawable art = banner(pkg);
-                if (art != null) {
-                    img.setImageDrawable(art);
-                } else {
-                    tile.setBackgroundColor(0xFF20263A);
-                    img.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                    img.setPadding(h / 5, h / 5, h / 5, h / 5);
-                    try { img.setImageDrawable(pm.getApplicationIcon(pkg)); } catch (Exception ignored) { }
-                }
+                tile.setBackgroundColor(0xFF20263A); // a plain card until the banner is read, off the main thread
                 tile.addView(img, new FrameLayout.LayoutParams(-1, -1));
+                Drawable cachedArt = iconCache.get("banner:" + pkg);
+                if (cachedArt != null) showBanner(tile, img, cachedArt, pkg, h);
+                else bg.execute(() -> {
+                    Drawable art = banner(pkg);
+                    if (art == null) {
+                        // no banner: the app's own icon, made full-bleed like the icon tiles (marked by the inset)
+                        try { art = Icons.fullBleed(getResources(), getPackageManager().getApplicationIcon(pkg), 0.24f); } catch (Exception e) { return; }
+                        art = new android.graphics.drawable.InsetDrawable(art, 0);
+                    }
+                    Drawable d = art;
+                    ui.post(() -> { iconCache.put("banner:" + pkg, d); showBanner(tile, img, d, pkg, h); });
+                });
             }
             tile.setOutlineAmbientShadowColor(0);
             tile.setOutlineSpotShadowColor(0);
@@ -1078,6 +1121,21 @@ public class KidsActivity extends Activity {
         return unique;
     }
 
+    /** A real banner fills the tile; an app with none shows its rounded icon on its own colour, like the icon tiles. */
+    private void showBanner(FrameLayout tile, ImageView img, Drawable d, String pkg, int h) {
+        if (d instanceof android.graphics.drawable.InsetDrawable) {
+            int c = appColor(pkg);
+            tile.setBackground(roundGrad(new int[]{c == 0xFFDDE6FF ? 0xFF3A4766 : c, 0xFF141A2A}, 26));
+            img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            int pad = Math.round(h * 0.19f); // the icon stands 62% of the tile's height
+            img.setPadding(pad, pad, pad, pad);
+        } else {
+            img.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            tile.setBackground(null);
+        }
+        img.setImageDrawable(d);
+    }
+
     private Drawable banner(String pkg) {
         PackageManager pm = getPackageManager();
         try {
@@ -1301,7 +1359,7 @@ public class KidsActivity extends Activity {
         cartoonsPanel = panel();
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(110, 64, 110, 0);
+        col.setPadding(86, 64, 86, 0); // with the scroller's 24 below: tiles 110 px from each edge
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.BOTTOM);
         head.addView(text("🎬", 60, fMed, WHITE));
@@ -1334,7 +1392,7 @@ public class KidsActivity extends Activity {
         col.addView(cartoonsEmpty, el);
         ScrollView sv = new ScrollView(this);
         sv.setClipToPadding(false);
-        sv.setPadding(0, 30, 0, 60);
+        sv.setPadding(24, 30, 24, 60); // room inside the clip for a focused card (1.08 larger)
         sv.setVerticalScrollBarEnabled(false);
         cartoonGrid = new GridLayout(this);
         cartoonGrid.setColumnCount(4);
@@ -1412,21 +1470,21 @@ public class KidsActivity extends Activity {
             TextView playMark = text("▶", 56, fHeavy, 0xE6FFFFFF);
             playMark.setGravity(Gravity.CENTER);
             pic.addView(playMark, new FrameLayout.LayoutParams(-1, -1));
-            card.addView(pic, new LinearLayout.LayoutParams(-1, 216));
+            card.addView(pic, new LinearLayout.LayoutParams(-1, 222)); // 16:9 of the 395 px card
             // the whole name, on as many lines as it needs
             TextView t = text(title(f), 30, fBold, WHITE);
             t.setPadding(20, 12, 20, 16);
             t.setMinLines(2); // cards in a row stay the same height; long names still get every line they need
             card.addView(t, new LinearLayout.LayoutParams(-1, -2));
             card.setOnFocusChangeListener((v, has) -> {
-                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
+                rest(v, has ? 1.08f : 1f).animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
                 v.setBackground(has ? solid(WHITE, 26, 0x33) : solid(0x1AFFFFFF, 26, 0x14));
                 ink(t, has ? 0xFF1A1033 : WHITE);
             });
             final int index = i;
             card.setOnClickListener(v -> play(index));
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-            lp.width = 384; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+            lp.width = 395; lp.height = GridLayout.LayoutParams.WRAP_CONTENT; // four across, centred
             lp.setMargins(0, 0, 40, 40);
             cartoonGrid.addView(card, lp);
             thumb(f, img);
@@ -1505,10 +1563,11 @@ public class KidsActivity extends Activity {
             key.setOnFocusChangeListener((v, has) -> {
                 key.setBackground(solid(has ? WHITE : 0x1AFFFFFF, 28, has ? 0 : 0x14));
                 ink(key, has ? 0xFF161028 : WHITE);
-                key.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start();
+                rest(key, has ? 1.06f : 1f).animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start();
             });
+            key.setTag("dip"); // has its own press dip
             key.setOnClickListener(v -> {
-                v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(70).withEndAction(() ->
+                v.animate().scaleX(0.94f).scaleY(0.94f).setDuration(70).withEndAction(() -> // the same dip as the family home's keys
                         v.animate().scaleX(v.isFocused() ? 1.06f : 1f).scaleY(v.isFocused() ? 1.06f : 1f).setDuration(140).start()).start();
                 pinPress(k);
             });
@@ -1616,13 +1675,37 @@ public class KidsActivity extends Activity {
         ui.postDelayed(() -> { setPinMode(m); pinNote(note); }, 650);
     }
 
+    /** Every control answers OK the moment it goes down: a small dip and back (the PIN keys keep their own, tagged "dip"). */
+    private static void pressDip(KeyEvent e, View f) {
+        int c = e.getKeyCode();
+        if (e.getAction() != KeyEvent.ACTION_DOWN || e.getRepeatCount() != 0 || f == null || !f.isClickable() || "dip".equals(f.getTag())) return;
+        if (c != KeyEvent.KEYCODE_DPAD_CENTER && c != KeyEvent.KEYCODE_ENTER && c != KeyEvent.KEYCODE_NUMPAD_ENTER) return;
+        // dips from, and comes back to, the size the item rests at (not whatever size it had mid-animation)
+        Float r0 = REST.get(f);
+        float r = r0 != null ? r0 : 1f;
+        f.animate().setStartDelay(0).scaleX(r * 0.96f).scaleY(r * 0.96f).setDuration(70).setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).withEndAction(() -> {
+            Float back = REST.get(f); // focus may have moved meanwhile
+            float b = back != null ? back : 1f;
+            f.animate().scaleX(b).scaleY(b).setDuration(140).setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+        }).start();
+    }
+
+    /** The scale each item rests at, set by every focus animation, so a press dip always returns to it. */
+    private static final java.util.WeakHashMap<View, Float> REST = new java.util.WeakHashMap<>();
+
+    static View rest(View v, float s) { REST.put(v, s); return v; }
+
     private void wrong() {
         drawDots(0xFFFF5A5A);
         View box = (View) pinTitle.getParent();
-        box.animate().translationX(24).setDuration(60).withEndAction(() ->
-                box.animate().translationX(-24).setDuration(60).withEndAction(() ->
-                        box.animate().translationX(0).setDuration(60).start()).start()).start();
+        // the same smooth, damped shake as the family home's PIN pad, one at a time
+        if (pinShake != null) pinShake.cancel();
+        android.animation.ValueAnimator a = pinShake = android.animation.ValueAnimator.ofFloat(0, -18, 16, -12, 8, -4, 0);
+        a.setDuration(420);
+        a.addUpdateListener(v -> box.setTranslationX((float) v.getAnimatedValue()));
+        a.start();
     }
+    private android.animation.ValueAnimator pinShake;
 
     private void pinDone() {
         hide(pinPanel);
@@ -1644,6 +1727,7 @@ public class KidsActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setPadding(56, 44, 56, 30);
+        col.setClipToPadding(false); // the list reaches 24 px into this padding for its focus room
         col.setBackground(sheet(44));
         col.addView(text("Kids Corner settings", 52, fHeavy, WHITE));
         TextView hint = text("Left and right change a setting. Back closes.", 30, fMed, DIM);
@@ -1655,8 +1739,13 @@ public class KidsActivity extends Activity {
         sv.setFadingEdgeLength(90);
         parentList = new LinearLayout(this);
         parentList.setOrientation(LinearLayout.VERTICAL);
+        // 24 px each side inside the scroller, unclipped, so a focused row (1.03 larger) keeps its whole white edge
+        parentList.setPadding(24, 0, 24, 0);
+        parentList.setClipToPadding(false);
         sv.addView(parentList);
-        col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, 0, 1);
+        slp.leftMargin = slp.rightMargin = -24;
+        col.addView(sv, slp);
         parentPanel.addView(col, new FrameLayout.LayoutParams(1100, 960, Gravity.CENTER));
     }
 
@@ -1673,6 +1762,7 @@ public class KidsActivity extends Activity {
         for (int i = 0; i < worlds.length; i++) worlds[i] = i - 1;
         choiceRow("World", worlds, "world", -1, v -> v < 0 ? "A new one every day" : Worlds.ALL[v].name);
         List<File> clips = wallpapers();
+        wallpaperPick(clips); // brings the remembered clip's place in the list up to date before the row shows it
         int[] wp = new int[clips.size() + 2];
         for (int i = 0; i < wp.length; i++) wp[i] = i - 2;
         choiceRow("Wallpaper", wp, "wallpaper", -1, v -> v == -2 ? "Any of the family's" : v < 0 || v >= clips.size() ? "Matches the world" : clipName(clips.get(v)));
@@ -1760,7 +1850,7 @@ public class KidsActivity extends Activity {
             value.setText(sp);
         };
         draw.run();
-        row.setOnFocusChangeListener((v, has) -> row.setBackground(has ? solid(0x26FFFFFF, 22, 0) : null));
+        row.setOnFocusChangeListener((v, has) -> focusRow(row, has, 1.03f, 22));
         row.setOnKeyListener((v, code, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
             boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
@@ -1776,7 +1866,11 @@ public class KidsActivity extends Activity {
             if (key.equals("world")) { applyWorld(); refreshTiles(); }
             if (key.equals("fit")) fitStage();
             if (key.equals("style") || key.equals("icons") || key.equals("dim") || key.equals("char_card") || key.equals("word_card")) applyLook();
-            if (key.equals("wallpaper")) { stopClip(); playClip(); }
+            if (key.equals("wallpaper")) {
+                List<File> clips = wallpapers(); // remembered by name, so a new clip in the folder never swaps it
+                Rules.prefs(this).edit().putString("wallpaper_name", values[at] >= 0 && values[at] < clips.size() ? clips.get(values[at]).getName() : "").apply();
+                stopClip(); playClip();
+            }
             drawStars();
             if (restPanel.getVisibility() == View.VISIBLE) drawRestStars(Rules.resting(this).equals("bed"));
             tick();
@@ -1796,7 +1890,7 @@ public class KidsActivity extends Activity {
         TextView t = text(name, 32, fBold, WHITE);
         row.addView(t);
         if (!sub.isEmpty()) row.addView(text(sub, 30, fMed, DIM));
-        row.setOnFocusChangeListener((v, has) -> row.setBackground(has ? solid(0x26FFFFFF, 22, 0) : null));
+        row.setOnFocusChangeListener((v, has) -> focusRow(row, has, 1.03f, 22));
         row.setOnClickListener(v -> run.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.bottomMargin = 6;
@@ -1862,8 +1956,10 @@ public class KidsActivity extends Activity {
         sv.setVerticalScrollBarEnabled(false);
         sv.setVerticalFadingEdgeEnabled(true);
         sv.setFadingEdgeLength(90);
+        sv.setClipChildren(false); // a focused cell (1.05 larger) is not cut back to the grid's edge
         appGrid = new GridLayout(this);
         appGrid.setColumnCount(4);
+        appGrid.setClipChildren(false);
         sv.addView(appGrid);
         col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
         appsPanel.addView(col, new FrameLayout.LayoutParams(1456, 900, Gravity.CENTER));
@@ -1883,7 +1979,13 @@ public class KidsActivity extends Activity {
             FrameLayout iconBox = new FrameLayout(this);
             iconBox.setBackground(solid(0x14FFFFFF, 30, 0));
             ImageView icon = new ImageView(this);
-            try { icon.setImageDrawable(r.loadIcon(pm)); } catch (Exception ignored) { }
+            Drawable known = iconCache.get("raw:" + pkg);
+            if (known != null) icon.setImageDrawable(known);
+            else bg.execute(() -> { // the picker opens at once; the icons arrive a moment later, off the main thread
+                Drawable d;
+                try { d = r.loadIcon(getPackageManager()); } catch (Exception e) { return; }
+                ui.post(() -> { iconCache.put("raw:" + pkg, d); icon.setImageDrawable(d); });
+            });
             iconBox.addView(icon, new FrameLayout.LayoutParams(104, 104, Gravity.CENTER));
             cell.addView(iconBox, new LinearLayout.LayoutParams(144, 144));
             TextView name = text(r.loadLabel(pm).toString(), 30, fBold, WHITE);
@@ -1904,11 +2006,11 @@ public class KidsActivity extends Activity {
                 icon.setImageAlpha(on ? 255 : 115); // the picture only, no offscreen layer
             };
             draw.run();
-            cell.setOnFocusChangeListener((v, has) -> cell.setBackground(has ? solid(0x24FFFFFF, 30, 0x30) : null));
+            cell.setOnFocusChangeListener((v, has) -> focusRow(cell, has, 1.05f, 30));
             cell.setOnClickListener(v -> { Rules.toggleApp(this, pkg); draw.run(); });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 316; lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
-            lp.setMargins(0, 0, 20, 20);
+            lp.setMargins(10, 0, 10, 20); // even on both sides, so the grid sits centred in the card
             appGrid.addView(cell, lp);
         }
         show(appsPanel);
@@ -2017,8 +2119,15 @@ public class KidsActivity extends Activity {
         b.setOnFocusChangeListener((v, has) -> {
             b.setBackground(solid(has ? WHITE : 0x26FFFFFF, 40, 0));
             ink(b, has ? 0xFF161028 : WHITE);
+            rest(b, has ? 1.06f : 1f).animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start(); // like the gold buttons
         });
         return b;
+    }
+
+    /** A focused row or cell: a soft fill, a clear white edge and a little lift, so focus never rests on a tint alone. */
+    private static void focusRow(View v, boolean has, float scale, float radius) {
+        v.setBackground(has ? solid(0x26FFFFFF, radius, 0xE6) : null);
+        rest(v, has ? scale : 1f).animate().scaleX(has ? scale : 1f).scaleY(has ? scale : 1f).setDuration(160).start();
     }
 
     /** A gradient drawn with dithering, so dark fades stay smooth on the TV instead of showing stripes. */
@@ -2048,7 +2157,7 @@ public class KidsActivity extends Activity {
     /** A small coloured heading inside a panel: "SCREEN TIME". */
     private TextView section(String s) {
         TextView t = text(s.toUpperCase(Locale.ROOT), 30, fBold, world == null ? 0xFFFFD45A : world.accent);
-        t.setLetterSpacing(0.14f);
+        t.setLetterSpacing(0.12f);
         t.setPadding(28, 26, 28, 4);
         return t;
     }
@@ -2063,7 +2172,7 @@ public class KidsActivity extends Activity {
         b.setOnFocusChangeListener((v, has) -> {
             b.setBackground(solid(has ? 0xFFFFD45A : 0x2EFFC233, 40, 0));
             ink(b, has ? 0xFF2A1A00 : 0xFFFFE08A);
-            b.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).start();
+            rest(b, has ? 1.06f : 1f).animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).start();
         });
         return b;
     }

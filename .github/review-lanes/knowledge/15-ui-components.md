@@ -162,6 +162,18 @@ Added by the PR #22 review (2026-11-05):
 - Kids value row: OK steps forward and wraps; the end arrow dims at the first and last value.
 - Reciter list: "Loading reciters · جارٍ التحميل…" (26 px SOFT) after 300 ms, then filled in place without a new fade.
 
+Added by the PR #23 review (2026-11-06):
+- Press dip, both apps: `pressDip(e, getCurrentFocus())` runs from `dispatchKeyEvent` (home `MainActivity.java:495`, after the player, ambient and arrange handlers; Kids `KidsActivity.java:267`, after arrange). Only clickable views, OK/Enter/NumPad Enter, DOWN, no repeats: scale x0.96 over 70 ms, then back over 140 ms (EASE at home, the default curve in Kids). Views tagged `"dip"` (PIN keys) keep their own 0.94 dip. Not clickable, so no dip: home calendar rows, Kids value rows (their answer is the value change).
+- Calendar row: now a "reading guide": `glass(20, 0x14FFFFFF, 0)` only, with no edge, no scale and no press.
+- App menu (hold OK in All apps): `panelCard` (PanelBg) 640 wide, 40/30 padding, scrim `0x8C000000`, 200 ms fade in with EASE, 180 ms EXIT fade out, focus returned before the fade.
+- `menuButton`: `focusGlass(22)` + 1.03 (180 ms EASE), like `parentRow`.
+- Kids `focusRow(v, has, scale, r)`: `solid(0x26FFFFFF, r, 0xE6)` (3 px white edge at 90%) + scale. Used by parent value rows and action rows (1.03, r 22) and app cells (1.05, r 30). Kids `button()` now inverts **and** scales 1.06.
+- Kids PIN key press: dip 0.94 (was 0.96). Kids wrong-PIN shake: the home's damped 420 ms ValueAnimator.
+- Adhan Settings row: focused `0x26FFFFFF` + 3 px `0xE6F1D58A` + 1.03 (180 ms). The test row answers "Playing ✓" for 1.2 s. No press dip (OK rebuilds the list, so the new row grows in again).
+- Adhan reminder card: `0xE6080B14`, 2 px `0x33FFFFFF` edge, gold hairline 140 px, Inter 34 title white, Plex Arabic 30 gold, time 26 Inter tnum, 8 s. The adhan GOLD is now `0xFFF1D58A` (one gold). The home reminder is still a one-line pill with no time, ~5 s by word count.
+- Quran: the reciter button always says "Choose reciter". The saved choice shows only inside the reciter list.
+- Home parent list: 30 px inner side padding and -30 scroller margins, so a 1.03 row keeps its edge. (Kids parent list has not had this yet.)
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/15-ui-components.md](archive/15-ui-components.md). Search it when a PR touches an area with history; don't read it in full.
@@ -181,3 +193,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: A component placed once (the pill) must be placed again when the layer under it changes. Check every open and close path while it's showing.
 - 2026-11-05: Check crossfades between sibling panels both ways. `bringToFront` at alpha 1 is a cut, even if the layer below fades.
 
+- 2026-11-06: A press effect that reads `getScaleX()` and goes back to it is only right once the focus animation has finished. Restore to the focus look's *target* scale, never to the current value.
+- 2026-11-06: When one app gets a clipping fix (padding inside a scroller for a scaled row), check its sibling app's same component in the same PR.
+- 2026-11-06: Taking a cue away ("not a button") must not take focus visibility away. A non-actionable focusable row still needs a visible, non-gold marker (fill + soft edge).
+- 2026-11-06: A code comment that says "the same in both apps" is a claim to check against both apps' code.

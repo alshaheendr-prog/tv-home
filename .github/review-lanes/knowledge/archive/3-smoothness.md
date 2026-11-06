@@ -3,6 +3,12 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- No Must.
+- Should: `StarField.onDraw` calls `setLocalMatrix` every frame, which rebuilds the native shader each frame. The app menu (`appMenuBox`) fades without `noAlphaLayers`, so the full-screen fade goes through an off-screen buffer. The hidden Quran page `StarField` (alpha 0, still VISIBLE) redraws every frame behind the player.
+- Nice: the `lineFrame` layer is now 1920 wide (about +1 MB) and re-renders on every frame of each verse fade. `ThinBar.setColor` invalidates every tick. `MixText` passes a Spannable (`BufferType.SPANNABLE`). `IntroView.drawWelcome` runs `Paint.set` and `measureText` every frame. `ICONS` keeps dock icons twice (p:/a:) and is never trimmed.
+- Fixed by the PR: `lineTimer` removed; Quran page layers hidden and the wallpaper paused (about 5.6x down to about 2x the screen per frame); icon cache and All apps grid reuse; no clip or elevation on 40 icons; `tick` skips view work while hidden; Kids banners and icons load off the UI thread; `refreshTiles` only rebuilds when something changed.
+
 ### PR #22 (2026-11-05, audit update 1)
 - No Must/Should. The wallpaper player now calls stop() in onStop, which releases the decoder (verified in the 1.4.1 source). Home pressed on the home screen resumes the same clip without listFiles.
 - Nice: restKeys re-animates every second while the pad rests (home and Kids); toast() setLayoutParams relayouts the stage; Kids refreshTiles runs in onStop; videoCover is not raised in onStop.
@@ -67,6 +73,9 @@ All checked 2026-11-05 unless noted. Tags are used in Core expertise.
 - [media3-mediacodecrenderer-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/exoplayer/src/main/java/androidx/media3/exoplayer/mediacodec/MediaCodecRenderer.java: onDisabled calls flushOrReleaseCodec, onReset calls releaseCodec. Checked 2026-11-05.
 - [media3-player-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/common/src/main/java/androidx/media3/common/Player.java: stop() releases the loaded media and playback resources. Checked 2026-11-05.
 
+- [aosp-shader-9] https://code.yawk.at/android/android-9.0.0_r35/android/graphics/Shader.java: `setLocalMatrix` → `discardNativeInstance` (runs the Cleaner) → `createNativeInstance` on the next use. Checked 2026-11-06.
+- [aosp-textview-9] https://code.yawk.at/android/android-9.0.0_r35/android/widget/TextView.java: `setTextInternal` sets `mSpannable` for Spannable text. Checked 2026-11-06.
+
 ## Open questions to research next
 - Is the UI composed at 1080p or 4K on this box? Check `adb shell wm size`, `adb shell dumpsys display | grep -i mode`, `dumpsys SurfaceFlinger --display-id`. If 4K, every full-screen fill costs 4x and the overdraw budget is tighter.
 - Does SurfaceFlinger put the wallpaper SurfaceView on an HWC overlay or GPU-compose it while UI layers sit above? (`dumpsys SurfaceFlinger`, look for CLIENT vs DEVICE composition.)
@@ -88,3 +97,5 @@ All checked 2026-11-05 unless noted. Tags are used in Core expertise.
 - Measure `dumpsys meminfo com.family.tvhome` behind Netflix before and after PR #22 to size the freed decoder and buffer memory.
 - Does the stopped SurfaceView wallpaper flash black for one frame on return from another app? (Watch on the TV, or use a screen recording.)
 
+- Does Spannable text pick `DynamicLayout` through `useDynamicLayout()` on Android 14? (unverified)
+- Measure `dumpsys gfxinfo` on the Quran page and in the player before and after PR #23.

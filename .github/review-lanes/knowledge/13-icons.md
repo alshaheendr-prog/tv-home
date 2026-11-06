@@ -120,6 +120,14 @@ Added by the whole-app audit (2026-11-05):
 Added by the PR #22 review (2026-11-05):
 - Baloo ExtraBold has ◀ U+25C0 and ▶ U+25B6. Inter and Baloo lack ❚ U+275A and ⭐ (checked with fontTools, 2026-11-05).
 
+Added by the PR #23 review (2026-11-06):
+- 2026-11-06, PR #23: Home and Adhan use adaptive icons (`mipmap-anydpi-v26/icon.xml` with `drawable/icon_back.xml` vertical gradient and `icon_fore.xml` vector). Home: `FE8B28`→`B0334F`, face r 22.5 at (54,54), `FFBE28`. Adhan: `1E2A50`→`0B1022` (the `lockFace` palette), a 180-point crescent polygon in `F1D58A`, box 24–83 x 24.7–84, ink centroid (43.8, 64.2). Kids: PNG icons at 160/240/320 px (mipmap-xhdpi/xxhdpi/xxxhdpi), no adaptive icon. Banners: 320x180 xhdpi plus 640x360 xxxhdpi in all three apps. The banner generator script is not in the repo.
+- `drawable/icon.png` survives only in kids (512 RGB) and adhan (192 RGB, 2 colours), used by `setSmallIcon` (`Guard.java:74`, `AdhanService.java:118`).
+- The home caches finished `fullBleed` icons in `ICONS`, keyed by "p:"/"a:" + package and refreshed on `lastUpdateTime`. All apps tiles no longer clip: the outline radius is `30*w/TILE` (28.2 at 124), matching the bitmap's baked corner.
+- The All apps mark is `•••` (Inter Bold 44, caps tracking); the PIN key is `×`. The home's Tomorrow weather is a word (`skyWord`), not an emoji.
+- Kids no-banner fallback: `Icons.fullBleed(…, 0.24f)` wrapped in an `InsetDrawable` (used as a marker), drawn at 62% of the tile height on `roundGrad(appColor, 0xFF141A2A)` with radius 26.
+- Kids pause `❚❚` now sits in a 220 px `0x8C000000` oval with a shadow, still drawn from a fallback font.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/13-icons.md](archive/13-icons.md). Search it when a PR touches an area with history; don't read it in full.
@@ -136,3 +144,6 @@ Past findings (every PR and audit), open questions and the full annotated source
 
 - 2026-11-05: An end-of-list or disabled mark must be clearly dimmer (about 38 to 40%) than the secondary text around it, or it reads as ordinary grey text.
 
+- 2026-11-06: When launcher art moves to mipmap, check every other user of the old drawable (`setSmallIcon`). A notification icon is drawn from alpha only, so an opaque PNG becomes a white square.
+- 2026-11-06: Check a crescent (or any lopsided mark) by its ink centroid, not its bounding box. The box was centred, but the visual centre sat 10 dp off.
+- 2026-11-06: Put a fallback-font glyph inside a circle and any off-centre placement becomes obvious. Draw it as a vector whenever it gets a container.

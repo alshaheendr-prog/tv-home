@@ -147,3 +147,6 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: Among panels that share one elevation, `bringToFront()` decides which fade the family sees. Animate the panel in front, or the other panel's fade plays hidden.
 - 2026-11-05: A loading state should wait about 500 ms before showing and then stay up at least about 200 ms, or it flashes.
 
+- 2026-11-06: A relative effect (a dip or a nudge) layered on a property that another animation owns must return to the state's target, not to a saved value. The ViewPropertyAnimator drops the cancelled animation's end action.
+- 2026-11-06: A delay reset in `show()` or `closePanels()` only helps after the first panel opens. Check the paths that can run before any panel (ambient, night dim, wake).
+- 2026-11-06: The ViewPropertyAnimator merges every `animate()` call made on a view in the same frame into one batch, using the last delay, duration and curve set (`startAnimation()` reads them when the batch starts).

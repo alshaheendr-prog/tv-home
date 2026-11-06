@@ -130,6 +130,15 @@ Corrections from the whole-app audit (2026-11-05):
 - Western digits inside Amiri lines: `Content.java` character facts (years), `Widgets.java:27` heat alert, `:38` Jumu'ah time.
 - Surah names: Amiri in the grid and strip, Plex in `quranNow` and `playerSurah`.
 
+Added by the PR #23 review (2026-11-06):
+- `MixText` (`app/.../MixText.java`): `text()` makes every non-Arabic-face view a MixText; whole Arabic runs (incl. spaces, digits, ، ؟) get `TypefaceSpan(Plex Medium or SemiBold)`. Arabic-face views (fAr, fArSemi, fQuran) stay plain TextViews, so Latin inside them still falls back.
+- `CAPS_TRACK = 0.12` used everywhere except AM/PM 0.08, dock label 0.02, clocks.
+- `kicker()` forces 22 px whatever size the call site passes.
+- Amiri Bold surah titles ("سورة " + 114 names): ink +1.019 / −0.664 em, max width 5.34 em.
+- Plex Arabic SemiBold vs Inter SemiBold: Plex hhea 1.085/−0.415 vs Inter 0.969/−0.241, so a kicker with an Arabic span is about 6 px taller at 22 px. Plex teeth 0.34 em, alef/lam about 0.88 em; Inter caps 0.728, x 0.546.
+- Plex Arabic Medium is 3 to 7% wider than Noto Naskh Arabic 500 on the weather and event strings.
+- Inter SemiBold digits at 22 px: tnum "114" 42.7 px advance / 39.7 ink; pnum "114" 33.3 / 31.2, "100" 38.3 / 36.2.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/10-typography.md](archive/10-typography.md). Search it when a PR touches an area with history; don't read it in full.
@@ -151,3 +160,8 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-05: A temporary message must keep the line count of the text it replaces, at the real column width (PIN 472 px on the home, 440 px in Kids, parent rows 728 px).
 - 2026-11-05: When a row shrinks (adhan LIFT 56 and BAND 136 leave 80 px), check the shaped ink of every string against it. Plex Arabic at 50 px has ink from +39.1 to −13.5 px.
 
+- 2026-11-06: When a fix moves a view to another face, check every string that view shows, including the Latin half of a `fitPair` / `oneLine` pair. Amiri has no Latin.
+- 2026-11-06: After a "use the helper" fix, grep for every literal copy of the string (`IntroView` had three WELCOME draws, and only one was converted).
+- 2026-11-06: `tnum` is for numbers that change or line up in columns. In a fixed-size badge it makes 3-digit numbers wider (tabular 1).
+- 2026-11-06: Switching a big title to Amiri with font padding on adds about 1 em of empty air (head yMax 1.823). Turn padding off for display sizes and check the HarfBuzz ink.
+- 2026-11-06: There is no public letter-spacing span before API 34, so a mixed-case tail in a caps kicker needs uppercasing or its own view.
