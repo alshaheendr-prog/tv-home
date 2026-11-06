@@ -3,6 +3,7 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check at c031f6c: S1 fixed (inDaysAr n % 100, every case checked).
 
 ### PR #25 (2026-11-06, update 3: Islamic content)
 - 2026-11-06 PR #25 (update 3): S1 Arabic day-count agreement wrong from 100 days on (fixed: n % 100); N1 sources toggle applied late (fixed); N2 dead ayahToday (removed). Offset maths, caches, rotations and the adhkar window verified.

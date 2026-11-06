@@ -3,6 +3,7 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check c031f6c: M1 to M2 and S1 to S4 fixed; S5 deferred (Adhan card max 560 px); 26 px English floor on 8 items (Nice: Taha 20:132, Ibrahim 14:34, An-Nisa 4:86, Al-Fajr 89:27-30, Al-Baqarah 2:201 and 2:127, Abu Dawud 5067).
 ### PR #25 (2026-11-06, update 3: Islamic content)
 - **2026-11-06, PR #25 (Update 3, Islamic content):**
   - Must: `amiri_bold.ttf` has `(` but no `)` (U+0029). The «(٥)» verse numbers in 16 of 110 verses mirror wrongly in RTL, so the fix is ۝ (U+06DD) plus Arabic-Indic digits.
@@ -100,3 +101,4 @@ From PR #25 (2026-11-06, update 3: Islamic content):
 From PR #25 (2026-11-06, update 3: Islamic content):
 - Whether Minikin itemizes a lone `)` to the fallback font before or after mirroring (it affects which glyph shows). Unverified on the box: take a screenshot of an «(٥)» verse if M1 isn't fixed.
 - Whether Amiri's ayah ornament digits (about 0.4 em) read at 32 px from the sofa. Check on the TV.
+- Adhan card column is 500 px (about 40 characters a line); tallest card 560 px (Al-Fajr 89:27-30). Widen to about 700 px for long items? (lane 9 or 15)

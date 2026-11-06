@@ -143,6 +143,7 @@ Added by the PR #23 review (2026-11-06):
 
 Added by the PR #25 review (2026-11-06):
 - 2026-11-06: bundled `amiri_bold.ttf` (app and adhan, same md5 678c6a37…) has U+0028 `(` but **not U+0029 `)`**; it has U+FD3E/FD3F ﴾﴿ and U+06DD. GSUB has no `rtlm`, so HarfBuzz draws `(` for both brackets in RTL.
+- 2026-11-06: The bundled Amiri Bold subset encloses digits after U+06DD END OF AYAH (HarfBuzz test): use ۝ + Arabic-Indic digits for verse numbers, not ASCII brackets.
 
 ## Past findings and sources
 

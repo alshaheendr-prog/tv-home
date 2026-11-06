@@ -3,6 +3,7 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check at c031f6c: all five Should confirmed fixed (U+06DD verse numbers, Adhan Hijri note, grades, Adhan Arabic digits, Hisn al-Muslim numbers from the Mukhtasar edition). New verses 14:34, 55:1-4, 33:21, 18:46 whole and in context.
 ### PR #25 (2026-11-06, update 3: Islamic content)
 - 2026-11-06 PR #25 (Update 3): 110 curated verses verified exact (two King Fahd copies); 52 hadith + adhkar + 24 Kids hadith verified at their sunnah.com numbers. Should: Amiri lacks `)` so "(٥)" draws wrong; Hijri offset stored per app; grades missing for Abu Dawud 1047 and Tirmidhi 3604; Latin digits in adhan Arabic (Content CHARACTERS, heat alert, Jumu'ah); no Hisn al-Muslim numbers. Nice: "from" on Bukhari 1/69, Muslim 2564c/2702b letters, verse-context merges (67:1-2, 26:77-80), reference hidden with sources off, Kids Name ayat, stress sample.
 

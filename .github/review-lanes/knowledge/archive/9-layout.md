@@ -3,6 +3,7 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check: all Must and Should fixed at c031f6c; all 179 band texts one line each (closest 1693 px), tallest Adhan card about 570 px; fit now measured against BAND_W - 8.
 ### PR #25 (2026-11-06, update 3: Islamic content)
 - 2026-11-06, PR #25: Must: 15 of 181 band texts wrap and reach the strip (6306 by about 86 px).
   - Should: the stress test is stale.

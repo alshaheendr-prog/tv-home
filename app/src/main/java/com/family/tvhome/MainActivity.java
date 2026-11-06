@@ -1819,7 +1819,7 @@ public class MainActivity extends Activity {
     private static boolean fitOneLine(TextView v, String s, float[] sizes) {
         for (float z : sizes) {
             v.setTextSize(TypedValue.COMPLEX_UNIT_PX, z);
-            if (v.getPaint().measureText(s) <= BAND_W) return true;
+            if (v.getPaint().measureText(s) <= BAND_W - 8) return true; // 8 px spare for the line breaker's rounding
         }
         return false;
     }

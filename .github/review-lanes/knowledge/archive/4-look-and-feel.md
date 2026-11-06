@@ -3,6 +3,7 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check: Must and Should verified fixed at c031f6c. The band fits one line each by measured width (fitOneLine); English hidden when the Arabic wraps; worst bottom about y 696 (band.py, 179 items).
 ### PR #25 (2026-11-06, update 3: Islamic content)
 - Must: Sayyid al-Istighfar (Bukhari 6306) in the band = 2 Arabic + 2 English lines, bottom ~y 766, over the strip. Should: English size by `length() > 150` lets 143–150 characters wrap at 32 px (bottom 720–736). Nice: 2-line English at 28 px is now routine (10 items, bottom ~710); kicker with "FROM … SAHIH (AL-ALBANI)" about 1110 px of caps. Not scope creep: Hijri offset and sources rows (owner-approved).
 

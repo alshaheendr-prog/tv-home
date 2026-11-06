@@ -3,6 +3,7 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check at c031f6c: Should 1 fixed (kicker redraws at once via lineItem), Nice 2 done (label 338+170 px).
 ### PR #25 (2026-11-06, update 3: Islamic content)
 - 2026-11-06 PR #25 (Update 3: Islamic content): 5 new settings rows in 3 apps, no new keys or panels; focus restored in all three (home indexOfChild, Adhan by index, Kids in place). Should: home Sources toggle showed only at the next band line (up to 30 s), fixed. Nice: home Hijri label wrapped (579+170 px > 728 px row), shortened. Online verse fetch removed.
 

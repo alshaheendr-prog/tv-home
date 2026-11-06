@@ -202,3 +202,4 @@ Past findings (every PR and audit), open questions and the full annotated source
 
 - 2026-11-06: When a PR changes content, not code, measure every item against the band budget (y 494 to ~700: 1 Arabic line at 32 px, at most 2 English lines at 28 px). `tv-box/reviews/pr25-lane4/band.py` does all items in seconds.
 - 2026-11-06: Size by measured width, not character count. Cormorant italic holds ~142 chars per 1700 px line at 32 px and ~162 at 28 px; Amiri Bold ~115 at 38 px and ~165 at 32 px.
+- 2026-11-06: Re-run tv-box/reviews/pr25-lane4/band.py with the current size ladder whenever band content or sizes change.

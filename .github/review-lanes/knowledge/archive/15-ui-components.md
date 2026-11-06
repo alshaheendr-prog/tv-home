@@ -3,6 +3,7 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check: both Should fixed in c031f6c (Hijri label 508 of 728 px; Sources row under the verse card row, kicker redraws at once).
 ### PR #25 (2026-11-06, update 3: Islamic content)
 - 2026-11-06 PR #25 (Update 3): new settings rows in three apps. Should: home Hijri row label wraps at the default value (749 of 728 px) and snaps to one line after OK; home Sources row not next to the card row it depends on. Nice: Kids label ends in "…"; "·" inside references collides with the kicker's separators; Hijri value could show the resulting date.
 
