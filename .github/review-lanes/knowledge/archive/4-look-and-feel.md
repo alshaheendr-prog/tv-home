@@ -3,6 +3,10 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check: Must and Should verified fixed at c031f6c. The band fits one line each by measured width (fitOneLine); English hidden when the Arabic wraps; worst bottom about y 696 (band.py, 179 items).
+### PR #25 (2026-11-06, update 3: Islamic content)
+- Must: Sayyid al-Istighfar (Bukhari 6306) in the band = 2 Arabic + 2 English lines, bottom ~y 766, over the strip. Should: English size by `length() > 150` lets 143–150 characters wrap at 32 px (bottom 720–736). Nice: 2-line English at 28 px is now routine (10 items, bottom ~710); kicker with "FROM … SAHIH (AL-ALBANI)" about 1110 px of caps. Not scope creep: Hijri offset and sources rows (owner-approved).
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - Must: the boxless gold event line was added as the last row of the clock column (`:1219`). The column already ends at about y 477, so the line covers y 477..524 and prints over the verse heading at y 500. It shows on about 1/3 of the year, and `stressTest()` forces it on. Fix: no extra column height. Put it on the verse heading row as a steady gold item outside `lineBox` (recommended), or on the date row.
 - Should: the new verse fade (`lineHolder`, `:1260-1271`) is a 1920-wide 40% black band, which puts a dark stripe across the empty picture side. Feather it horizontally toward the text (ComposeShader DST_IN), as JetStream does.
@@ -98,6 +102,9 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [smashing-text-over-images] https://smashingmagazine.com/2023/08/designing-accessible-text-over-images-part1: scrims should be subtle, overlays make the image "stand out less", and the Optimal Overlay Finder calculates the opacity needed for WCAG. Checked 2026-11-06.
 - [sky-hero] https://sky-ui.cf.sky.com/sections/hero/usage: the hero scrim is optional, used only when the image gives too little contrast. Checked 2026-11-06.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [staticlayout-ref] https://developer.android.com/reference/android/text/StaticLayout: Builder.obtain / getLineCount for measuring wraps before showing text. The fetch returned only the index page; API 23 for Builder is from general knowledge *(unverified on the page)*.
+
 ## Open questions to research next
 - Is `fraunces_soft_light.ttf` cut at opsz 9 or 144? Stem:hairline 1.7:1 suggests a text cut (2026-11-05). Confirming needs a fresh Fraunces opsz-144 instance (font downloads were blocked); consider re-instancing at opsz 144, SOFT 100, wght 300 with `tnum` kept (fontTools `instancer`).
 - Do the Arabic parts of the kickers lose marks on the TV (`includeFontPadding` off; `elegantTextHeight`'s target-35 default doesn't apply on Android 14)?
@@ -122,3 +129,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - What are the Google TV design kit's "cinematic scrim" values? They're in the Figma file at goo.gle/tv-desing-kit, which can't be opened here.
 - If the event line moves to the verse heading row, should the verse heading turn gold on non-event days, or stay SOFT so the event stands out?
 - Does 40% black behind the verse still give 4.5:1 on the brightest clip once the band is feathered? Lane 11 to measure.
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- Where does the strip's ink really start on the TV (computed ~y 725)? Measure it on `stress.png`.

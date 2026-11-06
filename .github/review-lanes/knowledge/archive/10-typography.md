@@ -3,6 +3,15 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check c031f6c: M1 to M2 and S1 to S4 fixed; S5 deferred (Adhan card max 560 px); 26 px English floor on 8 items (Nice: Taha 20:132, Ibrahim 14:34, An-Nisa 4:86, Al-Fajr 89:27-30, Al-Baqarah 2:201 and 2:127, Abu Dawud 5067).
+### PR #25 (2026-11-06, update 3: Islamic content)
+- **2026-11-06, PR #25 (Update 3, Islamic content):**
+  - Must: `amiri_bold.ttf` has `(` but no `)` (U+0029). The «(٥)» verse numbers in 16 of 110 verses mirror wrongly in RTL, so the fix is ۝ (U+06DD) plus Arabic-Indic digits.
+  - Must: the band now overruns the strip: the Istighfar is 270 px tall, and 12 items have 2-line English, all in a 206 px gap.
+  - Should: 37 verses go to 32 px because `length()` counts the marks; break strategy BALANCED; Kids `wordArabic` 0.8 spacing gives a −4 px ink gap on 2-line hadith; the stress test is stale; the Adhan card's 500 px column fits about 40 characters and grows to 631 px tall.
+  - Nice: brackets in caps kickers (no `case` in Inter); three middle dots in one kicker; `:` missing from Amiri (Muslim 1631); ﷺ in Baloo on the Adhan card; the Ramadan strip label is +107 px.
+  - Scripts: `/mnt/project-files/tv-box/reviews/pr25-lane10/`.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - 2026-11-06, PR #23: no Must. Audit S1 to S10 done (MixText Plex spans, tnum on Kids/adhan clocks, 22 px floor, CAPS_TRACK 0.12, Arabic-Indic digits in Amiri lines, ••• and ×, Amiri surah names). Should: `quranNow`/`nowSurah` in Amiri draw their English half in system Roboto (Amiri has no Latin, `-`, `'`, `·`); two splash lines (`IntroView.java:476, 557`) bypass `drawWelcome()`; surah medallion "100" to "114" at 22 px tnum is 39.5 px of ink in a 46 px ring (use pnum, 52 px); `playerSurah` 168 px Amiri with font padding is 459 px tall for 283 px of ink (padding off); verse reference "Al-Baqarah" letterspaced (uppercase it); Cormorant clock still `tnum` without `lnum`. Nice: Arabic 1.1× in splash vs 1.0× in kickers, kicker call sites say 20, Kids `wordArabic` top has 0.4 px spare (shadow cut), `fitPair` ignores spans.
 
@@ -62,6 +71,10 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [textappearancespan] https://developer.android.com/reference/android/text/style/TextAppearanceSpan : `getLetterSpacing()` added in API 34. Checked 2026-11-06.
 - [noto-naskh-vf] google/fonts `ofl/notonaskharabic/NotoNaskhArabic[wght].ttf` (raw.githubusercontent.com): stand-in for the box's fallback Arabic, for width comparisons.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [sargent-enclosures] Murray Sargent, "Arabic and mathematical enclosures", Microsoft blog archive: U+06DD encloses the Arabic-Indic digits that follow it, max 3 with Uniscribe/DWrite. https://learn.microsoft.com/en-us/archive/blogs/murrays/arabic-and-mathematical-enclosures
+- [hb-mirror] HarfBuzz commit 7b8b63a, "Don't mirror character if font doesn't support mirrored character" (the diff wasn't shown): https://flutter.googlesource.com/third_party/harfbuzz/+/7b8b63adc5e0389fc4cf2720ef7e5804ab6c29cc
+
 ## Open questions to research next
 - Which system Arabic font draws the kicker Arabic on this Android TV 14 box (Noto Naskh Arabic or the UI cut), and does it clash with Plex? Screenshot a kicker.
 - On the box (Android 14), screenshot a Quran line and a Plex Hijri line to confirm metrics-based line height (no elegant metrics). Repeat if the box ever gets Android 15.
@@ -84,3 +97,8 @@ All checked 2026-11-05. Tags are used in Core expertise.
 
 - Does the box's StaticLayout use head yMax (1.057) or hhea ascent (1.08) for Baloo's first-line top with font padding on? It decides whether Kids marks have 0.4 or 1.4 px spare. Screenshot the hadith card.
 - Kicker Arabic at 1.0× vs 1.1×: mock both on the TV and pick one for MixText and the splash.
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- Whether Minikin itemizes a lone `)` to the fallback font before or after mirroring (it affects which glyph shows). Unverified on the box: take a screenshot of an «(٥)» verse if M1 isn't fixed.
+- Whether Amiri's ayah ornament digits (about 0.4 em) read at 32 px from the sofa. Check on the TV.
+- Adhan card column is 500 px (about 40 characters a line); tallest card 560 px (Al-Fajr 89:27-30). Widen to about 700 px for long items? (lane 9 or 15)

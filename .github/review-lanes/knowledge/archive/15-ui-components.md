@@ -3,6 +3,10 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check: both Should fixed in c031f6c (Hijri label 508 of 728 px; Sources row under the verse card row, kicker redraws at once).
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06 PR #25 (Update 3): new settings rows in three apps. Should: home Hijri row label wraps at the default value (749 of 728 px) and snaps to one line after OK; home Sources row not next to the card row it depends on. Nice: Kids label ends in "…"; "·" inside references collides with the kicker's separators; Hijri value could show the resulting date.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - 2026-11-06, PR #23 (update 2): no Must. Should: (1) `pressDip` restores the scale it read on DOWN, so OK during the focus grow freezes the item at an in-between size (cancelling a ViewPropertyAnimator drops its end action); (2) the calendar reading-guide fill (8% white, no edge) is about 1.26:1, nearly invisible, and it is the panel's only focusable thing; (3) Kids parent and action rows at 1.03 lose their left and right white edge to the ScrollView clip (home was fixed, Kids not). Nice: "Choose reciter" hides the saved choice; the 10-minute reminder is still 5 s one line at home vs 8 s three lines in other apps; "Playing ✓" goes back to ▶ while the takbir still plays; the Kids dip uses the default curve. Carried over: Kids `launch()` silent, no dock hold-OK hint.
 
@@ -76,6 +80,11 @@ All opened 2026-11-05; all tv-material and M3 numbers re-verified 2026-11-05 (PR
 - [wcag-focus-visible] https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html: the focus indicator must be visible and "must not be time limited"; subject to 1.4.11; failure F78 (styling that renders the indicator non-visible). Checked 2026-11-06.
 - developer.android.com's Kotlin `ViewPropertyAnimator` reference page didn't render its member docs through the fetcher on 2026-11-06. Read the AOSP source instead.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [hig-toggles] Apple HIG, Toggles (read via developer.apple.com/tutorials/data/design/human-interface-guidelines/toggles.json, 2026-11-06): "Clearly identify the setting… the toggle affects"; avoid relying only on colour for state; use alignment and indentation to show that one setting governs subordinate ones; for more than two exclusive options prefer labelled choices.
+- [tv-lists] (already cited) re-read 2026-11-06: selection controls (checkboxes, radio buttons, switches) sit at the leading or trailing edge of a list item; show state with an icon, not background alone.
+- nngroup.com could not be fetched from this container on 2026-11-06 (connection failed); no new NN/g page cited.
+
 ## Open questions to research next
 - Which press look suits our gold-glass style best: a 0.96 dip, a brief fill flash, or tv-material's "scale back to 1.0"? Mock all three on the box at 3 m.
 - Should Kids keep the inverted white focus (tv-material's focused colours, but without its 1.1 scale) while home uses gold glass, or should home buttons invert too? Find Google TV launcher screenshots or specs for its own buttons (not opened yet).
@@ -95,3 +104,7 @@ All opened 2026-11-05; all tv-material and M3 numbers re-verified 2026-11-05 (PR
 - Is `0x24FFFFFF` + 2 px `0x59FFFFFF` enough for the calendar reading guide over PanelBg at 3 m, while still not looking like a button? Measure with lane 11.
 - Should the press dip move to one shared helper (a `StateListAnimator` or a shared static class) so home, Kids and adhan Settings can't drift apart?
 - Should the adhan Settings screen get the same press dip? Its rebuild-and-regrow already answers OK, but it looks different from the dip.
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- Should the home `parentRow` get a minimum gap (e.g. 24 px) between label and value, so a long label never touches its value? (Pre-existing, not in this PR.)
+- Should the Hijri offset be one shared setting? Today the home and the Adhan app each keep their own `hijri_offset`, so a parent must set it twice. (Lane 1 / 5 to judge; not a component issue.)

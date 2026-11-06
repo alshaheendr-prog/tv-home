@@ -156,6 +156,9 @@ Added by the PR #23 review (2026-11-06):
   - Calendar rows are focusable but not clickable (a reading guide).
   - The adhan Settings rows now scale 1.03.
 
+Added by the PR #25 review (2026-11-06):
+- 2026-11-06: home parentRow keeps focus by indexOfChild (parentClicked); Adhan SettingsActivity.render() keeps focus by child index; Kids choiceRow edits in place; the home band's kicker is redrawn at once when Sources is toggled (lineItem + kicker()).
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/5-remote-and-tv-fit.md](archive/5-remote-and-tv-fit.md). Search it when a PR touches an area with history; don't read it in full.
@@ -178,3 +181,5 @@ Past findings (every PR and audit), open questions and the full annotated source
 
 - 2026-11-06: When a PR says "added padding so focus isn't clipped", check clipToPadding on that same group and clipChildren on its parent. Padding on its own usually does nothing.
 - 2026-11-06: A press effect must return to the target value for the view's state (focused or resting), never to a value read part-way through an animation. TV Material defines `pressedScale` as a fixed state value.
+
+- 2026-11-06: a new setting must update what it changes on screen as soon as the value changes, not at the next timer (band rotation, card switch), or the row seems broken after Back. Measure label + value against the row's inner width (home Parent rows about 728 px).

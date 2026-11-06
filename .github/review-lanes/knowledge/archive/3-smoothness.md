@@ -3,6 +3,9 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06 PR #25 (Update 3, Islamic content): no Must/Should. Nice: PrecomputedText for long verse lines in nextLine only if gfxinfo shows a slow frame at the switch; adhan tick per-second prefs read + string join. Curated Verses replaced the daily alquran.cloud fetch in both apps.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - No Must.
 - Should: `StarField.onDraw` calls `setLocalMatrix` every frame, which rebuilds the native shader each frame. The app menu (`appMenuBox`) fades without `noAlphaLayers`, so the full-screen fade goes through an off-screen buffer. The hidden Quran page `StarField` (alpha 0, still VISIBLE) redraws every frame behind the player.
@@ -76,6 +79,9 @@ All checked 2026-11-05 unless noted. Tags are used in Core expertise.
 - [aosp-shader-9] https://code.yawk.at/android/android-9.0.0_r35/android/graphics/Shader.java: `setLocalMatrix` → `discardNativeInstance` (runs the Cleaner) → `createNativeInstance` on the next use. Checked 2026-11-06.
 - [aosp-textview-9] https://code.yawk.at/android/android-9.0.0_r35/android/widget/TextView.java: `setTextInternal` sets `mSpannable` for Spannable text. Checked 2026-11-06.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [android-p-text] https://android-developers.googleblog.com/2018/07/whats-new-for-text-in-android-p.html ("measuring text can take up to 90% of the time required to set the text"); pattern PrecomputedText.create(text, tv.getTextMetricsParams()) on an executor, setText on UI. developer.android.com PrecomputedText/Compat reference pages not readable by the fetch tool.
+
 ## Open questions to research next
 - Is the UI composed at 1080p or 4K on this box? Check `adb shell wm size`, `adb shell dumpsys display | grep -i mode`, `dumpsys SurfaceFlinger --display-id`. If 4K, every full-screen fill costs 4x and the overdraw budget is tighter.
 - Does SurfaceFlinger put the wallpaper SurfaceView on an HWC overlay or GPU-compose it while UI layers sit above? (`dumpsys SurfaceFlinger`, look for CLIENT vs DEVICE composition.)
@@ -99,3 +105,6 @@ All checked 2026-11-05 unless noted. Tags are used in Core expertise.
 
 - Does Spannable text pick `DynamicLayout` through `useDynamicLayout()` on Android 14? (unverified)
 - Measure `dumpsys gfxinfo` on the Quran page and in the player before and after PR #23.
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- setText time for a 2-line Amiri verse on this A55? Measure with Perfetto/gfxinfo around a verse switch.

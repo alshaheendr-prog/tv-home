@@ -162,8 +162,7 @@ public class MainActivity extends Activity {
     private String shownClock = "";
 
     private int[] today, tomorrow;
-    private String cachedDay = "", ayahDay = "";
-    private String[] ayahToday;
+    private String cachedDay = "";
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
     private long lastWeather, lastLineSwitch;
     private int lineIndex = -1, shownAdhkar = -1, listenSec, remindedFor = -1;
@@ -188,6 +187,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
         prefs = getSharedPreferences("home", MODE_PRIVATE);
+        Events.offset = prefs.getInt("hijri_offset", 0);
         preferSixtyHz();
         fullLengthAnimations();
         fMed = getResources().getFont(R.font.inter_medium);
@@ -436,18 +436,18 @@ public class MainActivity extends Activity {
         driveText.setVisibility(View.VISIBLE);
         fitPair(eventText, "First ten days of Dhul Hijjah", "العشر الأوائل من ذي الحجة", CHIP_W);
         showEvent(true);
-        adhanName.setText("Suhoor ends");
-        adhanAr.setText("الإمساك · الفجر");
+        adhanName.setText("Fajr · suhoor ends");
+        adhanAr.setText("الفجر · بدء الصيام");
         adhanCountdown.setText("10:59:59");
         oneLine(nowSurah, "سورة الشعراء", "Ash-Shu'ara");
         oneLine(nowReciter, "محمد صديق المنشاوي", "Mohammed Siddiq Al-Minshawi"); // the longest name, to test the strip
         showNowReciting(true);
         lineFrame.setVisibility(View.VISIBLE);
-        lineKicker.setText("VERSE OF THE DAY  ·  آية اليوم   ·   AL-BAQARAH 2:286");
-        lineAr.setText("رَبَّنَا لَا تُؤَاخِذْنَا إِن نَّسِينَا أَوْ أَخْطَأْنَا رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِن قَبْلِنَا");
-        lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, 32);
-        lineEn.setText("Our Lord, do not take us to task if we forget or make a mistake. Our Lord, do not place on us a burden like the one You placed on those before us.");
-        lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 28);
+        // the band's tallest real item: the verse with the longest English, sized the way the band sizes every line
+        String[] v = Verses.ALL[0];
+        for (String[] x : Verses.ALL) if (x[1].length() > v[1].length()) v = x;
+        lineKicker.setText("VERSE OF THE DAY · آية اليوم   ·   " + v[2].toUpperCase(Locale.ROOT));
+        fillBand(v[0], v[1]);
     }
 
     private void endStress() {
@@ -1286,6 +1286,8 @@ public class MainActivity extends Activity {
         lineEn.setMaxWidth(1700);
         lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 30);
         lineEn.setLineSpacing(0, 1.05f);
+        lineAr.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_BALANCED); // if a line ever wraps, two even halves
+        lineEn.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_BALANCED);
         lineEn.setPadding(0, 2, 0, 0);
         lineBox.addView(lineKicker, new LinearLayout.LayoutParams(-2, -2));
         lineBox.addView(lineAr, new LinearLayout.LayoutParams(-2, -2));
@@ -1703,10 +1705,9 @@ public class MainActivity extends Activity {
             try {
                 DateFormat hf = DateFormat.getDateInstance(DateFormat.LONG, new ULocale("ar_SA@calendar=islamic-umalqura"));
                 hf.setTimeZone(android.icu.util.TimeZone.getTimeZone("Asia/Kuwait"));
-                hijriText.setText(hf.format(now.getTime()));
+                hijriText.setText(hf.format(new java.util.Date(Events.shift(now.getTimeInMillis()))));
             } catch (Exception ignored) { }
         }
-        if (!key.equals(ayahDay)) { ayahDay = key; fetchAyah(now.get(Calendar.DAY_OF_YEAR) + y * 400); }
 
         int h = now.get(Calendar.HOUR_OF_DAY), mi = now.get(Calendar.MINUTE);
         boolean h24 = prefs.getBoolean("clock24", false);
@@ -1726,7 +1727,7 @@ public class MainActivity extends Activity {
             // onResume catches the card up straight away
             if (adhkar != shownAdhkar) { shownAdhkar = adhkar; lineIndex = -1; lastLineSwitch = 0; }
         } else if (adhkar != shownAdhkar) {
-            // Fajr or Maghrib has come in: the adhkar take over the card straight away
+            // Fajr or Asr has come in: the adhkar take over the card straight away
             boolean begins = shownAdhkar != -1 && adhkar != 0;
             shownAdhkar = adhkar;
             lineIndex = -1;
@@ -1769,7 +1770,8 @@ public class MainActivity extends Activity {
         if (ambient && !nightDim && System.currentTimeMillis() - lastInput > DIM_AFTER) enterNightDim();
         boolean ramadan = Events.isRamadan(now), friday = now.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
         if (ramadan && next == 4) { adhanName.setText("Iftar"); adhanAr.setText("الإفطار · المغرب"); }
-        else if (ramadan && next == 0) { adhanName.setText("Suhoor ends"); adhanAr.setText("الإمساك · الفجر"); }
+        // at Fajr itself the fast begins; الإمساك is the earlier time printed in Kuwait's timetables, so it is not used here
+        else if (ramadan && next == 0) { adhanName.setText("Fajr · suhoor ends"); adhanAr.setText("الفجر · بدء الصيام"); }
         else if (friday && next == 2) { adhanName.setText("Jumu'ah"); adhanAr.setText("صلاة الجمعة"); }
         else { adhanName.setText(PrayerTimes.EN[next]); adhanAr.setText(PrayerTimes.AR[next]); }
         if (friday && next == 2 && left <= 3600 && left > 3590 && remindedFor != -target) {
@@ -1801,21 +1803,50 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** The line on the band now, so a settings change can redraw its kicker straight away. */
+    private String[] lineItem;
+
+    /** The kicker, with the reference in capitals after it unless Parent settings hide the sources. */
+    private String kicker(String[] it) {
+        return it[0] + (it[3].isEmpty() || !prefs.getBoolean("sources", true) ? "" : "   ·   " + it[3].toUpperCase(Locale.ROOT));
+    }
+
+    /** The band's widest line (lineAr and lineEn have this max width). */
+    private static final int BAND_W = 1700;
+    private static final float[] AR_SIZES = {38, 36, 34, 32}, EN_SIZES = {32, 30, 28, 26};
+
+    /** The largest size at which the text fits one line of the band, measured, not guessed from its length; else the smallest. */
+    private static boolean fitOneLine(TextView v, String s, float[] sizes) {
+        for (float z : sizes) {
+            v.setTextSize(TypedValue.COMPLEX_UNIT_PX, z);
+            if (v.getPaint().measureText(s) <= BAND_W - 8) return true; // 8 px spare for the line breaker's rounding
+        }
+        return false;
+    }
+
+    /** Arabic and English on one line each, so the band never grows into the prayer strip. Every built-in text fits;
+     *  should an Arabic text ever need two lines, its English steps aside for that turn. */
+    private void fillBand(String ar, String en) {
+        lineAr.setText(ar);
+        boolean arOne = ar.isEmpty() || fitOneLine(lineAr, ar, AR_SIZES);
+        lineAr.setVisibility(ar.isEmpty() ? View.GONE : View.VISIBLE);
+        lineEn.setText(en);
+        fitOneLine(lineEn, en, EN_SIZES);
+        lineEn.setVisibility(arOne && !en.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
     private void nextLine(Calendar now) {
         lastLineSwitch = System.currentTimeMillis();
-        List<String[]> items = Widgets.items(this, now, today, ayahToday, tempNow, dustNow);
+        List<String[]> items = Widgets.items(this, now, today, tempNow, dustNow);
         if (items.isEmpty()) return;
         lineIndex = (lineIndex + 1) % items.size();
         String[] it = items.get(lineIndex); // {kicker, ar, en, ref}
         // the most frequent motion on the home: a calm opacity-only cross-fade, about 650 ms in all
         lineBox.animate().setStartDelay(0).alpha(0).setDuration(250).setInterpolator(EXIT).withEndAction(() -> {
             // the kicker is letterspaced capitals, so the reference joins it in capitals too
-            lineKicker.setText(it[0] + (it[3].isEmpty() ? "" : "   ·   " + it[3].toUpperCase(Locale.ROOT)));
-            lineAr.setText(it[1]);
-            lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[1].length() > 110 ? 32 : 38);
-            lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[2].length() > 150 ? 28 : 32);
-            lineAr.setVisibility(it[1].isEmpty() ? View.GONE : View.VISIBLE);
-            lineEn.setText(it[2]);
+            lineItem = it;
+            lineKicker.setText(kicker(it));
+            fillBand(it[1], it[2]);
             lineBox.setTranslationY(0);
             lineBox.animate().setStartDelay(0).alpha(1).setDuration(400).setInterpolator(EASE).start();
             // no progress timer: the line's bar is hidden, and a 60 fps animator for it woke the box all day
@@ -1885,43 +1916,6 @@ public class MainActivity extends Activity {
         if (code <= 67 || (code >= 80 && code <= 82)) return "Rain · مطر";
         if (code >= 95) return "Thunderstorm · رعد";
         return "Cloudy · غائم";
-    }
-
-    private void fetchAyah(int seed) {
-        runBg(() -> {
-            for (int attempt = 0; attempt < 12; attempt++) {
-                int n = (int) (((long) (seed + attempt) * 7919L) % 6236) + 1;
-                try {
-                    JSONObject d = new JSONObject(get("https://api.alquran.cloud/v1/ayah/" + n + "/editions/quran-uthmani,en.sahih"));
-                    JSONArray arr = d.getJSONArray("data");
-                    JSONObject ar = arr.getJSONObject(0), en = arr.getJSONObject(1);
-                    JSONObject sur = ar.getJSONObject("surah");
-                    String text = withoutBismillah(ar.getString("text"), sur.getInt("number"), ar.getInt("numberInSurah"));
-                    if (text.length() > 120) continue; // never a long one: after 12 tries the built-in verses are used
-                    JSONObject surah = ar.getJSONObject("surah");
-                    String ref = surah.getString("englishName") + " " + surah.getInt("number") + ":" + ar.getInt("numberInSurah");
-                    String[] a = {text, en.getString("text"), ref};
-                    ui.post(() -> ayahToday = a);
-                    return;
-                } catch (Exception e) {
-                    return; // offline: the built-in verses are used
-                }
-            }
-        });
-    }
-
-    /**
-     * The Qur'an service puts the Bismillah in front of verse 1 of every surah except Al-Fatihah (where it IS verse 1)
-     * and At-Tawbah (which has none). It isn't part of that verse, so it is taken off: its four words.
-     */
-    static String withoutBismillah(String text, int surah, int ayah) {
-        if (ayah != 1 || surah == 1) return text;
-        String t = text.replace("\uFEFF", "").trim();
-        String[] w = t.split("\\s+", 5);
-        // The first word without its vowel marks must be بسم, however the marks are encoded.
-        String first = w[0].replaceAll("[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]", "");
-        if (w.length < 5 || !first.equals("\u0628\u0633\u0645")) return text;
-        return w[4];
     }
 
     // ================================================================== dock
@@ -3545,6 +3539,12 @@ public class MainActivity extends Activity {
             lineFrame.setVisibility(!verse ? View.VISIBLE : View.GONE);
             drawParent(parentClicked);
         });
+        boolean src = prefs.getBoolean("sources", true);
+        parentRow("Sources under verses and hadith", src ? "Shown" : "Hidden", () -> {
+            prefs.edit().putBoolean("sources", !src).apply();
+            if (lineItem != null) lineKicker.setText(kicker(lineItem)); // the band answers at once, not at its next line
+            drawParent(parentClicked);
+        });
         boolean h24 = prefs.getBoolean("clock24", false);
         parentRow("Clock", h24 ? "24-hour" : "12-hour", () -> {
             prefs.edit().putBoolean("clock24", !h24).apply();
@@ -3563,6 +3563,14 @@ public class MainActivity extends Activity {
             while (i < FITS.length && FITS[i] != fit) i++;
             prefs.edit().putInt("fit", FITS[(i + 1) % FITS.length]).apply();
             fitStage();
+            drawParent(parentClicked);
+        });
+        int ho = prefs.getInt("hijri_offset", 0);
+        parentRow("Hijri date (moon sighting)", ho == 0 ? "As calculated" : ho > 0 ? "+1 day" : "−1 day", () -> {
+            int next = ho == 0 ? 1 : ho > 0 ? -1 : 0;
+            prefs.edit().putInt("hijri_offset", next).apply();
+            Events.offset = next;
+            cachedDay = ""; // the date line, the badge and the countdown redraw on the next tick
             drawParent(parentClicked);
         });
         int cf = prefs.getInt("clock_face", 0) % CLOCK_FONTS.length;

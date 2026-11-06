@@ -3,6 +3,14 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+- 2026-11-06 PR #25 re-check: all Must and Should fixed at c031f6c; all 179 band texts one line each (closest 1693 px), tallest Adhan card about 570 px; fit now measured against BAND_W - 8.
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06, PR #25: Must: 15 of 181 band texts wrap and reach the strip (6306 by about 86 px).
+  - Should: the stress test is stale.
+  - Should: the Hijri Parent row wraps.
+  - Should: the Adhan card is 642 px tall for 2:186.
+  - Kids: nothing found.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - 2026-11-06, PR #23 (update 2, visual polish): 2 Must, 2 Should, 2 Nice. All (computed).
   - Must: the special-day line overlaps the verse kicker on special days. The column ends at about y 520, the band starts at y 494, and the ink overlaps by 7 to 10 px.
@@ -63,6 +71,9 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [fallback-ls] https://learn.microsoft.com/fr-fr/dotnet/api/android.widget.textview.fallbacklinespacing?view=net-android-36.0: fallback line spacing is on by default (API 28 and up); fallback fonts can raise a line's ascent and descent. Checked 2026-11-06.
 - [apl-background] https://www.developer.amazon.com/en-US/alexa/alexa-haus/visual-design/apl-components/apl-background: gradient overlays as a safe area for text, especially near screen edges; 4.5:1 contrast. Checked 2026-11-06.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [android-autosize] https://developer.android.com/guide/topics/ui/look-and-feel/autosizing-textview: avoid `wrap_content` with autosize. Checked 2026-11-06.
+
 ## Open questions to research next
 - Real screenshots at 100% and 88% with the stress test: do the computed y values above match (column end about 477, verse end about 685, focused tile top about 838)?
 - Does `adb exec-out screencap` capture the SurfaceView video on this box (needed to judge balance)?
@@ -79,3 +90,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 
 - On a box screenshot of a special day (for example the stress test, which forces the event line): confirm the overlap and the fix's gap (target about 20 px of ink gap).
 - Should the verse fade also fade horizontally, so the left half of the video stays clear? (Lane 4's call.)
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- Real stress screenshot with Bukhari 6306: where does the strip's ink start (computed about y 720 to 735)?

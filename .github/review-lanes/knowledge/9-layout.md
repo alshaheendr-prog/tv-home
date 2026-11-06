@@ -141,6 +141,14 @@ Added by the PR #23 review (2026-11-06):
 - **Adhan reminder card:** 60/50 px from the top-right corner (not 56/44). It now has 4 lines: hair, title, Arabic, time.
 - **Kids settings rows** now scale 1.03 (`focusRow`), inside a scroller with no side room (`buildParent()`).
 
+Added by the PR #25 review (2026-11-06):
+- 2026-11-06, PR #25: band content is now 110 verses (`Verses.java`), 52 hadith and 10 morning / 9 evening adhkar.
+- 2026-11-06, PR #25: one-line limits at the 1700 px max width (computed). These need one line or less:
+  - English: about 1700 / (0.0386 × size) ≈ 165 characters at 26 px, 150 at 28, 131 at 32.
+  - Arabic (Amiri Bold): about 1700 px.
+- 2026-11-06, PR #25: Uthmani character counts overstate width. Verses with up to 158 characters measure ≤ 1188 px at 32 px.
+- 2026-11-06, PR #25: line steps. A second Cormorant line at 28 px adds about 36 px, at 32 px about 41 px. A second Amiri line at 32 px adds about 56 px.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/9-layout.md](archive/9-layout.md). Search it when a PR touches an area with history; don't read it in full.
@@ -162,3 +170,6 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-06: Views added later in the same parent draw on top. A background fade on a later sibling darkens the text of earlier siblings it overlaps. Put fades in their own view, added before the text.
 - 2026-11-06: Any background added to the stage (fades, bands) must use `bleed()` widths, or its ends show at Screen size under 100%.
 - 2026-11-06: When a PR adds a focus scale to rows, check every scroller those rows sit in for side room, in all three apps.
+
+- 2026-11-06: Size rules for changing text must measure pixels (`Paint.measureText`), not count characters. Arabic marks inflate counts, and English varies.
+- 2026-11-06: When a content list grows, re-run the band fit over the whole list, and point the stress test at the new longest item.

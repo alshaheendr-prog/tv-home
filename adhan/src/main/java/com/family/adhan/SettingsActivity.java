@@ -169,6 +169,19 @@ public class SettingsActivity extends Activity {
         final int cnext = (cci + 1) % 4;
         row("Card position", names[cci], () -> { prefs.edit().putString("card_position", pos[cnext]).apply(); refreshService(); });
 
+        row("Show sources (the hadith or verse reference)", prefs.getBoolean("sources", true) ? "On" : "Off", () -> {
+            prefs.edit().putBoolean("sources", !prefs.getBoolean("sources", true)).apply();
+            refreshService();
+        });
+
+        header("HIJRI DATE");
+        onlyOtherHome(); // the family home has its own Hijri setting, in its Parent settings
+        int ho = prefs.getInt("hijri_offset", 0);
+        row("Hijri date (moon sighting)", ho == 0 ? "As calculated" : ho > 0 ? "+1 day" : "−1 day", () -> {
+            prefs.edit().putInt("hijri_offset", ho == 0 ? 1 : ho > 0 ? -1 : 0).apply();
+            refreshService();
+        });
+
         header("ADHAN SOUND");
         for (int i = 0; i < 6; i++) {
             if (i == 1) continue;

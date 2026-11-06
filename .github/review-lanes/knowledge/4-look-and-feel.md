@@ -167,6 +167,9 @@ Added by the PR #22 review (2026-11-05):
 - Disabled looks: home PIN keys fade to alpha 0.4 while resting. Home learn-button rows use `DIM` (0xA6) when RemoteKeys isn't running. Kids stepper end arrows use Kids `DIM` 0xB3. Press dips: home PIN 0.94, Kids PIN 0.96.
 - Adhan banner: `BAND 136`, `BAND_FADE 70`, `LIFT 56` (`AdhanService.java:280`). The words are padded 56 px off the bottom, leaving an 80 px content area. The Arabic is 50 px Plex SemiBold with font padding, about 86 px tall (win 1128/601 on upm 1000).
 
+Added by the PR #25 review (2026-11-06):
+- band sizes `MainActivity.java:1817-1818` (Arabic 32 if > 110 characters else 38; English 28 if > 150 else 32), no maxLines on `lineAr`/`lineEn`; strip prayer cells are centred in `STRIP_H 124`, so their ink starts near y 725.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/4-look-and-feel.md](archive/4-look-and-feel.md). Search it when a PR touches an area with history; don't read it in full.
@@ -196,3 +199,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-06: A background on a wrap-content holder changes size with its text. If the text cross-fades but the background is on the parent, the background snaps. Put fades and scrims on fixed-size views.
 - 2026-11-06: A text-protection scrim should fade toward the text and clear away from it, not span the screen. A full-width band is a new surface even without edges.
 - 2026-11-06: The mock script in `tv-box/reviews/pr23-lane4/mock.py` uses the repo's fonts and Android metrics (hhea without font padding, head bbox with it). Reuse it when no screenshots are reachable.
+
+- 2026-11-06: When a PR changes content, not code, measure every item against the band budget (y 494 to ~700: 1 Arabic line at 32 px, at most 2 English lines at 28 px). `tv-box/reviews/pr25-lane4/band.py` does all items in seconds.
+- 2026-11-06: Size by measured width, not character count. Cormorant italic holds ~142 chars per 1700 px line at 32 px and ~162 at 28 px; Amiri Bold ~115 at 38 px and ~165 at 32 px.
+- 2026-11-06: Re-run tv-box/reviews/pr25-lane4/band.py with the current size ladder whenever band content or sizes change.

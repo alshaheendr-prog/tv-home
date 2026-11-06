@@ -2,7 +2,7 @@ package com.family.kids;
 
 /**
  * One good word a day for the children: on even days a beautiful name of Allah,
- * on odd days a short hadith. Each has a simple picture (an emoji) and a kid-sized meaning.
+ * on odd days a short hadith (Bukhari, Muslim, or Tirmidhi graded sahih). Each has a simple picture (an emoji) and a kid-sized meaning.
  */
 final class GoodWords {
     static final class Name {
@@ -21,7 +21,7 @@ final class GoodWords {
 
     static final Name[] NAMES = {
             new Name("🌈", "الرَّحْمَٰنُ", "Ar-Rahman", "The Most Kind", "Allah is kind to everyone and everything: people, animals, even tiny ants."),
-            new Name("💗", "الرَّحِيمُ", "Ar-Raheem", "The Most Merciful", "Allah loves to forgive us when we say sorry."),
+            new Name("💗", "الرَّحِيمُ", "Ar-Raheem", "The Most Merciful", "Allah is merciful to the believers, and His mercy will be with them in Jannah forever."),
             new Name("👑", "الْمَلِكُ", "Al-Malik", "The King", "Allah is the King of everything. Every king on Earth is small next to Him."),
             new Name("🕊️", "السَّلَامُ", "As-Salam", "The Source of Peace", "Peace comes from Allah. That's why we say Assalamu alaikum."),
             new Name("🌍", "الْخَالِقُ", "Al-Khaliq", "The Creator", "Allah made the sun, the sea, the stars, and you!"),
@@ -40,27 +40,35 @@ final class GoodWords {
             new Name("💪", "الْقَوِيُّ", "Al-Qawiyy", "The Strong", "Allah is stronger than anything. Nothing is too hard for Him."),
             new Name("🦉", "الْحَكِيمُ", "Al-Hakeem", "The Wise", "Everything Allah does has a wise reason, even when we don't understand it yet."),
             new Name("💬", "الْمُجِيبُ", "Al-Mujeeb", "The One Who Answers", "When we make dua, Allah listens and answers in the best way."),
-            new Name("🐢", "الصَّبُورُ", "As-Saboor", "The Patient", "Allah is patient with us, so we try to be patient too."),
+            new Name("🌿", "الْحَلِيمُ", "Al-Haleem", "The Forbearing", "Allah is gentle with us and gives us time to say sorry. So we try to stay calm with others too."),
             new Name("☝️", "الْوَاحِدُ", "Al-Wahid", "The One", "There is only one Allah, and no one is like Him."),
     };
 
     static final Hadith[] HADITHS = {
-            new Hadith("😊", "تَبَسُّمُكَ فِي وَجْهِ أَخِيكَ لَكَ صَدَقَةٌ", "Smiling at your brother is a charity.", "Tirmidhi"),
-            new Hadith("💬", "الْكَلِمَةُ الطَّيِّبَةُ صَدَقَةٌ", "A kind word is a charity.", "Bukhari & Muslim"),
-            new Hadith("🧊", "لَا تَغْضَبْ", "Don't get angry! (He ﷺ said it again and again to a man who asked for advice.)", "Bukhari 6116"),
-            new Hadith("💪", "لَيْسَ الشَّدِيدُ بِالصُّرَعَةِ", "The strong one is not the best wrestler, but the one who stays calm when angry.", "Bukhari & Muslim"),
-            new Hadith("🫧", "الطُّهُورُ شَطْرُ الْإِيمَانِ", "Being clean is half of faith.", "Muslim"),
-            new Hadith("🎁", "تَهَادَوْا تَحَابُّوا", "Give each other gifts, and you will love each other.", "Al-Adab al-Mufrad"),
-            new Hadith("🌈", "يَسِّرُوا وَلَا تُعَسِّرُوا", "Make things easy for people, not hard.", "Bukhari & Muslim"),
-            new Hadith("🌸", "إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ", "Allah is gentle and loves gentleness.", "Muslim"),
-            new Hadith("🤝", "لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ", "Love for your brother and sister what you love for yourself.", "Bukhari & Muslim"),
-            new Hadith("🏠", "خَيْرُكُمْ خَيْرُكُمْ لِأَهْلِهِ", "The best of you are the best to their family.", "Tirmidhi"),
-            new Hadith("🙏", "مَنْ لَا يَشْكُرُ النَّاسَ لَا يَشْكُرُ اللَّهَ", "Whoever doesn't thank people doesn't thank Allah.", "Abu Dawud & Tirmidhi"),
-            new Hadith("🍽️", "سَمِّ اللَّهَ، وَكُلْ بِيَمِينِكَ، وَكُلْ مِمَّا يَلِيكَ", "Say Bismillah, eat with your right hand, and eat from what is in front of you.", "Bukhari & Muslim"),
-            new Hadith("🐢", "أَحَبُّ الْأَعْمَالِ إِلَى اللَّهِ أَدْوَمُهَا وَإِنْ قَلَّ", "The good deeds Allah loves most are the ones we do every day, even small ones.", "Bukhari & Muslim"),
-            new Hadith("💗", "مَنْ لَا يَرْحَمُ لَا يُرْحَمُ", "Whoever is not kind and merciful will not be shown mercy.", "Bukhari & Muslim"),
-            new Hadith("👋", "أَفْشُوا السَّلَامَ بَيْنَكُمْ", "Say salam to each other a lot.", "Muslim"),
-            new Hadith("🕊️", "الْمُسْلِمُ مَنْ سَلِمَ الْمُسْلِمُونَ مِنْ لِسَانِهِ وَيَدِهِ", "A Muslim is someone whose words and hands never hurt others.", "Bukhari & Muslim"),
+            new Hadith("😊", "تَبَسُّمُكَ فِي وَجْهِ أَخِيكَ لَكَ صَدَقَةٌ", "Smiling at your brother is a charity.", "from Tirmidhi 1956"),
+            new Hadith("💬", "الْكَلِمَةُ الطَّيِّبَةُ صَدَقَةٌ", "A kind word is a charity.", "from Bukhari 2989"),
+            new Hadith("🧊", "لَا تَغْضَبْ", "Don't get angry! (He ﷺ said it again and again to a man who asked for advice.)", "from Bukhari 6116"),
+            new Hadith("💪", "لَيْسَ الشَّدِيدُ بِالصُّرَعَةِ، إِنَّمَا الشَّدِيدُ الَّذِي يَمْلِكُ نَفْسَهُ عِنْدَ الْغَضَبِ", "The strong one is not the best wrestler, but the one who stays calm when angry.", "Bukhari 6114"),
+            new Hadith("🫧", "الطُّهُورُ شَطْرُ الْإِيمَانِ", "Being clean is half of faith.", "from Muslim 223"),
+            new Hadith("🎁", "كُلُّ مَعْرُوفٍ صَدَقَةٌ", "Every kind thing you do is a charity.", "Bukhari 6021"),
+            new Hadith("🌈", "يَسِّرُوا وَلَا تُعَسِّرُوا", "Make things easy for people, not hard.", "from Bukhari 69"),
+            new Hadith("🌸", "إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ", "Allah is gentle and loves gentleness.", "from Muslim 2593"),
+            new Hadith("🤝", "لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ", "Love for your brother and sister what you love for yourself.", "Bukhari 13"),
+            new Hadith("🧱", "الْمُؤْمِنُ لِلْمُؤْمِنِ كَالْبُنْيَانِ يَشُدُّ بَعْضُهُ بَعْضًا", "Believers are like the bricks of one building: each one holds up the others.", "from Bukhari 2446"),
+            new Hadith("🙏", "مَنْ لَا يَشْكُرُ النَّاسَ لَا يَشْكُرُ اللَّهَ", "Whoever doesn't thank people doesn't thank Allah.", "Tirmidhi 1954"),
+            new Hadith("🍽️", "سَمِّ اللَّهَ، وَكُلْ بِيَمِينِكَ، وَكُلْ مِمَّا يَلِيكَ", "Say Bismillah, eat with your right hand, and eat from what is in front of you.", "from Bukhari 5376"),
+            new Hadith("🐢", "أَحَبُّ الْأَعْمَالِ أَدْوَمُهَا إِلَى اللَّهِ وَإِنْ قَلَّ", "The good deeds Allah loves most are the ones we do every day, even small ones.", "from Bukhari 6464"),
+            new Hadith("💗", "مَنْ لَا يَرْحَمُ لَا يُرْحَمُ", "Whoever is not kind and merciful will not be shown mercy.", "from Bukhari 5997"),
+            new Hadith("👋", "أَفْشُوا السَّلَامَ بَيْنَكُمْ", "Say salam to each other a lot.", "from Muslim 54"),
+            new Hadith("🕊️", "الْمُسْلِمُ مَنْ سَلِمَ الْمُسْلِمُونَ مِنْ لِسَانِهِ وَيَدِهِ", "A Muslim is someone whose words and hands never hurt others.", "from Bukhari 10"),
+            new Hadith("🪙", "مَا نَقَصَتْ صَدَقَةٌ مِنْ مَالٍ", "Giving charity never makes your money less.", "from Muslim 2588"),
+            new Hadith("🌴", "اتَّقُوا النَّارَ وَلَوْ بِشِقِّ تَمْرَةٍ", "Give charity, even if it is only half a date.", "from Bukhari 1417"),
+            new Hadith("⭐", "إِنَّ مِنْ خِيَارِكُمْ أَحْسَنَكُمْ أَخْلَاقًا", "The best of you are the ones with the best manners.", "from Bukhari 3559"),
+            new Hadith("🌟", "الْبِرُّ حُسْنُ الْخُلُقِ", "Being good means having good manners.", "from Muslim 2553"),
+            new Hadith("📖", "خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ", "The best of you are those who learn the Qur'an and teach it.", "Bukhari 5027"),
+            new Hadith("✅", "إِنَّ الصِّدْقَ يَهْدِي إِلَى الْبِرِّ", "Telling the truth leads you to doing good.", "from Bukhari 6094"),
+            new Hadith("🎒", "مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا سَهَّلَ اللَّهُ لَهُ بِهِ طَرِيقًا إِلَى الْجَنَّةِ", "Whoever goes out to learn, Allah makes his way to Jannah easy.", "from Muslim 2699"),
+            new Hadith("💭", "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ", "What counts is why you do something: your intention.", "from Bukhari 1"),
     };
 
     static boolean nameDay() { return Worlds.dayIndex() % 2 == 0; }
