@@ -34,7 +34,7 @@ public class IntroView extends View {
     static final String WELCOME = "WELCOME HOME  ·  أهلاً بكم";
 
     private final int mode;
-    private final long start = System.currentTimeMillis();
+    private final long start = android.os.SystemClock.uptimeMillis();
     private final Random rnd = new Random(7);
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG), title = new Paint(Paint.ANTI_ALIAS_FLAG),
             kicker = new Paint(Paint.ANTI_ALIAS_FLAG), line = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -171,8 +171,8 @@ public class IntroView extends View {
 
     @Override
     protected void onDraw(Canvas c) {
-        float t = clamp((System.currentTimeMillis() - start) / (float) LENGTH);
-        float sec = (System.currentTimeMillis() - start) / 1000f;
+        float t = clamp((android.os.SystemClock.uptimeMillis() - start) / (float) LENGTH);
+        float sec = (android.os.SystemClock.uptimeMillis() - start) / 1000f;
         switch (mode) {
             case 0: sweep(c, t); break;
             case 1: starPattern(c, t, sec); break;

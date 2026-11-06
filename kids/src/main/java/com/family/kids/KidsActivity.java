@@ -1622,10 +1622,14 @@ public class KidsActivity extends Activity {
     private void wrong() {
         drawDots(0xFFFF5A5A);
         View box = (View) pinTitle.getParent();
-        box.animate().translationX(24).setDuration(60).withEndAction(() ->
-                box.animate().translationX(-24).setDuration(60).withEndAction(() ->
-                        box.animate().translationX(0).setDuration(60).start()).start()).start();
+        // the same smooth, damped shake as the family home's PIN pad, one at a time
+        if (pinShake != null) pinShake.cancel();
+        android.animation.ValueAnimator a = pinShake = android.animation.ValueAnimator.ofFloat(0, -18, 16, -12, 8, -4, 0);
+        a.setDuration(420);
+        a.addUpdateListener(v -> box.setTranslationX((float) v.getAnimatedValue()));
+        a.start();
     }
+    private android.animation.ValueAnimator pinShake;
 
     private void pinDone() {
         hide(pinPanel);

@@ -155,6 +155,8 @@ public class MainActivity extends Activity {
     private final List<FrameLayout> dockTiles = new ArrayList<>();
     private TextView dockLabel;
     private static final DecelerateInterpolator EASE = new DecelerateInterpolator(1.6f);
+    /** For exits: starts promptly and speeds away (the standard accelerate curve), so nothing leaves like it arrives. */
+    static final android.view.animation.PathInterpolator EXIT = new android.view.animation.PathInterpolator(0.3f, 0f, 1f, 1f);
     /** The focused dock app gets a bright glow behind it and a light ring on top (one pair per tile). */
     private int shownNext = -2, shownPassedMask = -1;
     private String shownClock = "";
@@ -754,13 +756,13 @@ public class MainActivity extends Activity {
     }
 
     private void closePlayer() {
-        quranPanel.animate().alpha(1).setDuration(300).start();
+        quranPanel.animate().alpha(1).setStartDelay(0).setDuration(300).setInterpolator(EASE).start();
         if (playerVideo) {
             playerVideo = false;
             if (quranPanel.getVisibility() == View.VISIBLE) { wallStopped = true; starsOver(true); } // a new wallpaper when home shows again
             else playRandomClip(); // back to a home wallpaper
         }
-        playerPanel.animate().alpha(0).setDuration(300).withEndAction(() -> playerPanel.setVisibility(View.GONE)).start();
+        playerPanel.animate().alpha(0).setDuration(250).setInterpolator(EXIT).withEndAction(() -> playerPanel.setVisibility(View.GONE)).start();
         if (quranPanel.getVisibility() == View.VISIBLE) {
             focusLayer(quranPanel);
             surahGrid.getChildAt((quranSurah > 0 ? quranSurah : Math.max(1, playerLast)) - 1).requestFocus();
@@ -1545,7 +1547,7 @@ public class MainActivity extends Activity {
     /** An animated intro while the first wallpaper loads; it fades into the home screen once both are done. */
     private void showSplash() {
         coldStart = false;
-        splashSince = System.currentTimeMillis();
+        splashSince = android.os.SystemClock.uptimeMillis();
         for (View v : new View[]{topParts[0], topParts[1], centerGroup, lineFrame, bottomGroup}) v.setAlpha(0);
         splash = new FrameLayout(this);
         splash.setBackgroundColor(Color.BLACK);
@@ -1565,7 +1567,7 @@ public class MainActivity extends Activity {
 
     private void splashReady() {
         if (splash == null) return;
-        long wait = SPLASH_MIN - (System.currentTimeMillis() - splashSince);
+        long wait = SPLASH_MIN - (android.os.SystemClock.uptimeMillis() - splashSince);
         ui.postDelayed(this::hideSplash, Math.max(0, wait));
     }
 
@@ -1720,10 +1722,10 @@ public class MainActivity extends Activity {
         }
         if (pillTextOverride != null) {
             pillText.setText(pillTextOverride);
-            pillText.animate().alpha(1).setDuration(200).start();
+            pillText.animate().alpha(1).setDuration(200).setInterpolator(EASE).start();
             if (nowWidget != null && nowWidget.getVisibility() == View.VISIBLE) nowWidget.animate().alpha(0).setDuration(150).start();
         } else if (pillText.getAlpha() > 0) {
-            pillText.animate().alpha(0).setDuration(300).start();
+            pillText.animate().alpha(0).setDuration(300).setInterpolator(EXIT).start();
             if (nowWidget != null && nowWidget.getVisibility() == View.VISIBLE) nowWidget.animate().alpha(1).setDuration(300).start();
         }
         int passedMask = 0;
@@ -1748,15 +1750,16 @@ public class MainActivity extends Activity {
         if (items.isEmpty()) return;
         lineIndex = (lineIndex + 1) % items.size();
         String[] it = items.get(lineIndex); // {kicker, ar, en, ref}
-        lineBox.animate().alpha(0).translationY(8).setDuration(400).withEndAction(() -> {
+        // the most frequent motion on the home: a calm opacity-only cross-fade, about 650 ms in all
+        lineBox.animate().setStartDelay(0).alpha(0).setDuration(250).setInterpolator(EXIT).withEndAction(() -> {
             lineKicker.setText(it[0] + (it[3].isEmpty() ? "" : "   ·   " + it[3]));
             lineAr.setText(it[1]);
             lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[1].length() > 110 ? 32 : 38);
             lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[2].length() > 150 ? 28 : 32);
             lineAr.setVisibility(it[1].isEmpty() ? View.GONE : View.VISIBLE);
             lineEn.setText(it[2]);
-            lineBox.setTranslationY(-8);
-            lineBox.animate().alpha(1).translationY(0).setDuration(600).start();
+            lineBox.setTranslationY(0);
+            lineBox.animate().setStartDelay(0).alpha(1).setDuration(400).setInterpolator(EASE).start();
             if (lineTimer != null) lineTimer.cancel();
             lineTimer = ValueAnimator.ofFloat(0, 1);
             lineTimer.setDuration(LINE_SECONDS * 1000 - 1000);
@@ -2113,7 +2116,7 @@ public class MainActivity extends Activity {
     private static void goldLift(View v, boolean has, float z) {
         v.setOutlineAmbientShadowColor(GOLD);
         v.setOutlineSpotShadowColor(GOLD);
-        v.animate().translationZ(has ? z : 0).setDuration(200).start();
+        v.animate().setStartDelay(0).setInterpolator(EASE).translationZ(has ? z : 0).setDuration(200).start(); // never waits behind a fade-in
     }
 
     /** A solid glass card in the middle of a panel. Plain gradient and edge only, clipped to its rounded shape. */
@@ -2192,7 +2195,7 @@ public class MainActivity extends Activity {
         if (wasOpen && back != null) back.requestFocus();
         for (View v : new View[]{pinPanel, appsPanel, quranPanel, parentPanel, calendarPanel}) {
             if (v.getVisibility() == View.VISIBLE)
-                v.animate().alpha(0).setDuration(180).withEndAction(() -> v.setVisibility(View.GONE)).start();
+                v.animate().alpha(0).setStartDelay(0).setDuration(180).setInterpolator(EXIT).withEndAction(() -> v.setVisibility(View.GONE)).start();
         }
         for (View p : homeParts()) if (p != null && !(p == nowWidget && p.getVisibility() != View.VISIBLE)) p.animate().alpha(1).setStartDelay(0).setDuration(250).setInterpolator(EASE).start();
         placePill(PILL_HOME);
@@ -2568,7 +2571,7 @@ public class MainActivity extends Activity {
             item.setOnFocusChangeListener((v, has) -> {
                 v.setBackground(has ? focusGlass(30) : null);
                 label.setTextColor(has ? WHITE : SOFT);
-                v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(220).setInterpolator(EASE).start();
+                v.animate().setStartDelay(0).scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(200).setInterpolator(EASE).start(); // the row fade-in delay must not hold back focus
                 goldLift(v, has, 22);
             });
             // the grid fades in row by row
@@ -2620,7 +2623,7 @@ public class MainActivity extends Activity {
         glassCard(appMenuBox, col, 640, -1, Gravity.CENTER, 0, 0, 34, 28, 0x40FFFFFF, 0x99101418, false);
         appsPanel.addView(appMenuBox, bleed());
         appMenuBox.setAlpha(0);
-        appMenuBox.animate().alpha(1).setDuration(200).start();
+        appMenuBox.animate().alpha(1).setDuration(200).setInterpolator(EASE).start();
         first.requestFocus();
     }
 
@@ -2941,7 +2944,7 @@ public class MainActivity extends Activity {
         listCard(reciterPanel, "RECITER  ·  القارئ", "Choose a reciter", grid, 1500, 940);
         reciterPanel.setVisibility(View.VISIBLE);
         noAlphaLayers(reciterPanel);
-        if (!wasShown) { reciterPanel.setAlpha(0); reciterPanel.animate().alpha(1).setDuration(240).start(); }
+        if (!wasShown) { reciterPanel.setAlpha(0); reciterPanel.animate().alpha(1).setDuration(240).setInterpolator(EASE).start(); }
         View f = focus;
         f.post(f::requestFocus);
     }
@@ -3006,7 +3009,7 @@ public class MainActivity extends Activity {
         // first, so the highlight never passes through anything else; if the button is hidden (the surah ended), the surah cell
         if (reciterBtn.getVisibility() == View.VISIBLE) reciterBtn.requestFocus();
         else surahGrid.getChildAt((quranSurah > 0 ? quranSurah : Math.max(1, playerLast)) - 1).requestFocus();
-        reciterPanel.animate().alpha(0).setDuration(180).withEndAction(() -> reciterPanel.setVisibility(View.GONE)).start();
+        reciterPanel.animate().alpha(0).setDuration(180).setInterpolator(EXIT).withEndAction(() -> reciterPanel.setVisibility(View.GONE)).start();
         placePill(playerPanel != null && playerPanel.getVisibility() == View.VISIBLE ? PILL_PLAYER : PILL_PANEL);
     }
 
