@@ -680,7 +680,7 @@ public class MainActivity extends Activity {
         b.setBackground(glass(99, 0x1AFFFFFF, GLASS_EDGE));
         b.setOnFocusChangeListener((v, has) -> {
             v.setBackground(has ? focusGlass(99) : glass(99, 0x1AFFFFFF, GLASS_EDGE));
-            v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).setInterpolator(new DecelerateInterpolator(2f)).start();
+            rest(v, has ? 1.08f : 1f).animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).setInterpolator(new DecelerateInterpolator(2f)).start();
         });
         b.setOnClickListener(v -> onClick.run());
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(icon ? 84 : -2, 84);
@@ -1510,7 +1510,7 @@ public class MainActivity extends Activity {
             // the others slide aside so the enlarged tiles never cover their neighbours
             float side = focused < 0 || dist == 0 ? 0 : Math.signum(i - focused) * (dist == 1 ? 22 : 26);
             // focus is only a slight grow and lift with a soft slow-down, plus the app's own colour glowing behind it
-            t.animate().scaleX(s).scaleY(s).translationX(side).translationY(lift).setDuration(240).setInterpolator(new DecelerateInterpolator(2f)).start();
+            rest(t, s).animate().scaleX(s).scaleY(s).translationX(side).translationY(lift).setDuration(240).setInterpolator(new DecelerateInterpolator(2f)).start();
         }
         drift(focused);
         if (focused < 0) brandGlow.moveTo(-1, 0);
@@ -2301,7 +2301,7 @@ public class MainActivity extends Activity {
             key.setBackground(off);
             key.setOnFocusChangeListener((v, has) -> {
                 v.setBackground(has ? on : off);
-                v.animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(200).setInterpolator(EASE).start();
+                rest(v, has ? 1.12f : 1f).animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(200).setInterpolator(EASE).start();
                 goldLift(v, has, 16);
             });
             key.setOnClickListener(v -> {
@@ -2618,7 +2618,7 @@ public class MainActivity extends Activity {
             item.setOnFocusChangeListener((v, has) -> {
                 v.setBackground(has ? focusGlass(30) : null);
                 label.setTextColor(has ? WHITE : SOFT);
-                v.animate().setStartDelay(0).scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(200).setInterpolator(EASE).start(); // the row fade-in delay must not hold back focus
+                rest(v, has ? 1.1f : 1f).animate().setStartDelay(0).scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(200).setInterpolator(EASE).start(); // the row fade-in delay must not hold back focus
                 goldLift(v, has, 22);
             });
             fadeTileIn(item, index);
@@ -2700,7 +2700,7 @@ public class MainActivity extends Activity {
         b.setOnFocusChangeListener((v, has) -> {
             v.setBackground(has ? focusGlass(22) : null);
             b.setTextColor(has ? WHITE : SOFT);
-            v.animate().setStartDelay(0).scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start(); // like a parent row
+            rest(v, has ? 1.03f : 1f).animate().setStartDelay(0).scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start(); // like a parent row
         });
         b.setOnClickListener(v -> run.run());
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
@@ -2834,7 +2834,8 @@ public class MainActivity extends Activity {
         LinearLayout nowBox = new LinearLayout(this);
         nowBox.setOrientation(LinearLayout.VERTICAL);
         nowBox.setGravity(Gravity.CENTER_HORIZONTAL);
-        quranNow = text("", 40, fQuran, WHITE); // Amiri, as everywhere a surah name is shown
+        quranNow = text("", 40, fMed, WHITE); // the Latin half in Inter (the Amiri file has no Latin, digits or "…")
+        ((MixText) quranNow).arabicIn(fQuran); // and the surah name in Amiri, as everywhere a surah name is shown
         quranNow.setIncludeFontPadding(true);
         quranNow.setGravity(Gravity.CENTER);
         quranNowReciter = text("", 30, fAr, SOFT);
@@ -2906,7 +2907,7 @@ public class MainActivity extends Activity {
             cell.setOnFocusChangeListener((v, has) -> {
                 v.setBackground(has ? focusGlass(24) : glass(24, SURAH_FILL, SURAH_EDGE));
                 en.setTextColor(has ? SOFT : DIM);
-                v.animate().scaleX(has ? 1.07f : 1f).scaleY(has ? 1.07f : 1f).setDuration(200).setInterpolator(EASE).start();
+                rest(v, has ? 1.07f : 1f).animate().scaleX(has ? 1.07f : 1f).scaleY(has ? 1.07f : 1f).setDuration(200).setInterpolator(EASE).start();
                 goldLift(v, has, 18);
             });
             cell.setOnClickListener(v -> { quranQuiet = false; playSurah(n, false); openPlayer(); });
@@ -2933,7 +2934,7 @@ public class MainActivity extends Activity {
         b.setBackground(glass(99, 0x1AFFFFFF, GLASS_EDGE));
         b.setOnFocusChangeListener((v, has) -> {
             v.setBackground(has ? focusGlass(99) : glass(99, 0x1AFFFFFF, GLASS_EDGE));
-            v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).setInterpolator(EASE).start();
+            rest(v, has ? 1.06f : 1f).animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).setInterpolator(EASE).start();
             goldLift(v, has, 14);
         });
         b.setOnClickListener(v -> onClick.run());
@@ -3038,7 +3039,7 @@ public class MainActivity extends Activity {
         }
         t.setOnFocusChangeListener((v, has) -> {
             v.setBackground(has ? focusGlass(22) : rest);
-            v.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start();
+            rest(v, has ? 1.03f : 1f).animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start();
         });
         t.setOnClickListener(v -> {
             prefs.edit().putString("reciter", value).apply();
@@ -3422,10 +3423,20 @@ public class MainActivity extends Activity {
         int c = e.getKeyCode();
         if (e.getAction() != KeyEvent.ACTION_DOWN || e.getRepeatCount() != 0 || f == null || !f.isClickable() || "dip".equals(f.getTag())) return;
         if (c != KeyEvent.KEYCODE_DPAD_CENTER && c != KeyEvent.KEYCODE_ENTER && c != KeyEvent.KEYCODE_NUMPAD_ENTER) return;
-        float sx = f.getScaleX(), sy = f.getScaleY();
-        f.animate().setStartDelay(0).scaleX(sx * 0.96f).scaleY(sy * 0.96f).setDuration(70).setInterpolator(EASE).withEndAction(() ->
-                f.animate().scaleX(sx).scaleY(sy).setDuration(140).setInterpolator(EASE).start()).start();
+        // dips from, and comes back to, the size the item rests at (not whatever size it had mid-animation)
+        Float r0 = REST.get(f);
+        float r = r0 != null ? r0 : 1f;
+        f.animate().setStartDelay(0).scaleX(r * 0.96f).scaleY(r * 0.96f).setDuration(70).setInterpolator(EASE).withEndAction(() -> {
+            Float back = REST.get(f); // focus may have moved meanwhile
+            float b = back != null ? back : 1f;
+            f.animate().scaleX(b).scaleY(b).setDuration(140).setInterpolator(EASE).start();
+        }).start();
     }
+
+    /** The scale each item rests at, set by every focus animation, so a press dip always returns to it. */
+    private static final java.util.WeakHashMap<View, Float> REST = new java.util.WeakHashMap<>();
+
+    static View rest(View v, float s) { REST.put(v, s); return v; }
 
     /** A small side-to-side nudge: "heard you, but that can't be done yet". */
     private static void nudge(View v) {
@@ -3737,7 +3748,7 @@ public class MainActivity extends Activity {
         r.addView(text(value, 26, fSemi, DIM));
         r.setOnFocusChangeListener((v, has) -> {
             v.setBackground(has ? focusGlass(22) : null);
-            v.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start();
+            rest(v, has ? 1.03f : 1f).animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(180).setInterpolator(EASE).start();
         });
         r.setOnClickListener(v -> { parentClicked = parentList.indexOfChild(v); onClick.run(); });
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, 96); // the TV list minimum (48 dp)
@@ -3872,13 +3883,13 @@ public class MainActivity extends Activity {
 
     private void enterAmbient() {
         ambient = true;
-        bottomGroup.animate().alpha(0).translationY(40).setStartDelay(0).setDuration(1200).setInterpolator(EASE).start();
-        dockLabel.animate().alpha(0).setDuration(400).start();
-        for (View t : topParts) t.animate().alpha(0.7f).setDuration(1500).start();
+        bottomGroup.animate().setStartDelay(0).alpha(0).translationY(40).setStartDelay(0).setDuration(1200).setInterpolator(EASE).start();
+        dockLabel.animate().setStartDelay(0).alpha(0).setDuration(400).start();
+        for (View t : topParts) t.animate().setStartDelay(0).alpha(0.7f).setDuration(1500).setInterpolator(EASE).start();
         // the clock and the verse card settle lower together, into the dock's space, keeping their gap
-        centerGroup.animate().translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
-        lineFrame.animate().translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
-        topParts[1].animate().translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
+        centerGroup.animate().setStartDelay(0).translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
+        lineFrame.animate().setStartDelay(0).translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
+        topParts[1].animate().setStartDelay(0).translationY(QUIET_DROP).setDuration(1500).setInterpolator(EASE).start();
     }
 
     /** After fifteen quiet minutes the whole screen dims; the video and the soft Quran keep playing. */
@@ -3889,11 +3900,11 @@ public class MainActivity extends Activity {
     private void enterNightDim() {
         nightDim = true;
         float a = Math.max(DIM_LEVEL, baseDim());
-        dimView.animate().alpha(a).setDuration(4000).start();
+        dimView.animate().setStartDelay(0).alpha(a).setDuration(4000).start();
         // the words dim with the picture: no bright white clock in a dark room, and kinder to the panel
-        centerGroup.animate().alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
-        lineFrame.animate().alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
-        for (View t : topParts) t.animate().alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
+        centerGroup.animate().setStartDelay(0).alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
+        lineFrame.animate().setStartDelay(0).alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
+        for (View t : topParts) t.animate().setStartDelay(0).alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
     }
 
     static final float NIGHT_TEXT = 0.55f;
@@ -3902,14 +3913,14 @@ public class MainActivity extends Activity {
         ambient = false;
         if (nightDim) {
             nightDim = false;
-            dimView.animate().alpha(baseDim()).setDuration(450).start();
+            dimView.animate().setStartDelay(0).alpha(baseDim()).setDuration(450).setInterpolator(EASE).start();
         }
         lastInput = System.currentTimeMillis();
-        bottomGroup.animate().alpha(1).translationY(0).setStartDelay(0).setDuration(450).setInterpolator(EASE).start();
-        lineFrame.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
-        for (View t : topParts) t.animate().alpha(1).setDuration(450).start();
-        centerGroup.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
-        topParts[1].animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
+        bottomGroup.animate().setStartDelay(0).alpha(1).translationY(0).setStartDelay(0).setDuration(450).setInterpolator(EASE).start();
+        lineFrame.animate().setStartDelay(0).alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
+        for (View t : topParts) t.animate().setStartDelay(0).alpha(1).setDuration(450).setInterpolator(EASE).start();
+        centerGroup.animate().setStartDelay(0).alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
+        topParts[1].animate().setStartDelay(0).translationY(0).setDuration(450).setInterpolator(EASE).start();
         lastDock = Math.max(0, Math.min(lastDock, dockTiles.size() - 1));
         View f = dockTiles.get(lastDock);
         if (f.hasFocus()) showDockLabel(f, ((Dock) f.getTag()).name); else f.requestFocus();

@@ -16,10 +16,14 @@ import android.widget.TextView;
 class MixText extends TextView {
     static Typeface arabic, arabicSemi, quran;
     private boolean semi, ours;
+    private Typeface own; // an Arabic face for this view alone (the Quran's Amiri), else Plex Arabic
 
     MixText(Context c) { super(c); }
 
     void boldArabic(boolean b) { semi = b; }
+
+    /** Arabic runs in this face instead (the surah name in Amiri, whose small file has no Latin or digits). */
+    void arabicIn(Typeface tf) { own = tf; setText(getText().toString()); }
 
     /** A view switched to an Arabic face (the Quran title in Amiri) keeps that face for its Arabic: drop our spans. */
     @Override
@@ -35,7 +39,7 @@ class MixText extends TextView {
         ours = false;
         if (arabic == null || text == null || text instanceof Spanned || !hasArabic(text) || arabicFace(getTypeface())) { super.setText(text, type); return; }
         SpannableString s = new SpannableString(text);
-        Typeface face = semi && arabicSemi != null ? arabicSemi : arabic;
+        Typeface face = own != null ? own : semi && arabicSemi != null ? arabicSemi : arabic;
         int i = 0, n = text.length();
         while (i < n) {
             if (!isArabic(text.charAt(i))) { i++; continue; }
@@ -53,7 +57,7 @@ class MixText extends TextView {
     }
 
     static boolean isArabic(char c) {
-        return (c >= '؀' && c <= 'ۿ') || (c >= 'ݐ' && c <= 'ݿ') || (c >= 'ﭐ' && c <= '﷿') || (c >= 'ﹰ' && c <= '﻿');
+        return (c >= '؀' && c <= 'ۿ') || (c >= 'ݐ' && c <= 'ݿ') || (c >= '\u0870' && c <= '\u08FF') || (c >= 'ﭐ' && c <= '﷿') || (c >= 'ﹰ' && c <= '﻿');
     }
 
     private static boolean hasArabic(CharSequence t) {

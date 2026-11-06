@@ -753,7 +753,7 @@ public class KidsActivity extends Activity {
             float sc = dist == 0 ? 1.12f : dist == 1 ? 1.03f : 1f;
             float lift = dist == 0 ? -12 : dist == 1 ? -3 : 0;
             float side = focused < 0 || dist == 0 ? 0 : Math.signum(i - focused) * (dist == 1 ? 16 : 20);
-            t.animate().scaleX(sc).scaleY(sc).translationX(side).translationY(lift).setDuration(250).setInterpolator(GROW).start();
+            rest(t, sc).animate().scaleX(sc).scaleY(sc).translationX(side).translationY(lift).setDuration(250).setInterpolator(GROW).start();
         }
         if (focused < 0 || focused >= tileColors.size()) { glow.moveTo(-1, 0); return; }
         View f = tileRow.getChildAt(focused);
@@ -1475,7 +1475,7 @@ public class KidsActivity extends Activity {
             t.setMinLines(2); // cards in a row stay the same height; long names still get every line they need
             card.addView(t, new LinearLayout.LayoutParams(-1, -2));
             card.setOnFocusChangeListener((v, has) -> {
-                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
+                rest(v, has ? 1.08f : 1f).animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(220).start();
                 v.setBackground(has ? solid(WHITE, 26, 0x33) : solid(0x1AFFFFFF, 26, 0x14));
                 ink(t, has ? 0xFF1A1033 : WHITE);
             });
@@ -1561,7 +1561,7 @@ public class KidsActivity extends Activity {
             key.setOnFocusChangeListener((v, has) -> {
                 key.setBackground(solid(has ? WHITE : 0x1AFFFFFF, 28, has ? 0 : 0x14));
                 ink(key, has ? 0xFF161028 : WHITE);
-                key.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start();
+                rest(key, has ? 1.06f : 1f).animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start();
             });
             key.setTag("dip"); // has its own press dip
             key.setOnClickListener(v -> {
@@ -1678,10 +1678,20 @@ public class KidsActivity extends Activity {
         int c = e.getKeyCode();
         if (e.getAction() != KeyEvent.ACTION_DOWN || e.getRepeatCount() != 0 || f == null || !f.isClickable() || "dip".equals(f.getTag())) return;
         if (c != KeyEvent.KEYCODE_DPAD_CENTER && c != KeyEvent.KEYCODE_ENTER && c != KeyEvent.KEYCODE_NUMPAD_ENTER) return;
-        float sx = f.getScaleX(), sy = f.getScaleY();
-        f.animate().setStartDelay(0).scaleX(sx * 0.96f).scaleY(sy * 0.96f).setDuration(70).withEndAction(() ->
-                f.animate().scaleX(sx).scaleY(sy).setDuration(140).start()).start();
+        // dips from, and comes back to, the size the item rests at (not whatever size it had mid-animation)
+        Float r0 = REST.get(f);
+        float r = r0 != null ? r0 : 1f;
+        f.animate().setStartDelay(0).scaleX(r * 0.96f).scaleY(r * 0.96f).setDuration(70).setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).withEndAction(() -> {
+            Float back = REST.get(f); // focus may have moved meanwhile
+            float b = back != null ? back : 1f;
+            f.animate().scaleX(b).scaleY(b).setDuration(140).setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+        }).start();
     }
+
+    /** The scale each item rests at, set by every focus animation, so a press dip always returns to it. */
+    private static final java.util.WeakHashMap<View, Float> REST = new java.util.WeakHashMap<>();
+
+    static View rest(View v, float s) { REST.put(v, s); return v; }
 
     private void wrong() {
         drawDots(0xFFFF5A5A);
@@ -2099,7 +2109,7 @@ public class KidsActivity extends Activity {
         b.setOnFocusChangeListener((v, has) -> {
             b.setBackground(solid(has ? WHITE : 0x26FFFFFF, 40, 0));
             ink(b, has ? 0xFF161028 : WHITE);
-            b.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start(); // like the gold buttons
+            rest(b, has ? 1.06f : 1f).animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(160).start(); // like the gold buttons
         });
         return b;
     }
@@ -2107,7 +2117,7 @@ public class KidsActivity extends Activity {
     /** A focused row or cell: a soft fill, a clear white edge and a little lift, so focus never rests on a tint alone. */
     private static void focusRow(View v, boolean has, float scale, float radius) {
         v.setBackground(has ? solid(0x26FFFFFF, radius, 0xE6) : null);
-        v.animate().scaleX(has ? scale : 1f).scaleY(has ? scale : 1f).setDuration(160).start();
+        rest(v, has ? scale : 1f).animate().scaleX(has ? scale : 1f).scaleY(has ? scale : 1f).setDuration(160).start();
     }
 
     /** A gradient drawn with dithering, so dark fades stay smooth on the TV instead of showing stripes. */
@@ -2152,7 +2162,7 @@ public class KidsActivity extends Activity {
         b.setOnFocusChangeListener((v, has) -> {
             b.setBackground(solid(has ? 0xFFFFD45A : 0x2EFFC233, 40, 0));
             ink(b, has ? 0xFF2A1A00 : 0xFFFFE08A);
-            b.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).start();
+            rest(b, has ? 1.06f : 1f).animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(180).start();
         });
         return b;
     }
