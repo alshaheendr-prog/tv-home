@@ -181,7 +181,7 @@ public class KidsActivity extends Activity {
         hideBars();
         applyWorld();
         if (player == null) playClip(); // a short pause cancelled the retry; the world may not have changed to start one
-        refreshTiles();
+        refreshTiles(true); // coming back from a cartoon or an app: the same tiles stay, nothing freezes
         loadCartoons();
         if (Rules.on(this)) Guard.start(this);
         tick();
@@ -786,12 +786,12 @@ public class KidsActivity extends Activity {
     }
 
     /** Their tiles: My cartoons, then each allowed app that is installed, then the small parent lock. */
-    private void refreshTiles() {
-        View focused = getCurrentFocus();
-        boolean hadFocus = focused != null && tiles.contains(focused);
-        tileRow.removeAllViews();
-        tiles.clear();
-        tileColors.clear();
+    private void refreshTiles() { refreshTiles(false); }
+
+    /** What the row was last built from: the apps in order, icons or banners, and the world. */
+    private String tilesKey;
+
+    private void refreshTiles(boolean onlyIfChanged) {
         PackageManager pm = getPackageManager();
         List<String[]> items = new ArrayList<>(); // {pkg or "", label}
         items.add(new String[]{"", "My cartoons"});
@@ -803,6 +803,15 @@ public class KidsActivity extends Activity {
         sortByOrder(items);
         int n = items.size();
         boolean icons = Rules.prefs(this).getInt("icons", 0) == 0;
+        StringBuilder key = new StringBuilder(icons + "|" + System.identityHashCode(world) + "|");
+        for (String[] it : items) key.append(it[0]).append('=').append(it[1]).append(';');
+        if (onlyIfChanged && key.toString().equals(tilesKey) && tiles.size() == n) return;
+        tilesKey = key.toString();
+        View focused = getCurrentFocus();
+        boolean hadFocus = focused != null && tiles.contains(focused);
+        tileRow.removeAllViews();
+        tiles.clear();
+        tileColors.clear();
         // app icons are square like on the family home, a little bigger for small hands on the remote;
         // banners are 16:9 like the TV's own, so nothing gets cropped
         int w = Math.max(60, icons ? Math.min(136, 1340 / n - 44) : Math.min(250, 1460 / n - 52)), h = icons ? w : w * 9 / 16;
@@ -838,16 +847,19 @@ public class KidsActivity extends Activity {
                 tile.setClipToOutline(true);
                 tile.setOutlineProvider(rounded(26));
                 img.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                Drawable art = banner(pkg);
-                if (art != null) {
-                    img.setImageDrawable(art);
-                } else {
-                    tile.setBackgroundColor(0xFF20263A);
-                    img.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                    img.setPadding(h / 5, h / 5, h / 5, h / 5);
-                    try { img.setImageDrawable(pm.getApplicationIcon(pkg)); } catch (Exception ignored) { }
-                }
+                tile.setBackgroundColor(0xFF20263A); // a plain card until the banner is read, off the main thread
                 tile.addView(img, new FrameLayout.LayoutParams(-1, -1));
+                Drawable cachedArt = iconCache.get("banner:" + pkg);
+                if (cachedArt != null) showBanner(tile, img, cachedArt, h);
+                else bg.execute(() -> {
+                    Drawable art = banner(pkg);
+                    if (art == null) {
+                        try { art = getPackageManager().getApplicationIcon(pkg); } catch (Exception e) { return; }
+                        art = new android.graphics.drawable.InsetDrawable(art, 0); // marks the icon fallback
+                    }
+                    Drawable d = art;
+                    ui.post(() -> { iconCache.put("banner:" + pkg, d); showBanner(tile, img, d, h); });
+                });
             }
             tile.setOutlineAmbientShadowColor(0);
             tile.setOutlineSpotShadowColor(0);
@@ -1080,6 +1092,18 @@ public class KidsActivity extends Activity {
         for (ResolveInfo r : unique) labels.put(r.activityInfo.packageName, r.loadLabel(pm).toString());
         Collections.sort(unique, (a, b) -> labels.get(a.activityInfo.packageName).compareToIgnoreCase(labels.get(b.activityInfo.packageName)));
         return unique;
+    }
+
+    /** A real banner fills the tile; an app with none shows its icon in the middle of the plain card. */
+    private static void showBanner(FrameLayout tile, ImageView img, Drawable d, int h) {
+        if (d instanceof android.graphics.drawable.InsetDrawable) {
+            img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            img.setPadding(h / 5, h / 5, h / 5, h / 5);
+        } else {
+            img.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            tile.setBackground(null);
+        }
+        img.setImageDrawable(d);
     }
 
     private Drawable banner(String pkg) {
@@ -1902,7 +1926,13 @@ public class KidsActivity extends Activity {
             FrameLayout iconBox = new FrameLayout(this);
             iconBox.setBackground(solid(0x14FFFFFF, 30, 0));
             ImageView icon = new ImageView(this);
-            try { icon.setImageDrawable(r.loadIcon(pm)); } catch (Exception ignored) { }
+            Drawable known = iconCache.get("raw:" + pkg);
+            if (known != null) icon.setImageDrawable(known);
+            else bg.execute(() -> { // the picker opens at once; the icons arrive a moment later, off the main thread
+                Drawable d;
+                try { d = r.loadIcon(getPackageManager()); } catch (Exception e) { return; }
+                ui.post(() -> { iconCache.put("raw:" + pkg, d); icon.setImageDrawable(d); });
+            });
             iconBox.addView(icon, new FrameLayout.LayoutParams(104, 104, Gravity.CENTER));
             cell.addView(iconBox, new LinearLayout.LayoutParams(144, 144));
             TextView name = text(r.loadLabel(pm).toString(), 30, fBold, WHITE);

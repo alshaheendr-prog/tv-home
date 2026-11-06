@@ -305,6 +305,11 @@ public class MainActivity extends Activity {
         ui.postDelayed(startQuiet, 4000);
         // No frosted backdrop: on this box the video is on a hardware layer and a copy of it comes back black.
         ui.postDelayed(() -> { loadDockIcons(); refreshApps(); }, 600);
+        // the tick skipped the countdown and the card while home was hidden: bring them up to date now
+        if (today != null) {
+            updatePill();
+            if (System.currentTimeMillis() - lastLineSwitch >= LINE_SECONDS * 1000) nextLine(Calendar.getInstance(KUWAIT));
+        }
     }
 
     @Override
@@ -1116,7 +1121,6 @@ public class MainActivity extends Activity {
         eventChip.setVisibility(View.VISIBLE);
     }
     private ThinBar adhanBar, lineBar, nowBar;
-    private ValueAnimator lineTimer;
     static final long LINE_SECONDS = 30;
     private LinearLayout leftCard;
     private View lineFrame;
@@ -1669,7 +1673,11 @@ public class MainActivity extends Activity {
         updatePill();
 
         int adhkar = Widgets.adhkarMode(now, today);
-        if (adhkar != shownAdhkar) {
+        if (!resumed) {
+            // behind another app: keep the time checks (reminders, the adhan pause) but no fades nobody sees;
+            // onResume catches the card up straight away
+            if (adhkar != shownAdhkar) { shownAdhkar = adhkar; lineIndex = -1; lastLineSwitch = 0; }
+        } else if (adhkar != shownAdhkar) {
             // Fajr or Maghrib has come in: the adhkar take over the card straight away
             boolean begins = shownAdhkar != -1 && adhkar != 0;
             shownAdhkar = adhkar;
@@ -1705,10 +1713,9 @@ public class MainActivity extends Activity {
         int prev = -1;
         for (int i = 0; i < 6; i++) if (i != 1 && today[i] * 60 <= nowSec) prev = today[i] * 60;
         if (prev < 0) prev = today[5] * 60 - 86400; // after midnight: counting from last night's Isha
-        adhanBar.setProgress((nowSec - prev) / (float) Math.max(1, target - prev));
+        if (resumed) adhanBar.setProgress((nowSec - prev) / (float) Math.max(1, target - prev));
         adhanBar.setColor(left <= 15 * 60 ? 0xB3F1D58A : 0x8CFFFFFF);
-        String cd = String.format(Locale.US, "%d:%02d:%02d", left / 3600, left % 3600 / 60, left % 60);
-        adhanCountdown.setText(cd);
+        if (resumed) adhanCountdown.setText(String.format(Locale.US, "%d:%02d:%02d", left / 3600, left % 3600 / 60, left % 60));
         adhanCountdown.setTextColor(left <= 15 * 60 ? 0xFFF1D58A : WHITE); // gold in the last 15 minutes
         if (!ambient && resumed && !anyPanelOpen() && System.currentTimeMillis() - lastInput > AMBIENT_AFTER) enterAmbient();
         if (ambient && !nightDim && System.currentTimeMillis() - lastInput > DIM_AFTER) enterNightDim();
@@ -1761,12 +1768,7 @@ public class MainActivity extends Activity {
             lineEn.setText(it[2]);
             lineBox.setTranslationY(0);
             lineBox.animate().setStartDelay(0).alpha(1).setDuration(400).setInterpolator(EASE).start();
-            if (lineTimer != null) lineTimer.cancel();
-            lineTimer = ValueAnimator.ofFloat(0, 1);
-            lineTimer.setDuration(LINE_SECONDS * 1000 - 1000);
-            lineTimer.setInterpolator(null);
-            lineTimer.addUpdateListener(v -> lineBar.setProgress((float) v.getAnimatedValue()));
-            lineTimer.start();
+            // no progress timer: the line's bar is hidden, and a 60 fps animator for it woke the box all day
         }).start();
     }
 
@@ -1881,13 +1883,14 @@ public class MainActivity extends Activity {
                 Dock d = (Dock) tile.getTag();
                 Drawable icon = null;
                 for (String p : d.pkgs) {
-                    try { icon = pm.getApplicationIcon(p); break; } catch (Exception ignored) { }
+                    icon = appIcon(pm, p);
+                    if (icon != null) break;
                 }
                 if (icon == null && d.pkgs.length > 0) {
                     String pkg = findByName(dockSearchName(d));
-                    if (pkg != null) try { icon = pm.getApplicationIcon(pkg); } catch (Exception ignored) { }
+                    if (pkg != null) icon = appIcon(pm, pkg);
                 }
-                final Drawable ic = icon == null ? null : fullBleed(icon);
+                final Drawable ic = icon;
                 ui.post(() -> {
                     ((ImageView) tile.getChildAt(0)).setImageDrawable(ic);
                     tile.getChildAt(1).setVisibility(ic == null ? View.VISIBLE : View.GONE);
@@ -1940,6 +1943,35 @@ public class MainActivity extends Activity {
     }
 
     /** Draws an app icon edge to edge: adaptive icons lose their mask and show their full square art. */
+    /**
+     * Finished icons, kept by package and rebuilt only when the app itself changes (its lastUpdateTime), so coming back
+     * home no longer redraws forty icons while the screen fades in. Each caller gets its own copy of the picture.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<String, Object[]> ICONS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private Drawable cachedIcon(PackageManager pm, String key, String pkg, java.util.function.Supplier<Drawable> raw) {
+        long stamp;
+        try { stamp = pm.getPackageInfo(pkg, 0).lastUpdateTime; } catch (Exception e) { ICONS.remove(key); return null; }
+        Object[] hit = ICONS.get(key);
+        if (hit != null && (long) hit[0] == stamp) {
+            Drawable.ConstantState cs = (Drawable.ConstantState) hit[1];
+            if (cs != null) return cs.newDrawable(getResources());
+        }
+        Drawable d;
+        try { d = fullBleed(raw.get()); } catch (Exception e) { return null; }
+        if (d == null) return null;
+        if (d instanceof android.graphics.drawable.BitmapDrawable) ((android.graphics.drawable.BitmapDrawable) d).getBitmap().prepareToDraw();
+        Drawable.ConstantState cs = d.getConstantState();
+        if (cs != null) { ICONS.put(key, new Object[]{stamp, cs}); return cs.newDrawable(getResources()); }
+        return d;
+    }
+
+    private Drawable appIcon(PackageManager pm, String pkg) {
+        return cachedIcon(pm, "p:" + pkg, pkg, () -> {
+            try { return pm.getApplicationIcon(pkg); } catch (Exception e) { throw new RuntimeException(e); }
+        });
+    }
+
     private Drawable fullBleed(Drawable icon) {
         int size = 168;
         Bitmap b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
@@ -2514,7 +2546,7 @@ public class MainActivity extends Activity {
                     AppEntry a = new AppEntry();
                     a.pkg = pkg;
                     a.label = r.loadLabel(pm).toString();
-                    a.icon = fullBleed(r.loadIcon(pm)); // square, edge to edge, ready for the rounded tile
+                    a.icon = cachedIcon(pm, "a:" + pkg, pkg, () -> r.loadIcon(pm)); // square, edge to edge, ready for the rounded tile
                     out.add(a);
                 }
             }
@@ -2522,7 +2554,7 @@ public class MainActivity extends Activity {
             AppEntry settings = new AppEntry();
             settings.pkg = SETTINGS;
             settings.label = "Settings";
-            try { settings.icon = fullBleed(pm.getApplicationIcon("com.android.tv.settings")); } catch (Exception e) { settings.icon = null; }
+            settings.icon = appIcon(pm, "com.android.tv.settings");
             out.add(0, settings);
             AppEntry cal = new AppEntry();
             cal.pkg = CALENDAR;
@@ -2541,12 +2573,25 @@ public class MainActivity extends Activity {
         if (all == null) { refreshApps(); ui.postDelayed(() -> openApps(mode), 600); return; }
         Set<String> kids = kidPicks();
         appsTitle.setText("Hold OK for options: home row or show first ⭐");
-        appGrid.removeAllViews();
-        View first = null;
         // Apps chosen to show first come first, marked with a star.
         List<AppEntry> shown = new ArrayList<>();
         for (AppEntry a : all) if (!HIDDEN_FROM_LIST.contains(a.pkg) && kids.contains(a.pkg)) shown.add(a);
         for (AppEntry a : all) if (!HIDDEN_FROM_LIST.contains(a.pkg) && !kids.contains(a.pkg)) shown.add(a);
+        StringBuilder key = new StringBuilder();
+        for (AppEntry a : shown) {
+            Object[] ic = ICONS.get("a:" + a.pkg);
+            key.append(a.pkg).append('|').append(a.label).append('|').append(kids.contains(a.pkg)).append('|').append(ic == null ? 0 : ic[0]).append(';');
+        }
+        if (key.toString().equals(gridKey) && appGrid.getChildCount() == shown.size()) {
+            // nothing changed since the last time: keep the tiles and only play the row-by-row fade again
+            for (int i = 0; i < appGrid.getChildCount(); i++) fadeTileIn(appGrid.getChildAt(i), i);
+            show(appsPanel);
+            if (appGrid.getChildCount() > 0) appGrid.getChildAt(0).requestFocus();
+            return;
+        }
+        gridKey = key.toString();
+        appGrid.removeAllViews();
+        View first = null;
         int index = 0;
         for (AppEntry a : shown) {
             LinearLayout item = new LinearLayout(this);
@@ -2560,10 +2605,10 @@ public class MainActivity extends Activity {
             icon.setImageDrawable(a.icon);
             icon.setScaleType(ImageView.ScaleType.CENTER_CROP);
             icon.setOutlineProvider(new ViewOutlineProvider() {
-                @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 30); }
+                @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 30f * v.getWidth() / TILE); }
             });
-            icon.setClipToOutline(true);
-            icon.setElevation(6);
+            // the bitmap is already rounded (fullBleed): the outline only shapes the focus shadow, with no clip
+            // and no resting shadow, so the grid draws no masks and no shadows until a tile is focused
             item.addView(icon, new LinearLayout.LayoutParams(124, 124));
             TextView label = text((kids.contains(a.pkg) ? "⭐ " : "") + a.label, 24, fMed, SOFT);
             label.setGravity(Gravity.CENTER);
@@ -2576,10 +2621,7 @@ public class MainActivity extends Activity {
                 v.animate().setStartDelay(0).scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(200).setInterpolator(EASE).start(); // the row fade-in delay must not hold back focus
                 goldLift(v, has, 22);
             });
-            // the grid fades in row by row
-            item.setAlpha(0);
-            item.setTranslationY(18);
-            item.animate().alpha(1).translationY(0).setStartDelay(Math.min(index, 28) / 7 * 60L + 80).setDuration(360).setInterpolator(EASE).start();
+            fadeTileIn(item, index);
             index++;
             item.setOnClickListener(v -> {
                 if (a.pkg.equals(SETTINGS)) openSettings();
@@ -2596,6 +2638,17 @@ public class MainActivity extends Activity {
         }
         show(appsPanel);
         if (first != null) first.requestFocus();
+    }
+
+    /** The apps the grid was last built from; the same list opens with the same tiles. */
+    private String gridKey;
+
+    /** The grid fades in row by row. */
+    private static void fadeTileIn(View item, int index) {
+        item.animate().cancel();
+        item.setAlpha(0);
+        item.setTranslationY(18);
+        item.animate().alpha(1).translationY(0).setStartDelay(Math.min(index, 28) / 7 * 60L + 80).setDuration(360).setInterpolator(EASE).start();
     }
 
     private FrameLayout appMenuBox;
