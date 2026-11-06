@@ -72,6 +72,7 @@ public class AdhanService extends Service {
 
     private int[] today, tomorrow;
     private String cachedDay = "";
+    private String shownDate = "";
     private final Set<String> fired = new HashSet<>();
     private long lastEventQuery;
     private String foreground = "";
@@ -85,8 +86,7 @@ public class AdhanService extends Service {
     private TextView cardKicker, cardAr, cardEn, cardRef;
     private int cardIndex = -1;
     private long cardSwitched;
-    private String[] ayahToday; // {ar, en, ref}
-    private String ayahDay = "";
+    private final String[] ayahToday = null; // the verse now comes from the curated list (Verses)
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
 
     static void start(Context c) {
@@ -464,12 +464,18 @@ public class AdhanService extends Service {
             tm.add(Calendar.DAY_OF_MONTH, 1);
             tomorrow = PrayerTimes.forDate(tm.get(Calendar.YEAR), tm.get(Calendar.MONTH) + 1, tm.get(Calendar.DAY_OF_MONTH));
             for (int i = 0; i < 6; i++) rows[i][2].setText(PrayerTimes.clock(today[i]));
+        }
+        // the date line redraws on a new day, and straight away when the Hijri setting changes
+        Widgets.offset = prefs.getInt("hijri_offset", 0);
+        String dateKey = key + "/" + Widgets.offset;
+        if (!dateKey.equals(shownDate)) {
+            shownDate = dateKey;
             try {
                 DateFormat hf = DateFormat.getDateInstance(DateFormat.LONG, new ULocale("ar_SA@calendar=islamic-umalqura"));
                 hf.setTimeZone(android.icu.util.TimeZone.getTimeZone("Asia/Kuwait"));
                 SimpleDateFormat gf = new SimpleDateFormat("EEE d MMM", Locale.UK);
                 gf.setTimeZone(KUWAIT);
-                hijri.setText(gf.format(now.getTime()) + "  ·  " + hf.format(now.getTime()));
+                hijri.setText(gf.format(now.getTime()) + "  ·  " + hf.format(new java.util.Date(Widgets.shift(now.getTimeInMillis()))));
             } catch (Exception ignored) { }
         }
         int h = now.get(Calendar.HOUR_OF_DAY), mi = now.get(Calendar.MINUTE), s = now.get(Calendar.SECOND);
@@ -522,7 +528,6 @@ public class AdhanService extends Service {
         setPanel(home);
         setCard(home);
         if (cardShown && System.currentTimeMillis() - cardSwitched > 15000) nextCard(now);
-        if (!key.equals(ayahDay)) { ayahDay = key; fetchAyah(now.get(Calendar.DAY_OF_YEAR) + y * 400); }
         if (System.currentTimeMillis() - lastWeather > 30 * 60 * 1000) { lastWeather = System.currentTimeMillis(); fetchWeather(); }
         ui.postDelayed(this::tick, 1000 - (System.currentTimeMillis() % 1000));
     }
@@ -752,7 +757,7 @@ public class AdhanService extends Service {
             cardAr.setVisibility(it[1].isEmpty() ? View.GONE : View.VISIBLE);
             cardEn.setText(it[2]);
             cardRef.setText(it[3]);
-            cardRef.setVisibility(it[3].isEmpty() ? View.GONE : View.VISIBLE);
+            cardRef.setVisibility(it[3].isEmpty() || !prefs.getBoolean("sources", true) ? View.GONE : View.VISIBLE);
         };
         if (!cardShown) { fill.run(); return; }
         View box = card.getChildAt(0);
@@ -760,45 +765,6 @@ public class AdhanService extends Service {
             fill.run();
             box.animate().alpha(1).setDuration(350).start();
         }).start();
-    }
-
-    /** Verse of the day from the Qur'an service (Uthmani text with Sahih International), a short one if possible. */
-    private void fetchAyah(int seed) {
-        new Thread(() -> {
-            for (int attempt = 0; attempt < 12; attempt++) {
-                int n = (int) (((long) (seed + attempt) * 7919L) % 6236) + 1;
-                try {
-                    JSONObject d = new JSONObject(get("https://api.alquran.cloud/v1/ayah/" + n + "/editions/quran-uthmani,en.sahih"));
-                    org.json.JSONArray arr = d.getJSONArray("data");
-                    JSONObject ar = arr.getJSONObject(0), en = arr.getJSONObject(1);
-                    JSONObject sur = ar.getJSONObject("surah");
-                    String text = withoutBismillah(ar.getString("text"), sur.getInt("number"), ar.getInt("numberInSurah"));
-                    if (text.length() > 170) continue; // never a long one: after 12 tries the built-in verses are used
-                    JSONObject surah = ar.getJSONObject("surah");
-                    String ref = surah.getString("englishName") + " " + surah.getInt("number") + ":" + ar.getInt("numberInSurah")
-                            + "  ·  " + surah.getString("name");
-                    String[] a = {text, en.getString("text"), ref};
-                    ui.post(() -> ayahToday = a);
-                    return;
-                } catch (Exception e) {
-                    break; // offline: Widgets falls back to the built-in verses
-                }
-            }
-        }).start();
-    }
-
-    /**
-     * The Qur'an service puts the Bismillah in front of verse 1 of every surah except Al-Fatihah (where it IS verse 1)
-     * and At-Tawbah (which has none). It isn't part of that verse, so it is taken off: its four words.
-     */
-    static String withoutBismillah(String text, int surah, int ayah) {
-        if (ayah != 1 || surah == 1) return text;
-        String t = text.replace("\uFEFF", "").trim();
-        String[] w = t.split("\\s+", 5);
-        // The first word without its vowel marks must be بسم, however the marks are encoded.
-        String first = w[0].replaceAll("[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]", "");
-        if (w.length < 5 || !first.equals("\u0628\u0633\u0645")) return text;
-        return w[4];
     }
 
     private static String weatherIcon(int code, boolean day) {

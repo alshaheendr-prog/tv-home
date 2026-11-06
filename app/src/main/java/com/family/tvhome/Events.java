@@ -11,15 +11,21 @@ final class Events {
     private static String cachedKey = "";
     private static int[] cachedHijri;
 
+    /** Days the Hijri date is moved (Parent settings: -1, 0 or +1): Kuwait's moon sighting can differ from Umm al-Qura by a day. */
+    static int offset;
+
+    /** The moment whose Umm al-Qura date is today's Hijri date once the offset is applied. */
+    static long shift(long millis) { return millis + offset * 86400000L; }
+
     /** {month (0 = Muharram), day} for the given moment. */
     static int[] hijri(Calendar now) {
-        String key = now.get(Calendar.YEAR) + "-" + now.get(Calendar.DAY_OF_YEAR);
+        String key = now.get(Calendar.YEAR) + "-" + now.get(Calendar.DAY_OF_YEAR) + "/" + offset;
         if (key.equals(cachedKey)) return cachedHijri;
         int[] out = {-1, -1};
         try {
             IslamicCalendar ic = new IslamicCalendar(android.icu.util.TimeZone.getTimeZone("Asia/Kuwait"));
             ic.setCalculationType(IslamicCalendar.CalculationType.ISLAMIC_UMALQURA);
-            ic.setTimeInMillis(now.getTimeInMillis());
+            ic.setTimeInMillis(shift(now.getTimeInMillis()));
             out = new int[]{ic.get(IslamicCalendar.MONTH), ic.get(IslamicCalendar.DAY_OF_MONTH)};
         } catch (Exception ignored) { }
         cachedKey = key;
@@ -88,7 +94,7 @@ final class Events {
         try {
             IslamicCalendar ic = new IslamicCalendar(android.icu.util.TimeZone.getTimeZone("Asia/Kuwait"));
             ic.setCalculationType(IslamicCalendar.CalculationType.ISLAMIC_UMALQURA);
-            ic.setTimeInMillis(now.getTimeInMillis());
+            ic.setTimeInMillis(shift(now.getTimeInMillis()));
             boolean white = false;
             for (int i = 0; i <= 360; i++) {
                 if (i > 0) ic.add(IslamicCalendar.DAY_OF_MONTH, 1);
@@ -103,7 +109,7 @@ final class Events {
                 else if (m == IslamicCalendar.DHU_AL_HIJJAH && d == 9) e = new String[]{"Day of Arafah", "يوم عرفة"};
                 else if (m == IslamicCalendar.DHU_AL_HIJJAH && d == 10) e = new String[]{"Eid al-Adha", "عيد الأضحى"};
                 else if (!white && d == 13 && m != IslamicCalendar.DHU_AL_HIJJAH) { white = true; e = new String[]{"White Days fast (13th to 15th)", "الأيام البيض"}; }
-                if (e != null) out.add(new Object[]{e[0], e[1], i, ic.getTimeInMillis()});
+                if (e != null) out.add(new Object[]{e[0], e[1], i, ic.getTimeInMillis() - offset * 86400000L});
             }
         } catch (Exception ignored) { }
         return out;

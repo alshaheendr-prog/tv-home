@@ -162,8 +162,8 @@ public class MainActivity extends Activity {
     private String shownClock = "";
 
     private int[] today, tomorrow;
-    private String cachedDay = "", ayahDay = "";
-    private String[] ayahToday;
+    private String cachedDay = "";
+    private final String[] ayahToday = null; // the verse now comes from the curated list (Verses)
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
     private long lastWeather, lastLineSwitch;
     private int lineIndex = -1, shownAdhkar = -1, listenSec, remindedFor = -1;
@@ -188,6 +188,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
         prefs = getSharedPreferences("home", MODE_PRIVATE);
+        Events.offset = prefs.getInt("hijri_offset", 0);
         preferSixtyHz();
         fullLengthAnimations();
         fMed = getResources().getFont(R.font.inter_medium);
@@ -1703,10 +1704,9 @@ public class MainActivity extends Activity {
             try {
                 DateFormat hf = DateFormat.getDateInstance(DateFormat.LONG, new ULocale("ar_SA@calendar=islamic-umalqura"));
                 hf.setTimeZone(android.icu.util.TimeZone.getTimeZone("Asia/Kuwait"));
-                hijriText.setText(hf.format(now.getTime()));
+                hijriText.setText(hf.format(new java.util.Date(Events.shift(now.getTimeInMillis()))));
             } catch (Exception ignored) { }
         }
-        if (!key.equals(ayahDay)) { ayahDay = key; fetchAyah(now.get(Calendar.DAY_OF_YEAR) + y * 400); }
 
         int h = now.get(Calendar.HOUR_OF_DAY), mi = now.get(Calendar.MINUTE);
         boolean h24 = prefs.getBoolean("clock24", false);
@@ -1726,7 +1726,7 @@ public class MainActivity extends Activity {
             // onResume catches the card up straight away
             if (adhkar != shownAdhkar) { shownAdhkar = adhkar; lineIndex = -1; lastLineSwitch = 0; }
         } else if (adhkar != shownAdhkar) {
-            // Fajr or Maghrib has come in: the adhkar take over the card straight away
+            // Fajr or Asr has come in: the adhkar take over the card straight away
             boolean begins = shownAdhkar != -1 && adhkar != 0;
             shownAdhkar = adhkar;
             lineIndex = -1;
@@ -1811,7 +1811,8 @@ public class MainActivity extends Activity {
         // the most frequent motion on the home: a calm opacity-only cross-fade, about 650 ms in all
         lineBox.animate().setStartDelay(0).alpha(0).setDuration(250).setInterpolator(EXIT).withEndAction(() -> {
             // the kicker is letterspaced capitals, so the reference joins it in capitals too
-            lineKicker.setText(it[0] + (it[3].isEmpty() ? "" : "   ·   " + it[3].toUpperCase(Locale.ROOT)));
+            boolean src = prefs.getBoolean("sources", true); // Parent settings can hide the references
+            lineKicker.setText(it[0] + (it[3].isEmpty() || !src ? "" : "   ·   " + it[3].toUpperCase(Locale.ROOT)));
             lineAr.setText(it[1]);
             lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[1].length() > 110 ? 32 : 38);
             lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[2].length() > 150 ? 28 : 32);
@@ -1886,43 +1887,6 @@ public class MainActivity extends Activity {
         if (code <= 67 || (code >= 80 && code <= 82)) return "Rain · مطر";
         if (code >= 95) return "Thunderstorm · رعد";
         return "Cloudy · غائم";
-    }
-
-    private void fetchAyah(int seed) {
-        runBg(() -> {
-            for (int attempt = 0; attempt < 12; attempt++) {
-                int n = (int) (((long) (seed + attempt) * 7919L) % 6236) + 1;
-                try {
-                    JSONObject d = new JSONObject(get("https://api.alquran.cloud/v1/ayah/" + n + "/editions/quran-uthmani,en.sahih"));
-                    JSONArray arr = d.getJSONArray("data");
-                    JSONObject ar = arr.getJSONObject(0), en = arr.getJSONObject(1);
-                    JSONObject sur = ar.getJSONObject("surah");
-                    String text = withoutBismillah(ar.getString("text"), sur.getInt("number"), ar.getInt("numberInSurah"));
-                    if (text.length() > 120) continue; // never a long one: after 12 tries the built-in verses are used
-                    JSONObject surah = ar.getJSONObject("surah");
-                    String ref = Quran.EN[surah.getInt("number") - 1] + " " + surah.getInt("number") + ":" + ar.getInt("numberInSurah");
-                    String[] a = {text, en.getString("text"), ref};
-                    ui.post(() -> ayahToday = a);
-                    return;
-                } catch (Exception e) {
-                    return; // offline: the built-in verses are used
-                }
-            }
-        });
-    }
-
-    /**
-     * The Qur'an service puts the Bismillah in front of verse 1 of every surah except Al-Fatihah (where it IS verse 1)
-     * and At-Tawbah (which has none). It isn't part of that verse, so it is taken off: its four words.
-     */
-    static String withoutBismillah(String text, int surah, int ayah) {
-        if (ayah != 1 || surah == 1) return text;
-        String t = text.replace("\uFEFF", "").trim();
-        String[] w = t.split("\\s+", 5);
-        // The first word without its vowel marks must be بسم, however the marks are encoded.
-        String first = w[0].replaceAll("[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]", "");
-        if (w.length < 5 || !first.equals("\u0628\u0633\u0645")) return text;
-        return w[4];
     }
 
     // ================================================================== dock
@@ -3564,6 +3528,19 @@ public class MainActivity extends Activity {
             while (i < FITS.length && FITS[i] != fit) i++;
             prefs.edit().putInt("fit", FITS[(i + 1) % FITS.length]).apply();
             fitStage();
+            drawParent(parentClicked);
+        });
+        int ho = prefs.getInt("hijri_offset", 0);
+        parentRow("Hijri date (if Kuwait's moon sighting differs)", ho == 0 ? "As calculated" : ho > 0 ? "+1 day" : "−1 day", () -> {
+            int next = ho == 0 ? 1 : ho > 0 ? -1 : 0;
+            prefs.edit().putInt("hijri_offset", next).apply();
+            Events.offset = next;
+            cachedDay = ""; // the date line, the badge and the countdown redraw on the next tick
+            drawParent(parentClicked);
+        });
+        boolean src = prefs.getBoolean("sources", true);
+        parentRow("Sources under verses and hadith", src ? "Shown" : "Hidden", () -> {
+            prefs.edit().putBoolean("sources", !src).apply();
             drawParent(parentClicked);
         });
         int cf = prefs.getInt("clock_face", 0) % CLOCK_FONTS.length;

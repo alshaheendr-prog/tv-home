@@ -38,7 +38,7 @@ final class Widgets {
                 out.add(new String[]{"JUMU'AH · صلاة الجمعة", "صلاة الجمعة " + arDigits(PrayerTimes.clock(t[2])), "Jumu'ah prayer at " + PrayerTimes.clock(t[2]) + ".", ""});
         }
 
-        // Morning adhkar from Fajr, evening adhkar from Maghrib: while it is their time they take over the card.
+        // Morning adhkar from Fajr, evening adhkar from Asr: while it is their time they take over the card.
         int mode = adhkarMode(now, t);
         if (mode != 0) {
             for (String[] d : mode == 1 ? MORNING : EVENING)
@@ -47,7 +47,7 @@ final class Widgets {
         }
 
         // Verse and hadith of the day
-        String[] a = ayah != null ? ayah : Content.AYAH[Math.floorMod(doy, Content.AYAH.length)];
+        String[] a = Verses.forDay(now); // a curated list of whole verses, the same in every app (offline too)
         out.add(new String[]{"VERSE OF THE DAY · آية اليوم", a[0], a[1], a[2]});
         String[] h = Content.HADITH[Math.floorMod(doy, Content.HADITH.length)];
         out.add(new String[]{"HADITH OF THE DAY · حديث اليوم", h[0], h[1], h[2]});
@@ -62,43 +62,59 @@ final class Widgets {
         return out;
     }
 
-    /** 1 from Fajr until three hours after sunrise, 2 from Maghrib until an hour after Isha, otherwise 0. */
+    /** 1 from Fajr until three hours after sunrise, 2 from Asr until an hour after Maghrib (as in the Adhan app), otherwise 0. */
     static int adhkarMode(Calendar now, int[] t) {
         if (t == null) return 0;
         int min = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
         if (min >= t[0] && min < t[1] + 180) return 1;
-        if (min >= t[4] && min < t[5] + 60) return 2;
+        if (min >= t[3] && min < t[4] + 60) return 2;
         return 0;
     }
 
-    // {Arabic, English, source}. From Hisn al-Muslim (numbers from the Mukhtasar edition, as on en.tohed.com). Check any new one on dorar.net or sunnah.com first: some (like Hasbiyallah 7 times, Abu Dawud 5081) are a Companion's words, not the Prophet's ﷺ.
+    // {Arabic, English, source}. The adhkar of Hisn al-Muslim, cited to the hadith collections (sunnah.com numbering) with
+    // al-Albani's grade for the Sunan. Check any new one on dorar.net or sunnah.com first: some well-known ones are weak
+    // (رضيت بالله ثلاثاً, Abu Dawud 5073 and 5084) or not the Prophet's ﷺ words (Hasbiyallah 7 times, Abu Dawud 5081).
     static final String[][] MORNING = {
             {"أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له",
-                    "We have reached the morning and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Hisn al-Muslim 100 · Muslim"},
+                    "We have reached the morning and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "from Muslim 2723"},
             {"اللهم بك أصبحنا وبك أمسينا وبك نحيا وبك نموت وإليك النشور",
-                    "O Allah, by You we reach the morning and the evening, by You we live and die, and to You is the rising.", "Hisn al-Muslim 89 · At-Tirmidhi"},
+                    "O Allah, by You we reach the morning and the evening, by You we live and die, and to You is the rising.", "Abu Dawud 5068, sahih (al-Albani)"},
+            {"اللهم أنت ربي، لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك علي، وأبوء لك بذنبي، فاغفر لي، فإنه لا يغفر الذنوب إلا أنت",
+                    "O Allah, You are my Lord; none is worthy of worship but You. You created me and I am Your servant, true to Your covenant as best I can. I seek refuge in You from the evil I have done. I admit Your favour and my sin, so forgive me: none forgives sins but You.", "Bukhari 6306"},
+            {"اللهم فاطر السموات والأرض، عالم الغيب والشهادة، رب كل شيء ومليكه، أشهد أن لا إله إلا أنت، أعوذ بك من شر نفسي وشر الشيطان وشركه",
+                    "O Allah, Creator of the heavens and the earth, Knower of the unseen and the seen, Lord and Owner of all things: I bear witness that none is worthy of worship but You. I seek refuge in You from the evil of myself and of Satan.", "from Abu Dawud 5067, sahih (al-Albani)"},
+            {"اللهم إني أسألك العافية في الدنيا والآخرة",
+                    "O Allah, I ask You for well-being in this world and the Hereafter.", "from Abu Dawud 5074, sahih (al-Albani)"},
             {"بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم",
-                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Hisn al-Muslim 97 · Abu Dawud, At-Tirmidhi"},
-            {"رضيت بالله رباً وبالإسلام ديناً وبمحمد ﷺ نبياً",
-                    "I am pleased with Allah as my Lord, Islam as my religion and Muhammad ﷺ as my Prophet. (3 times)", "Abu Dawud"},
-            {"حسبي الله لا إله إلا هو عليه توكلت وهو رب العرش العظيم",
-                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Hisn al-Muslim 94 · Abu Dawud 5081, words of Abu al-Darda"},
+                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Abu Dawud 5088, sahih (al-Albani)"},
+            {"قل هو الله أحد والمعوذتين حين تمسي وحين تصبح ثلاث مرات تكفيك من كل شيء",
+                    "Qul huwa Allahu ahad and the two Mu'awwidhat (Al-Falaq and An-Nas), three times in the evening and the morning: they will suffice you against everything.", "from Abu Dawud 5082, hasan (al-Albani)"},
+            {"سبحان الله وبحمده عدد خلقه ورضا نفسه وزنة عرشه ومداد كلماته",
+                    "Glory and praise be to Allah, as many as His creation, as much as pleases Him, the weight of His Throne and the ink of His words. (3 times)", "from Muslim 2726"},
+            {"لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير",
+                    "None is worthy of worship but Allah alone, with no partner. His is the dominion and the praise, and He has power over all things. (100 times a day)", "from Bukhari 3293"},
             {"سبحان الله وبحمده",
-                    "Glory be to Allah and praise be to Him. (100 times)", "Hisn al-Muslim 102 · Muslim"},
+                    "Glory be to Allah and praise be to Him. (100 times, morning and evening)", "from Muslim 2692"},
     };
     static final String[][] EVENING = {
             {"أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له",
-                    "We have reached the evening and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Hisn al-Muslim 100 · Muslim"},
-            {"اللهم بك أمسينا وبك أصبحنا وبك نحيا وبك نموت وإليك المصير",
-                    "O Allah, by You we reach the evening and the morning, by You we live and die, and to You is the return.", "Hisn al-Muslim 89 · At-Tirmidhi"},
+                    "We have reached the evening and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "from Muslim 2723"},
+            {"اللهم بك أمسينا وبك نحيا وبك نموت وإليك النشور",
+                    "O Allah, by You we reach the evening, by You we live and die, and to You is the rising.", "Abu Dawud 5068, sahih (al-Albani)"},
             {"أعوذ بكلمات الله التامات من شر ما خلق",
-                    "I seek refuge in the perfect words of Allah from the evil of what He has created. (3 times)", "Hisn al-Muslim 107 · At-Tirmidhi 3604"},
+                    "I seek refuge in the perfect words of Allah from the evil of what He has created. (3 times)", "Muslim 2709 · Tirmidhi 3604"},
+            {"اللهم أنت ربي، لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك علي، وأبوء لك بذنبي، فاغفر لي، فإنه لا يغفر الذنوب إلا أنت",
+                    "O Allah, You are my Lord; none is worthy of worship but You. You created me and I am Your servant, true to Your covenant as best I can. I seek refuge in You from the evil I have done. I admit Your favour and my sin, so forgive me: none forgives sins but You.", "Bukhari 6306"},
+            {"اللهم فاطر السموات والأرض، عالم الغيب والشهادة، رب كل شيء ومليكه، أشهد أن لا إله إلا أنت، أعوذ بك من شر نفسي وشر الشيطان وشركه",
+                    "O Allah, Creator of the heavens and the earth, Knower of the unseen and the seen, Lord and Owner of all things: I bear witness that none is worthy of worship but You. I seek refuge in You from the evil of myself and of Satan.", "from Abu Dawud 5067, sahih (al-Albani)"},
+            {"اللهم إني أسألك العافية في الدنيا والآخرة",
+                    "O Allah, I ask You for well-being in this world and the Hereafter.", "from Abu Dawud 5074, sahih (al-Albani)"},
             {"بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم",
-                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Hisn al-Muslim 97 · Abu Dawud, At-Tirmidhi"},
-            {"رضيت بالله رباً وبالإسلام ديناً وبمحمد ﷺ نبياً",
-                    "I am pleased with Allah as my Lord, Islam as my religion and Muhammad ﷺ as my Prophet. (3 times)", "Abu Dawud"},
-            {"حسبي الله لا إله إلا هو عليه توكلت وهو رب العرش العظيم",
-                    "Allah is enough for me; none is worthy of worship but Him. In Him I trust, and He is Lord of the Mighty Throne. (7 times)", "Hisn al-Muslim 94 · Abu Dawud 5081, words of Abu al-Darda"},
+                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Abu Dawud 5088, sahih (al-Albani)"},
+            {"قل هو الله أحد والمعوذتين حين تمسي وحين تصبح ثلاث مرات تكفيك من كل شيء",
+                    "Qul huwa Allahu ahad and the two Mu'awwidhat (Al-Falaq and An-Nas), three times in the evening and the morning: they will suffice you against everything.", "from Abu Dawud 5082, hasan (al-Albani)"},
+            {"سبحان الله وبحمده",
+                    "Glory be to Allah and praise be to Him. (100 times, morning and evening)", "from Muslim 2692"},
     };
 
     // Arabic-Indic digits by hand: Locale("ar") gives Western digits on newer Android (CLDR 46)
@@ -121,14 +137,14 @@ final class Widgets {
 
     /** Days until the next of Ramadan, Eid al-Fitr and Eid al-Adha (Umm al-Qura calendar). */
     private static String[] countdown(Calendar now) {
-        String key = now.get(Calendar.YEAR) + "-" + now.get(Calendar.DAY_OF_YEAR);
+        String key = now.get(Calendar.YEAR) + "-" + now.get(Calendar.DAY_OF_YEAR) + "/" + Events.offset;
         if (key.equals(cachedDay)) return cachedCountdown;
         cachedDay = key;
         cachedCountdown = null;
         try {
             IslamicCalendar ic = new IslamicCalendar(android.icu.util.TimeZone.getTimeZone("Asia/Kuwait"));
             ic.setCalculationType(IslamicCalendar.CalculationType.ISLAMIC_UMALQURA);
-            ic.setTimeInMillis(now.getTimeInMillis());
+            ic.setTimeInMillis(Events.shift(now.getTimeInMillis()));
             int m = ic.get(IslamicCalendar.MONTH), d = ic.get(IslamicCalendar.DAY_OF_MONTH);
             if (m == IslamicCalendar.RAMADAN) {
                 cachedCountdown = new String[]{"RAMADAN · رمضان", "رمضان كريم، اليوم " + ar(d) + " من رمضان", "Ramadan Kareem. Today is day " + d + " of Ramadan.", ""};

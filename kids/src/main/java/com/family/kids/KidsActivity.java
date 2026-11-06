@@ -674,7 +674,8 @@ public class KidsActivity extends Activity {
             wordName.setVisibility(View.GONE);
             wordMeaning.setText(h.english);
             wordMeaning.setTextColor(WHITE);
-            wordLine.setText("The Prophet ﷺ  ·  " + h.source);
+            boolean src = Rules.prefs(this).getInt("word_source", 1) == 1; // Parent settings can hide the reference
+            wordLine.setText(src ? "The Prophet ﷺ  ·  " + h.source : "The Prophet ﷺ");
         }
     }
 
@@ -1771,6 +1772,7 @@ public class KidsActivity extends Activity {
         choiceRow("Apps along the bottom", new int[]{0, 1}, "icons", 0, v -> v == 0 ? "App icons" : "Big banners");
         choiceRow("Character of the day", new int[]{1, 0}, "char_card", 1, v -> v == 1 ? "Show" : "Hide");
         choiceRow("Name of Allah or hadith", new int[]{1, 0}, "word_card", 1, v -> v == 1 ? "Show" : "Hide");
+        choiceRow("Hadith source (Bukhari, Muslim…)", new int[]{1, 0}, "word_source", 1, v -> v == 1 ? "Show" : "Hide");
         TextView arrangeHint = text("To move an app along the bottom, or take it off, hold OK on it.", 30, fMed, DIM);
         arrangeHint.setPadding(28, 6, 28, 6);
         parentList.addView(arrangeHint);
@@ -1866,6 +1868,7 @@ public class KidsActivity extends Activity {
             if (key.equals("world")) { applyWorld(); refreshTiles(); }
             if (key.equals("fit")) fitStage();
             if (key.equals("style") || key.equals("icons") || key.equals("dim") || key.equals("char_card") || key.equals("word_card")) applyLook();
+            if (key.equals("word_source")) drawGoodWord();
             if (key.equals("wallpaper")) {
                 List<File> clips = wallpapers(); // remembered by name, so a new clip in the folder never swaps it
                 Rules.prefs(this).edit().putString("wallpaper_name", values[at] >= 0 && values[at] < clips.size() ? clips.get(values[at]).getName() : "").apply();
