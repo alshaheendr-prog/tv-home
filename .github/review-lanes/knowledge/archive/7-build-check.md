@@ -3,6 +3,9 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06 PR #25: CI #157 green for 2b1a713, all 3 modules; Java-only diff; no Must/Should. Nice: dead ayahToday=null + unused Widgets.items ayah parameter; Verses.java duplicated in app and adhan (identical except package). New prefs: sources, hijri_offset (home, adhan), word_source (kids, int). alquran.cloud fetch removed; INTERNET still needed for weather.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - 2026-11-06, PR #23 (update 2, visual polish): CI #145 for 809f108 passed, with 3 × assembleRelease and lint vital. No Must or Should.
   - The manifests changed only icon/banner (@drawable to @mipmap).
@@ -86,6 +89,9 @@ All checked 2026-11-05 unless noted.
   - Checked 2026-11-06.
 - [so-manifest-res] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/50832824/lint-error-when-using-adaptive-launcher-icon: the lint error "Resources referenced from the manifest cannot vary by configuration" (version qualifiers are exempt). Checked 2026-11-06.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [jvms4] https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html (opened 2026-11-06): constant_pool_count u2; CONSTANT_Utf8 length u2 bytes, so one literal is at most 65,535 bytes. The §4.11 code-limit text was not in the fetched part.
+
 ## Open questions to research next
 - `adb install -r -d`: commit f1d44db allows a downgrade only on a debuggable build or app (for system apps). Confirm the rule applies to normal release APKs; until then assume `-d` fails. [aosp-f1d44db]
 - Answered 2026-11-05: `MY_PACKAGE_REPLACED` is a listed bg-FGS exemption; the Android 15 block names only BOOT_COMPLETED; `specialUse` is OK. [fgs-bg-start]
@@ -105,3 +111,6 @@ All checked 2026-11-05 unless noted.
 
 - Does the ManifestResource lint check exempt density qualifiers (mipmap-xhdpi/xxxhdpi banners)? CI #145 passed, so it seems to in practice. Confirm in the lint docs.
 - Does Google TV's launcher refresh a sideloaded app's banner right after `adb install -r`, or only after a reboot?
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- verify JVMS §4.11 per-method code limit (64 KB); matters if a table like Verses.ALL grows to thousands of rows (one static initializer).

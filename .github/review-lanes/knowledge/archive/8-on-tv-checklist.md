@@ -3,6 +3,12 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06, PR #25: no Must or Should. Checklist posted on the PR (issuecomment-6683111780) and saved to /mnt/project-files/tv-home/update-3-tv-checklist.md.
+- Nice 1: the home's "Sources under verses and hadith" only shows on the next band card (up to 30 s, `LINE_SECONDS`), because `lineKicker` is set in the cross-fade. Owner may think it didn't work; the checklist says "within 30 seconds".
+- Nice 2: the Adhan app's new "Show sources" and "HIJRI DATE" rows only change the panel/card that shows over a *different* home launcher, so the owner can never see their effect, and the Adhan Hijri offset (`adhan` prefs `hijri_offset`) is separate from the home's (`home` prefs `hijri_offset`) and can drift. A one-line note under the Adhan row, or reading one shared value, would remove the confusion.
+- Nice 3: Kids "Hadith source" only shows its effect on hadith days (`GoodWords.nameDay()` = even day of year, so odd days are hadith days). A row hint ("shows on hadith days") would help.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - **2026-11-06, PR #23** (update 2: visual and UI polish):
   - No Must.
@@ -84,6 +90,10 @@ All checked 2026-11-05 unless noted.
 - [adaptive-clip] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/49661571/adaptive-icon-not-displaying-properly: art outside the safe zone gets clipped. The fix is scaling it into the centre. Checked 2026-11-06.
 - [tv-update-fix] https://www.guidingtech.com/best-ways-to-fix-apps-not-updating-on-android-tv/: Play Store update fixes only. It says nothing about launcher icon caches. Checked 2026-11-06.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [arabtimes-1448] https://www.arabtimesonline.com/news/16th-june-marks-start-of-islamic-new-year-in-kuwait/ — Kuwait confirmed the Muharram crescent; Tuesday 16 June 2026 = 1 Muharram 1448 (same as Umm al-Qura). Why the default stays "As calculated".
+- [prefs-keep] https://www.mail-archive.com/android-developers@googlegroups.com/msg19881.html — Dianne Hackborn: "preserve data" (install -r) keeps all app data including SharedPreferences, so the new settings and the PINs survive Update TV.
+
 ## Open questions to research next
 (The web-fetch budget ran out on 2026-11-05 before these could be opened.)
 - Answered 2026-11-05: the publishing checklist lists requirements only, no test procedures.
@@ -105,3 +115,6 @@ All checked 2026-11-05 unless noted.
 
 - Does Google TV's own launcher ("Your apps", Settings > Apps) refresh a sideloaded app's icon or banner straight after `install -r`, or only after a reboot? No source found on 2026-11-06. Ask the owner what they see after this update.
 - Adaptive Icon Playground ([adaptive-icons]) could preview masks on the box. It's for the developer only, if lane 13 wants it.
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- Does Android's ICU `islamic-umalqura` give the same dates as JDK `HijrahDate` for 1448–1449? They agree on 1 Muharram 1448 = 16 June 2026, which also matches Kuwait's sighting [arabtimes-1448]; not checked on the box for other months.

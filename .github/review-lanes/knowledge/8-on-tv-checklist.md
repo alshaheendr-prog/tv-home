@@ -161,6 +161,16 @@ Added by the PR #23 review (2026-11-06):
   - Kids player: OK pauses and resumes. The pause sign sits on a dark 220 px disc.
   - Launcher art: Home and Adhan use adaptive vector icons (`mipmap-anydpi-v26/icon.xml`). Banners are in mipmap-xhdpi/xxxhdpi. Kids uses PNG icons in mipmap folders. `drawable/icon.png` stays in kids and adhan for the notification small icon.
 
+Added by the PR #25 review (2026-11-06):
+- Home Parent settings: new rows "Hijri date (if Kuwait's moon sighting differs)" (As calculated → +1 day → −1 day → As calculated; pref `hijri_offset`, `Events.offset`) and "Sources under verses and hadith" (Shown/Hidden; pref `sources`). They come after "Screen size", before "Clock font". OK keeps the highlight on the row (`parentClicked`).
+- Hijri offset reaches the date line (next tick, `cachedDay = ""`), the special-days line (`Events.hijri`), the countdown card (`Widgets.countdown` key includes offset) and the Islamic calendar (dates shift, `Events.upcoming` subtracts the offset).
+- Adhan settings: "Show sources (the hadith or verse reference)" On/Off and a "HIJRI DATE" header with "Move the Hijri date if Kuwait's moon sighting differs", both above "ADHAN SOUND" (so the test row is three items further down).
+- Kids Corner settings: "Hadith source (Bukhari, Muslim…)" Show/Hide after "Name of Allah or hadith" (pref `word_source`).
+- Band windows: morning adhkar Fajr → sunrise + 3 h; evening adhkar **Asr → Maghrib + 1 h** (was Maghrib → Isha + 1 h). During a window the band shows ONLY adhkar (`Widgets.items` returns early); outside it: (Friday lines), verse, hadith, countdown, character, every 30 s.
+- Verse of the day is offline: `Verses.forDay` = epoch day (Kuwait) × 37 mod 110, same list in home and adhan. Hadith: `Content.HADITH[(DAY_OF_YEAR + YEAR*400) mod 52]`. The countdown card is always present (it searches 400 days ahead).
+- The online verse fetch (`fetchAyah`, `withoutBismillah`) is gone from both apps.
+- Arabic digits now via `Widgets.arDigits` everywhere (10-minute reminder, countdown, Ramadan day) because `Locale("ar")` gives Western digits on newer Android.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/8-on-tv-checklist.md](archive/8-on-tv-checklist.md). Search it when a PR touches an area with history; don't read it in full.
@@ -188,3 +198,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-06: For a polish PR, write "just look" steps with one visible detail each (colour, a word, a box or no box), plus a "Broken:" line. Then add interruption steps wherever the PR changed what pauses or plays: the Quran page pausing the wallpaper, then Home or Netflix.
 - 2026-11-06: Date-bound looks (special days line, Friday Jumu'ah line, the prayer reminder) go in "Can't be tested now" with the next real date worked out (White Days around 22 to 25 Nov 2026).
 - 2026-11-06: A PR claim like "every control" needs a grep of where it's wired (`pressDip` callers, `isClickable`). Don't promise it on screens it doesn't reach.
+
+- 2026-11-06: For date-driven "you should see" lines, compute exact values in the container with JDK `java.time.chrono.HijrahDate` (Umm al-Qura) and the app's own index formulas, then give the owner a small table for the next 3–4 days (verse ref, hadith source, countdown number). It turns a vague "looks right" into a pass/fail check.
+- 2026-11-06: Content that depends on time of day (adhkar windows replace the verse/hadith) needs a "Good times to test" line before step 1.
+- 2026-11-06: A setting whose effect only appears over a different home launcher (Adhan panel/card) gets a "flip it and put it back" step plus a line saying there's nothing else to see; don't invent a visible check.

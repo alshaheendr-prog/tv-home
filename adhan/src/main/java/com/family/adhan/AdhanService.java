@@ -86,7 +86,6 @@ public class AdhanService extends Service {
     private TextView cardKicker, cardAr, cardEn, cardRef;
     private int cardIndex = -1;
     private long cardSwitched;
-    private final String[] ayahToday = null; // the verse now comes from the curated list (Verses)
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
 
     static void start(Context c) {
@@ -746,7 +745,7 @@ public class AdhanService extends Service {
     }
 
     private void nextCard(Calendar now) {
-        java.util.List<String[]> items = Widgets.items(this, now, today, ayahToday, tempNow, dustNow);
+        java.util.List<String[]> items = Widgets.items(this, now, today, tempNow, dustNow);
         if (items.isEmpty()) return;
         cardIndex = (cardIndex + 1) % items.size();
         String[] it = items.get(cardIndex); // {kicker, ar, en, ref}

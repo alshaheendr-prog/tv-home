@@ -3,6 +3,9 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06 PR #25 (Update 3: Islamic content): 5 new settings rows in 3 apps, no new keys or panels; focus restored in all three (home indexOfChild, Adhan by index, Kids in place). Should: home Sources toggle showed only at the next band line (up to 30 s), fixed. Nice: home Hijri label wrapped (579+170 px > 728 px row), shortened. Online verse fetch removed.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - 2026-11-06, PR #23 (update 2, visual polish): no Must.
   - Should: the new focus room is undone by clipToPadding or clipChildren in Parent settings, the hold-OK menu, the reciter list, the All apps and surah glow, Adhan settings, and Kids settings and the app picker. `pressDip` springs back to a scale read mid-animation, so a dock tile can stay at about 1.1 instead of 1.2.
@@ -74,6 +77,9 @@ Tags used above. All were opened on 2026-11-05 unless marked otherwise.
 - [vpa14] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/view/ViewPropertyAnimator.java : how a new animation takes over a property and cancels the old one; the end action is dropped on cancel.
 - [vg14] and [view14] (already listed) are now also cited for `dispatchDraw` `:4277`, `setClipChildren` `:4603` and `setDisplayListProperties` `:23483`.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [nav] re-opened 2026-11-06: no guidance on settings toggles or value-change feedback, only general focus/selection feedback and the Cancel rule; for toggle patterns see developer.android.com/design/ui/tv.
+
 ## Open questions to research next
 - Which key code does each button on this box's remote send (Home, Apps, Netflix, Prime Video, YouTube, Google TV/Live, the input/settings button)? Do any of them map to `VIDEO_APP_*`/`FEATURED_APP_*` and so can't be learned? (On the box: Parent settings → learn, or `adb shell getevent -l` / logcat.)
 - Does this box's Home button send `KEYCODE_HOME` or `KEYCODE_ALL_APPS`? If `ALL_APPS`, the default `rk_apps` mapping would turn Home into "open Kodi". Highest-priority check: `adb logcat | grep -i keycode` while pressing Home and Apps (lane 8 has the same step).
@@ -89,3 +95,6 @@ Tags used above. All were opened on 2026-11-05 unless marked otherwise.
 - Should the home get a MediaSession so the TV remote's Pause works on the soft Quran? (That may count as a feature; ask first.)
 
 - Is the elevation shadow (`goldLift` translationZ) of an outer-column tile clipped at the grid's bounds on this box's HWUI? This is inferred from the source; confirm it with lane 8's photo.
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- should home Parent value rows take Left/Right like Kids? Owner's call, polish only.

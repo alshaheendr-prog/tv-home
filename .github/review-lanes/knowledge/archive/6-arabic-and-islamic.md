@@ -3,6 +3,9 @@
 Past findings and the full source library for this lane. Search this file (grep the area, file or PR) when a review needs history or a source; you don't need to read it in full. New dated Past findings and new sources are appended here after each review.
 
 ## Past findings
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06 PR #25 (Update 3): 110 curated verses verified exact (two King Fahd copies); 52 hadith + adhkar + 24 Kids hadith verified at their sunnah.com numbers. Should: Amiri lacks `)` so "(٥)" draws wrong; Hijri offset stored per app; grades missing for Abu Dawud 1047 and Tirmidhi 3604; Latin digits in adhan Arabic (Content CHARACTERS, heat alert, Jumu'ah); no Hisn al-Muslim numbers. Nice: "from" on Bukhari 1/69, Muslim 2564c/2702b letters, verse-context merges (67:1-2, 26:77-80), reference hidden with sources off, Kids Name ayat, stress sample.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - 2026-11-06, PR #23 (update 2, visual polish): no Must. Should: `quranNow` (`MainActivity.java:2837`) switched to the subset Amiri (no Latin), so the English surah name and "Loading…" fall back to Roboto (`:3147`, `:3246`). Nice: three different Arabic-digit methods (`AdhanService:413` bare `Locale("ar")`, `Widgets:27` `ar()`, `Widgets:38` `arDigits`); the Amiri subset lacks `. : ° ·`; `MixText.isArabic` misses U+0870-089F and U+08A0-08FF. Fine: Quran text untouched; dark band behind the verse; surah names fully covered by Amiri; "بعد ١٠ دقائق" grammar; Jumu'ah "١١:٣٢" bidi; MixText spans whole runs only; Kids `wordArabic` top padding.
 
@@ -60,6 +63,12 @@ Tags used above. Opened 2026-11-05 unless marked.
 - [uax9-w4] https://www.w3.org/2004/Talks/IUC26bidi/slide14-1.html : wording of rule W4. Checked 2026-11-06.
 - [devto] re-read 2026-11-06: span boundaries inside a word break Arabic shaping on Android.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- [qj-312] npm quran-json 3.1.2 (risan), CC-BY-4.0: King Fahd text via quranenc + Saheeh International; English has end punctuation stripped.
+- [fawaz-quran] https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions.json (lists ara-quranuthmanihaf = King Fahd v13, ara-quransimple = Tanzil simple, which prepends the Basmala to ayah 1).
+- [fawaz-hadith] https://raw.githubusercontent.com/fawazahmed0/hadith-api/1/editions/ (sunnah.com numbering, grades).
+- [sm-2564c] https://sunnah.com/muslim:2564c; [sm-2702b] https://sunnah.com/muslim:2702b.
+
 ## Open questions to research next
 - Kuwait Awqaf: the official method statement and a summer-month timetable (June-August) to extend the OFFSETS check. Try awqaf.gov.kw again, or a dated Kuwaiti newspaper table.
 - Answered 2026-11-05: Eid al-Adha 1447 in Kuwait matched Umm al-Qura (holiday from Tue 26 May) [arabtimes-eid1447].
@@ -86,3 +95,7 @@ Tags used above. Opened 2026-11-05 unless marked.
 
 - Answered 2026-11-06: ICU on this box is 72.1 / CLDR 42 (Android 14). Still open: whether a Google TV OS update for this box (Android 15/16) will bring CLDR 46+.
 - Should the Amiri subset gain `. : ° ·` (and Latin) for mixed lines, or should mixed lines never use `fQuran`?
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- How Android 14 actually draws "(٥)" in Amiri Bold (fallback `)` from the system font, wrong-facing `(`): check on the TV.
+- Hisn al-Muslim edition to cite for the adhkar (owner's choice).

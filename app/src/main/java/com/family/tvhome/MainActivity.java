@@ -163,7 +163,6 @@ public class MainActivity extends Activity {
 
     private int[] today, tomorrow;
     private String cachedDay = "";
-    private final String[] ayahToday = null; // the verse now comes from the curated list (Verses)
     private volatile double tempNow = Double.NaN, dustNow = Double.NaN;
     private long lastWeather, lastLineSwitch;
     private int lineIndex = -1, shownAdhkar = -1, listenSec, remindedFor = -1;
@@ -444,11 +443,11 @@ public class MainActivity extends Activity {
         oneLine(nowReciter, "محمد صديق المنشاوي", "Mohammed Siddiq Al-Minshawi"); // the longest name, to test the strip
         showNowReciting(true);
         lineFrame.setVisibility(View.VISIBLE);
-        lineKicker.setText("VERSE OF THE DAY  ·  آية اليوم   ·   AL-BAQARAH 2:286");
-        lineAr.setText("رَبَّنَا لَا تُؤَاخِذْنَا إِن نَّسِينَا أَوْ أَخْطَأْنَا رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِن قَبْلِنَا");
-        lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, 32);
-        lineEn.setText("Our Lord, do not take us to task if we forget or make a mistake. Our Lord, do not place on us a burden like the one You placed on those before us.");
-        lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 28);
+        // the band's tallest real item: the verse with the longest English, sized the way the band sizes every line
+        String[] v = Verses.ALL[0];
+        for (String[] x : Verses.ALL) if (x[1].length() > v[1].length()) v = x;
+        lineKicker.setText("VERSE OF THE DAY · آية اليوم   ·   " + v[2].toUpperCase(Locale.ROOT));
+        fillBand(v[0], v[1]);
     }
 
     private void endStress() {
@@ -1287,6 +1286,8 @@ public class MainActivity extends Activity {
         lineEn.setMaxWidth(1700);
         lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 30);
         lineEn.setLineSpacing(0, 1.05f);
+        lineAr.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_BALANCED); // if a line ever wraps, two even halves
+        lineEn.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_BALANCED);
         lineEn.setPadding(0, 2, 0, 0);
         lineBox.addView(lineKicker, new LinearLayout.LayoutParams(-2, -2));
         lineBox.addView(lineAr, new LinearLayout.LayoutParams(-2, -2));
@@ -1802,22 +1803,50 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** The line on the band now, so a settings change can redraw its kicker straight away. */
+    private String[] lineItem;
+
+    /** The kicker, with the reference in capitals after it unless Parent settings hide the sources. */
+    private String kicker(String[] it) {
+        return it[0] + (it[3].isEmpty() || !prefs.getBoolean("sources", true) ? "" : "   ·   " + it[3].toUpperCase(Locale.ROOT));
+    }
+
+    /** The band's widest line (lineAr and lineEn have this max width). */
+    private static final int BAND_W = 1700;
+    private static final float[] AR_SIZES = {38, 36, 34, 32}, EN_SIZES = {32, 30, 28, 26};
+
+    /** The largest size at which the text fits one line of the band, measured, not guessed from its length; else the smallest. */
+    private static boolean fitOneLine(TextView v, String s, float[] sizes) {
+        for (float z : sizes) {
+            v.setTextSize(TypedValue.COMPLEX_UNIT_PX, z);
+            if (v.getPaint().measureText(s) <= BAND_W) return true;
+        }
+        return false;
+    }
+
+    /** Arabic and English on one line each, so the band never grows into the prayer strip. Every built-in text fits;
+     *  should an Arabic text ever need two lines, its English steps aside for that turn. */
+    private void fillBand(String ar, String en) {
+        lineAr.setText(ar);
+        boolean arOne = ar.isEmpty() || fitOneLine(lineAr, ar, AR_SIZES);
+        lineAr.setVisibility(ar.isEmpty() ? View.GONE : View.VISIBLE);
+        lineEn.setText(en);
+        fitOneLine(lineEn, en, EN_SIZES);
+        lineEn.setVisibility(arOne && !en.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
     private void nextLine(Calendar now) {
         lastLineSwitch = System.currentTimeMillis();
-        List<String[]> items = Widgets.items(this, now, today, ayahToday, tempNow, dustNow);
+        List<String[]> items = Widgets.items(this, now, today, tempNow, dustNow);
         if (items.isEmpty()) return;
         lineIndex = (lineIndex + 1) % items.size();
         String[] it = items.get(lineIndex); // {kicker, ar, en, ref}
         // the most frequent motion on the home: a calm opacity-only cross-fade, about 650 ms in all
         lineBox.animate().setStartDelay(0).alpha(0).setDuration(250).setInterpolator(EXIT).withEndAction(() -> {
             // the kicker is letterspaced capitals, so the reference joins it in capitals too
-            boolean src = prefs.getBoolean("sources", true); // Parent settings can hide the references
-            lineKicker.setText(it[0] + (it[3].isEmpty() || !src ? "" : "   ·   " + it[3].toUpperCase(Locale.ROOT)));
-            lineAr.setText(it[1]);
-            lineAr.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[1].length() > 110 ? 32 : 38);
-            lineEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, it[2].length() > 150 ? 28 : 32);
-            lineAr.setVisibility(it[1].isEmpty() ? View.GONE : View.VISIBLE);
-            lineEn.setText(it[2]);
+            lineItem = it;
+            lineKicker.setText(kicker(it));
+            fillBand(it[1], it[2]);
             lineBox.setTranslationY(0);
             lineBox.animate().setStartDelay(0).alpha(1).setDuration(400).setInterpolator(EASE).start();
             // no progress timer: the line's bar is hidden, and a 60 fps animator for it woke the box all day
@@ -3510,6 +3539,12 @@ public class MainActivity extends Activity {
             lineFrame.setVisibility(!verse ? View.VISIBLE : View.GONE);
             drawParent(parentClicked);
         });
+        boolean src = prefs.getBoolean("sources", true);
+        parentRow("Sources under verses and hadith", src ? "Shown" : "Hidden", () -> {
+            prefs.edit().putBoolean("sources", !src).apply();
+            if (lineItem != null) lineKicker.setText(kicker(lineItem)); // the band answers at once, not at its next line
+            drawParent(parentClicked);
+        });
         boolean h24 = prefs.getBoolean("clock24", false);
         parentRow("Clock", h24 ? "24-hour" : "12-hour", () -> {
             prefs.edit().putBoolean("clock24", !h24).apply();
@@ -3531,16 +3566,11 @@ public class MainActivity extends Activity {
             drawParent(parentClicked);
         });
         int ho = prefs.getInt("hijri_offset", 0);
-        parentRow("Hijri date (if Kuwait's moon sighting differs)", ho == 0 ? "As calculated" : ho > 0 ? "+1 day" : "−1 day", () -> {
+        parentRow("Hijri date (moon sighting)", ho == 0 ? "As calculated" : ho > 0 ? "+1 day" : "−1 day", () -> {
             int next = ho == 0 ? 1 : ho > 0 ? -1 : 0;
             prefs.edit().putInt("hijri_offset", next).apply();
             Events.offset = next;
             cachedDay = ""; // the date line, the badge and the countdown redraw on the next tick
-            drawParent(parentClicked);
-        });
-        boolean src = prefs.getBoolean("sources", true);
-        parentRow("Sources under verses and hadith", src ? "Shown" : "Hidden", () -> {
-            prefs.edit().putBoolean("sources", !src).apply();
             drawParent(parentClicked);
         });
         int cf = prefs.getInt("clock_face", 0) % CLOCK_FONTS.length;

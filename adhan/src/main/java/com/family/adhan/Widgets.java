@@ -20,7 +20,7 @@ final class Widgets {
 
     static long shift(long millis) { return millis + offset * 86400000L; }
 
-    static List<String[]> items(Context c, Calendar now, int[] t, String[] ayah, double temp, double dust) {
+    static List<String[]> items(Context c, Calendar now, int[] t, double temp, double dust) {
         List<String[]> out = new ArrayList<>();
         int doy = now.get(Calendar.DAY_OF_YEAR) + now.get(Calendar.YEAR) * 400;
         int min = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
@@ -29,7 +29,7 @@ final class Widgets {
         if (!Double.isNaN(dust) && dust > 150)
             out.add(new String[]{"WEATHER ALERT · تنبيه الطقس", "غبار كثيف في الكويت. أغلق النوافذ.", "Heavy dust in Kuwait. Keep the windows closed.", ""});
         if (!Double.isNaN(temp) && temp >= 45)
-            out.add(new String[]{"WEATHER ALERT · تنبيه الطقس", "حر شديد، " + Math.round(temp) + "°. اشرب الماء وابقَ في الظل.",
+            out.add(new String[]{"WEATHER ALERT · تنبيه الطقس", "حر شديد، " + ar((int) Math.round(temp)) + "°. اشرب الماء وابقَ في الظل.",
                     "Extreme heat, " + Math.round(temp) + "°. Drink water and stay out of the sun.", ""});
 
         // Friday
@@ -37,15 +37,15 @@ final class Widgets {
         if (t != null && ((dow == Calendar.FRIDAY && min < t[4]) || (dow == Calendar.THURSDAY && min >= t[4]))) {
             out.add(new String[]{"FRIDAY · الجمعة", "لا تنسَ قراءة سورة الكهف", "Don't forget to read Surat Al-Kahf.", ""});
             if (dow == Calendar.FRIDAY && min < t[2] + 60)
-                out.add(new String[]{"JUMU'AH · صلاة الجمعة", "صلاة الجمعة " + PrayerTimes.clock(t[2]), "Jumu'ah prayer at " + PrayerTimes.clock(t[2]) + ".", ""});
+                out.add(new String[]{"JUMU'AH · صلاة الجمعة", "صلاة الجمعة " + arDigits(PrayerTimes.clock(t[2])), "Jumu'ah prayer at " + PrayerTimes.clock(t[2]) + ".", ""});
         }
 
         // Morning and evening adhkar
         if (t != null && min >= t[0] && min < t[1] + 180)
-            out.add(new String[]{"MORNING ADHKAR · أذكار الصباح", "سبحان الله وبحمده", "SubhanAllahi wa bihamdihi, 100 times in the morning and the evening.", "from Muslim 2692"});
+            out.add(new String[]{"MORNING ADHKAR · أذكار الصباح", "سبحان الله وبحمده", "SubhanAllahi wa bihamdihi, 100 times in the morning and the evening.", "Hisn al-Muslim 102, from Muslim 2692"});
         if (t != null && min >= t[3] && min < t[4] + 60)
             out.add(new String[]{"EVENING ADHKAR · أذكار المساء", "أعوذ بكلمات الله التامات من شر ما خلق",
-                    "I seek refuge in the perfect words of Allah from the evil of what He created. (3 times)", "Muslim 2709 · Tirmidhi 3604"});
+                    "I seek refuge in the perfect words of Allah from the evil of what He created. (3 times)", "Hisn al-Muslim 107, Muslim 2709, Tirmidhi 3604 sahih (al-Albani)"});
 
         // Verse and hadith of the day
         String[] a = Verses.forDay(now); // a curated list of whole verses, the same in every app (offline too)
@@ -72,11 +72,13 @@ final class Widgets {
         return b.toString();
     }
 
-    /** "in N days" with the Arabic number agreement: غداً, بعد يومين, بعد ٣ أيام (3-10), بعد ١١ يوماً (11 and up). */
+    /** "in N days" with the Arabic number agreement, which follows the last two digits: غداً, بعد يومين,
+     *  بعد ٣ أيام (3-10, 103-110), بعد ١١ يوماً (11-99, 111-199), بعد ١٠٠ يوم (a round hundred, 101, 102). */
     static String inDaysAr(int n) {
         if (n == 1) return "غداً";
         if (n == 2) return "بعد يومين";
-        return "بعد " + ar(n) + (n <= 10 ? " أيام" : " يوماً");
+        int r = n % 100;
+        return "بعد " + ar(n) + (r >= 3 && r <= 10 ? " أيام" : r >= 11 ? " يوماً" : " يوم");
     }
 
 

@@ -53,3 +53,8 @@ adb shell pm grant com.family.kids android.permission.READ_MEDIA_IMAGES
 adb shell pm grant com.family.kids android.permission.READ_MEDIA_AUDIO
 ```
 Forgot the PIN? `adb shell pm clear com.family.kids` resets Kids Corner (the PIN, the settings and today's time).
+
+## Text sources
+
+- Quran verses (`Verses.java`): Uthmani text of the King Fahd Complex and the Sahih International translation, taken from the [quran-json](https://www.npmjs.com/package/quran-json) package (CC BY 4.0) by Risan Bagja Pradana.
+- Hadith wording was checked against the sunnah.com texts in the [hadith](https://www.npmjs.com/package/hadith) package (MIT); grades for the Sunan are al-Albani's as given there.

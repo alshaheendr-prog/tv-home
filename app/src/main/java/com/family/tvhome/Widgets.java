@@ -15,7 +15,7 @@ final class Widgets {
     private static String cachedDay = "";
     private static String[] cachedCountdown;
 
-    static List<String[]> items(Context c, Calendar now, int[] t, String[] ayah, double temp, double dust) {
+    static List<String[]> items(Context c, Calendar now, int[] t, double temp, double dust) {
         List<String[]> out = new ArrayList<>();
         int doy = now.get(Calendar.DAY_OF_YEAR) + now.get(Calendar.YEAR) * 400;
         int min = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
@@ -33,7 +33,7 @@ final class Widgets {
             out.add(new String[]{"FRIDAY · الجمعة", "لا تنسَ قراءة سورة الكهف", "Don't forget to read Surat Al-Kahf.", ""});
             if (dow == Calendar.FRIDAY && min < t[2])
                 out.add(new String[]{"JUMU'AH SUNNAHS · سنن الجمعة", "الغسل والطيب والتبكير إلى الصلاة والإكثار من الصلاة على النبي ﷺ",
-                        "Ghusl, perfume, going early to the prayer, and many salawat on the Prophet ﷺ.", "Bukhari 883, 881 · Abu Dawud 1047"});
+                        "Ghusl, perfume, going early to the prayer, and many salawat on the Prophet ﷺ.", "Bukhari 883 and 881, Abu Dawud 1047 sahih (al-Albani)"});
             if (dow == Calendar.FRIDAY && min < t[2] + 60)
                 out.add(new String[]{"JUMU'AH · صلاة الجمعة", "صلاة الجمعة " + arDigits(PrayerTimes.clock(t[2])), "Jumu'ah prayer at " + PrayerTimes.clock(t[2]) + ".", ""});
         }
@@ -71,22 +71,21 @@ final class Widgets {
         return 0;
     }
 
-    // {Arabic, English, source}. The adhkar of Hisn al-Muslim, cited to the hadith collections (sunnah.com numbering) with
+    // {Arabic, English, source}. The adhkar of Hisn al-Muslim (its numbers from the Mukhtasar edition, as on en.tohed.com),
+    // cited to the hadith collections (sunnah.com numbering) with
     // al-Albani's grade for the Sunan. Check any new one on dorar.net or sunnah.com first: some well-known ones are weak
     // (رضيت بالله ثلاثاً, Abu Dawud 5073 and 5084) or not the Prophet's ﷺ words (Hasbiyallah 7 times, Abu Dawud 5081).
     static final String[][] MORNING = {
             {"أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له",
-                    "We have reached the morning and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "from Muslim 2723"},
+                    "We have reached the morning and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Hisn al-Muslim 100, from Muslim 2723"},
             {"اللهم بك أصبحنا وبك أمسينا وبك نحيا وبك نموت وإليك النشور",
-                    "O Allah, by You we reach the morning and the evening, by You we live and die, and to You is the rising.", "Abu Dawud 5068, sahih (al-Albani)"},
-            {"اللهم أنت ربي، لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك علي، وأبوء لك بذنبي، فاغفر لي، فإنه لا يغفر الذنوب إلا أنت",
-                    "O Allah, You are my Lord; none is worthy of worship but You. You created me and I am Your servant, true to Your covenant as best I can. I seek refuge in You from the evil I have done. I admit Your favour and my sin, so forgive me: none forgives sins but You.", "Bukhari 6306"},
+                    "O Allah, by You we reach the morning and the evening, by You we live and die, and to You is the rising.", "Hisn al-Muslim 89, Abu Dawud 5068 sahih (al-Albani)"},
             {"اللهم فاطر السموات والأرض، عالم الغيب والشهادة، رب كل شيء ومليكه، أشهد أن لا إله إلا أنت، أعوذ بك من شر نفسي وشر الشيطان وشركه",
-                    "O Allah, Creator of the heavens and the earth, Knower of the unseen and the seen, Lord and Owner of all things: I bear witness that none is worthy of worship but You. I seek refuge in You from the evil of myself and of Satan.", "from Abu Dawud 5067, sahih (al-Albani)"},
+                    "O Allah, Creator of heaven and earth, Knower of the seen and unseen, Lord of all: I bear witness none is worthy of worship but You. Protect me from my own evil and Satan's.", "from Abu Dawud 5067, sahih (al-Albani)"},
             {"اللهم إني أسألك العافية في الدنيا والآخرة",
                     "O Allah, I ask You for well-being in this world and the Hereafter.", "from Abu Dawud 5074, sahih (al-Albani)"},
             {"بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم",
-                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Abu Dawud 5088, sahih (al-Albani)"},
+                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Hisn al-Muslim 97, Abu Dawud 5088 sahih (al-Albani)"},
             {"قل هو الله أحد والمعوذتين حين تمسي وحين تصبح ثلاث مرات تكفيك من كل شيء",
                     "Qul huwa Allahu ahad and the two Mu'awwidhat (Al-Falaq and An-Nas), three times in the evening and the morning: they will suffice you against everything.", "from Abu Dawud 5082, hasan (al-Albani)"},
             {"سبحان الله وبحمده عدد خلقه ورضا نفسه وزنة عرشه ومداد كلماته",
@@ -94,37 +93,37 @@ final class Widgets {
             {"لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير",
                     "None is worthy of worship but Allah alone, with no partner. His is the dominion and the praise, and He has power over all things. (100 times a day)", "from Bukhari 3293"},
             {"سبحان الله وبحمده",
-                    "Glory be to Allah and praise be to Him. (100 times, morning and evening)", "from Muslim 2692"},
+                    "Glory be to Allah and praise be to Him. (100 times, morning and evening)", "Hisn al-Muslim 102, from Muslim 2692"},
     };
     static final String[][] EVENING = {
             {"أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له",
-                    "We have reached the evening and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "from Muslim 2723"},
+                    "We have reached the evening and the dominion belongs to Allah. Praise be to Allah; none is worthy of worship but Allah alone.", "Hisn al-Muslim 100, from Muslim 2723"},
             {"اللهم بك أمسينا وبك نحيا وبك نموت وإليك النشور",
-                    "O Allah, by You we reach the evening, by You we live and die, and to You is the rising.", "Abu Dawud 5068, sahih (al-Albani)"},
+                    "O Allah, by You we reach the evening, by You we live and die, and to You is the rising.", "Hisn al-Muslim 89, Abu Dawud 5068 sahih (al-Albani)"},
             {"أعوذ بكلمات الله التامات من شر ما خلق",
-                    "I seek refuge in the perfect words of Allah from the evil of what He has created. (3 times)", "Muslim 2709 · Tirmidhi 3604"},
-            {"اللهم أنت ربي، لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك علي، وأبوء لك بذنبي، فاغفر لي، فإنه لا يغفر الذنوب إلا أنت",
-                    "O Allah, You are my Lord; none is worthy of worship but You. You created me and I am Your servant, true to Your covenant as best I can. I seek refuge in You from the evil I have done. I admit Your favour and my sin, so forgive me: none forgives sins but You.", "Bukhari 6306"},
+                    "I seek refuge in the perfect words of Allah from the evil of what He has created. (3 times)", "Hisn al-Muslim 107, Muslim 2709, Tirmidhi 3604 sahih (al-Albani)"},
             {"اللهم فاطر السموات والأرض، عالم الغيب والشهادة، رب كل شيء ومليكه، أشهد أن لا إله إلا أنت، أعوذ بك من شر نفسي وشر الشيطان وشركه",
-                    "O Allah, Creator of the heavens and the earth, Knower of the unseen and the seen, Lord and Owner of all things: I bear witness that none is worthy of worship but You. I seek refuge in You from the evil of myself and of Satan.", "from Abu Dawud 5067, sahih (al-Albani)"},
+                    "O Allah, Creator of heaven and earth, Knower of the seen and unseen, Lord of all: I bear witness none is worthy of worship but You. Protect me from my own evil and Satan's.", "from Abu Dawud 5067, sahih (al-Albani)"},
             {"اللهم إني أسألك العافية في الدنيا والآخرة",
                     "O Allah, I ask You for well-being in this world and the Hereafter.", "from Abu Dawud 5074, sahih (al-Albani)"},
             {"بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم",
-                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Abu Dawud 5088, sahih (al-Albani)"},
+                    "In the name of Allah, with whose name nothing on earth or in heaven can harm, and He is the All-Hearing, the All-Knowing. (3 times)", "Hisn al-Muslim 97, Abu Dawud 5088 sahih (al-Albani)"},
             {"قل هو الله أحد والمعوذتين حين تمسي وحين تصبح ثلاث مرات تكفيك من كل شيء",
                     "Qul huwa Allahu ahad and the two Mu'awwidhat (Al-Falaq and An-Nas), three times in the evening and the morning: they will suffice you against everything.", "from Abu Dawud 5082, hasan (al-Albani)"},
             {"سبحان الله وبحمده",
-                    "Glory be to Allah and praise be to Him. (100 times, morning and evening)", "from Muslim 2692"},
+                    "Glory be to Allah and praise be to Him. (100 times, morning and evening)", "Hisn al-Muslim 102, from Muslim 2692"},
     };
 
     // Arabic-Indic digits by hand: Locale("ar") gives Western digits on newer Android (CLDR 46)
     private static String ar(int n) { return arDigits(String.valueOf(n)); }
 
-    /** "in N days" with the Arabic number agreement: غداً, بعد يومين, بعد ٣ أيام (3-10), بعد ١١ يوماً (11 and up). */
+    /** "in N days" with the Arabic number agreement, which follows the last two digits: غداً, بعد يومين,
+     *  بعد ٣ أيام (3-10, 103-110), بعد ١١ يوماً (11-99, 111-199), بعد ١٠٠ يوم (a round hundred, 101, 102). */
     static String inDaysAr(int n) {
         if (n == 1) return "غداً";
         if (n == 2) return "بعد يومين";
-        return "بعد " + ar(n) + (n <= 10 ? " أيام" : " يوماً");
+        int r = n % 100;
+        return "بعد " + ar(n) + (r >= 3 && r <= 10 ? " أيام" : r >= 11 ? " يوماً" : " يوم");
     }
 
 

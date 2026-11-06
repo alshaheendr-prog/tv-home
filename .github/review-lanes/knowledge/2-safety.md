@@ -171,6 +171,9 @@ Added by the whole-app audit (2026-11-05):
 - Adhan `swapWallpaper` writes `Movies/Projectivy/wallpaper.mp4`; `wallpaper_mode` defaults to `return`. MANAGE_EXTERNAL_STORAGE is used for nothing else.
 - `Quran.reciters` builds playback URLs from the API's `server` field without checking the scheme.
 
+Added by the PR #25 review (2026-11-06):
+- Network hosts: api.alquran.cloud is gone (the verse is built in). From PR #25 the apps reach api.open-meteo.com, air-quality-api.open-meteo.com, cdn.mp3quran.net and mp3quran.net.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/2-safety.md](archive/2-safety.md). Search it when a PR touches an area with history; don't read it in full.
@@ -194,3 +197,5 @@ Past findings (every PR and audit), open questions and the full annotated source
 - When a label or glyph changes, grep for string compares on it (for example pinPress).
 - When art moves to mipmap, the FGS notifications (Guard, AdhanService) still need a valid setSmallIcon drawable, or the kids lock can fail to start.
 - New binary assets: scan the PNG chunks (only IHDR, IDAT and IEND should be there). This catches file paths and GPS data.
+
+- (PR #25) a setting copied into several apps: check each copy has the same gate, weigh the gap by what the switch controls. (PR #25) generated data files: literals only (no URLs/exec), no new build or runtime dependency, note the dataset's licence for the owner.

@@ -175,8 +175,9 @@ public class SettingsActivity extends Activity {
         });
 
         header("HIJRI DATE");
+        onlyOtherHome(); // the family home has its own Hijri setting, in its Parent settings
         int ho = prefs.getInt("hijri_offset", 0);
-        row("Move the Hijri date if Kuwait's moon sighting differs", ho == 0 ? "As calculated" : ho > 0 ? "+1 day" : "−1 day", () -> {
+        row("Hijri date (moon sighting)", ho == 0 ? "As calculated" : ho > 0 ? "+1 day" : "−1 day", () -> {
             prefs.edit().putInt("hijri_offset", ho == 0 ? 1 : ho > 0 ? -1 : 0).apply();
             refreshService();
         });

@@ -4,6 +4,9 @@ Past findings and the full source library for this lane. Search this file (grep 
 
 ## Past findings
 
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06 PR #25 (update 3): S1 Arabic day-count agreement wrong from 100 days on (fixed: n % 100); N1 sources toggle applied late (fixed); N2 dead ayahToday (removed). Offset maths, caches, rotations and the adhkar window verified.
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - Must: none.
 - Should:
@@ -93,6 +96,9 @@ All checked 2026-11-05 unless noted. The short tags in [brackets] are used above
 - [VPA withEndAction] https://learn.microsoft.com/en-us/dotnet/api/android.views.viewpropertyanimator.withendaction: a mirror of the Android reference. "if the ViewPropertyAnimator is canceled during that animation, the runnable will not run." Checked 2026-11-06.
 - [TypefaceSpan API 28] https://developer.android.com/sdk/api_diff/28/changes/android.text.style.TypefaceSpan: the `TypefaceSpan(Typeface)` constructor was added in API 28. Checked 2026-11-06.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- developer.android.com/reference/android/icu/util/IslamicCalendar (UMALQURA, day maths); Arabic number-noun agreement (تمييز العدد), alloschool.com/element/126391/pdf.
+
 ## Open questions to research next
 - Does the Xiaomi TV Box S 3rd Gen suspend the CPU in standby (screen off by the remote)? If it does, `Handler` ticks stop and an adhan due while the box is in standby is missed, as the 3-minute window shows. Check with the owner (lane 8) and `dumpsys deviceidle` and `dumpsys power`.
 - Does Android TV 14 on this box send BOOT_COMPLETED to a force-stopped app? Answered 2026-11-05: no. Force-stop puts the app back in the stopped state, which lasts across reboots until the user launches it (Hackborn via CommonsWare). Android 15 also cancels its PendingIntents and sends BOOT_COMPLETED when it is un-stopped. Update TV's `am start -S` un-stops adhan by launching it. [CommonsWare stopped] [B15-all]
@@ -109,3 +115,6 @@ All checked 2026-11-05 unless noted. The short tags in [brackets] are used above
 
 - Does the Google TV quick-settings side panel pause the home (as a translucent activity) on this box?
 - After boot, how long until `Movies/TVWallpapers` lists as non-empty on this box? That decides how often the wallpaper erase would hit.
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- the Hijri offset is two settings (home Parent settings and Adhan settings); the owner must change both after a moon-sighting difference. Lane 8 checklist should say so.

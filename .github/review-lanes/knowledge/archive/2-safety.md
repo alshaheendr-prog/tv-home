@@ -4,6 +4,9 @@ Past findings and the full source library for this lane. Search this file (grep 
 
 ## Past findings
 
+### PR #25 (2026-11-06, update 3: Islamic content)
+- 2026-11-06 PR #25 (update 3, Islamic content): clean; alquran.cloud verse fetch removed (improvement). Nice: Adhan Settings Hijri offset and sources rows have no PIN, while home's sit behind the Parent PIN (a nuisance only).
+
 ### PR #23 (2026-11-06, update 2: visual polish)
 - Nothing found. The manifests changed only icon and banner to @mipmap. No new component, permission, extra, host or CI change.
 - Checked and fine:
@@ -95,6 +98,9 @@ All checked 2026-11-05 unless noted. The [tags] are used above.
 - https://www.w3.org/TR/png-3/ : text and eXIf chunks (section 13.4 not loaded). Checked 2026-11-06.
 - https://developer.android.com/develop/ui/views/notifications/badges : setSmallIcon takes a drawable. Checked 2026-11-06.
 
+From PR #25 (2026-11-06, update 3: Islamic content):
+- https://registry.npmjs.org/quran-json/3.1.2 (CC-BY-4.0, checked 2026-11-06); https://registry.npmjs.org/hadith/1.3.0 (MIT, checked 2026-11-06)
+
 ## Open questions to research next
 - The 2025 tj-actions/changed-files tag-rewrite incident: a primary write-up was not opened this round (it is the classic example for SHA pinning).
 - APK Signature Scheme v3 key rotation (source.android.com): exact steps and the minimum API, for when the owner revisits the key.
@@ -115,3 +121,7 @@ All checked 2026-11-05 unless noted. The [tags] are used above.
 
 - Read the build-notification page to check whether a mipmap or adaptive icon works as a small icon.
 - The Kids icon cache never invalidates. This is cosmetic and belongs to lane 13 or 3.
+
+From PR #25 (2026-11-06, update 3: Islamic content):
+- credit static texts taken from a dataset in the README? (licence, not security)
+- network hosts drop api.alquran.cloud; from PR #25: api.open-meteo.com, air-quality-api.open-meteo.com, cdn.mp3quran.net, mp3quran.net.

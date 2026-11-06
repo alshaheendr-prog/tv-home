@@ -141,6 +141,9 @@ Added by the PR #23 review (2026-11-06):
 - Kids Names of Allah: Ar-Raheem explained as "loves to forgive" (`GoodWords.java:24`), closer to Al-Ghafoor's meaning.
 - The Friday reminder runs from Thursday Maghrib to Friday Maghrib; Jumu'ah sunnahs show Friday before Dhuhr; the Jumu'ah line shows the Dhuhr time (`Widgets.java:31-39`).
 
+Added by the PR #25 review (2026-11-06):
+- 2026-11-06: bundled `amiri_bold.ttf` (app and adhan, same md5 678c6a37…) has U+0028 `(` but **not U+0029 `)`**; it has U+FD3E/FD3F ﴾﴿ and U+06DD. GSUB has no `rtlm`, so HarfBuzz draws `(` for both brackets in RTL.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/6-arabic-and-islamic.md](archive/6-arabic-and-islamic.md). Search it when a PR touches an area with history; don't read it in full.
@@ -164,3 +167,8 @@ Past findings (every PR and audit), open questions and the full annotated source
 
 - 2026-11-06: When a view's typeface changes to Amiri, check every string that view can show for Latin text, because the bundled Amiri is a subset.
 - 2026-11-06: Look up the box's ICU/CLDR version in developer.android.com's internationalization table before rating a locale-data risk.
+
+- 2026-11-06: A whole verse list can be checked mechanically: compare every Arabic string with the source package character for character, then with a second King Fahd copy by letters only (marks stripped), because encodings differ. fawazahmed0/quran-api and hadith-api on raw.githubusercontent.com load from the container (alquran.cloud, tanzil.net, quranenc.com and jsDelivr are blocked).
+- 2026-11-06: fawazahmed0/hadith-api uses sunnah.com numbers; for Muslim use `arabicnumber` ("2564.03" = 2564c), not `hadithnumber` (a running count). Its `grades` field carries al-Albani's grade for the Sunan.
+- 2026-11-06: Before showing brackets, digits or punctuation in Amiri, check the bundled subset's cmap for **both** characters of a pair: it has `(` but not `)`. Shape a sample with uharfbuzz to see what the TV will draw.
+- 2026-11-06: A setting that changes religious dates must reach every app that shows them; separate apps keep separate preferences.

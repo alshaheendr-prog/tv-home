@@ -51,7 +51,7 @@ final class GoodWords {
             new Hadith("💪", "لَيْسَ الشَّدِيدُ بِالصُّرَعَةِ، إِنَّمَا الشَّدِيدُ الَّذِي يَمْلِكُ نَفْسَهُ عِنْدَ الْغَضَبِ", "The strong one is not the best wrestler, but the one who stays calm when angry.", "Bukhari 6114"),
             new Hadith("🫧", "الطُّهُورُ شَطْرُ الْإِيمَانِ", "Being clean is half of faith.", "from Muslim 223"),
             new Hadith("🎁", "كُلُّ مَعْرُوفٍ صَدَقَةٌ", "Every kind thing you do is a charity.", "Bukhari 6021"),
-            new Hadith("🌈", "يَسِّرُوا وَلَا تُعَسِّرُوا", "Make things easy for people, not hard.", "Bukhari 69"),
+            new Hadith("🌈", "يَسِّرُوا وَلَا تُعَسِّرُوا", "Make things easy for people, not hard.", "from Bukhari 69"),
             new Hadith("🌸", "إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ", "Allah is gentle and loves gentleness.", "from Muslim 2593"),
             new Hadith("🤝", "لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ", "Love for your brother and sister what you love for yourself.", "Bukhari 13"),
             new Hadith("🧱", "الْمُؤْمِنُ لِلْمُؤْمِنِ كَالْبُنْيَانِ يَشُدُّ بَعْضُهُ بَعْضًا", "Believers are like the bricks of one building: each one holds up the others.", "from Bukhari 2446"),
@@ -68,7 +68,7 @@ final class GoodWords {
             new Hadith("📖", "خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ", "The best of you are those who learn the Qur'an and teach it.", "Bukhari 5027"),
             new Hadith("✅", "إِنَّ الصِّدْقَ يَهْدِي إِلَى الْبِرِّ", "Telling the truth leads you to doing good.", "from Bukhari 6094"),
             new Hadith("🎒", "مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا سَهَّلَ اللَّهُ لَهُ بِهِ طَرِيقًا إِلَى الْجَنَّةِ", "Whoever goes out to learn, Allah makes his way to Jannah easy.", "from Muslim 2699"),
-            new Hadith("💭", "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ", "What counts is why you do something: your intention.", "Bukhari 1"),
+            new Hadith("💭", "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ", "What counts is why you do something: your intention.", "from Bukhari 1"),
     };
 
     static boolean nameDay() { return Worlds.dayIndex() % 2 == 0; }

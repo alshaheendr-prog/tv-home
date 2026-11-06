@@ -174,6 +174,11 @@ Added by the PR #23 review (2026-11-06):
 - Quran: the reciter button always says "Choose reciter". The saved choice shows only inside the reciter list.
 - Home parent list: 30 px inner side padding and -30 scroller margins, so a 1.03 row keeps its edge. (Kids parent list has not had this yet.)
 
+Added by the PR #25 review (2026-11-06):
+- Home `parentRow` inner text width is **728 px** (900 card − 112 padding − 60 row padding; the ±30 list padding and scroller margins cancel). Label 28 px Inter Medium in weight 1, value 26 px Semibold with **no gap** between them. A label + value over 728 px wraps the label inside the fixed 96 px row.
+- New rows (PR #25): home "Hijri date …" (As calculated / +1 day / −1 day) and "Sources under verses and hadith" (Shown / Hidden); Adhan "Show sources …" (On / Off) under WIDGET CARD and a HIJRI DATE section; Kids "Hadith source" (Show / Hide) under "Name of Allah or hadith".
+- Baloo (adhan and kids) has no ✓ (U+2713); it falls back to the system font wherever it's used (e.g. "Playing ✓", `toastIn`).
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/15-ui-components.md](archive/15-ui-components.md). Search it when a PR touches an area with history; don't read it in full.
@@ -197,3 +202,6 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-06: When one app gets a clipping fix (padding inside a scroller for a scaled row), check its sibling app's same component in the same PR.
 - 2026-11-06: Taking a cue away ("not a button") must not take focus visibility away. A non-actionable focusable row still needs a visible, non-gold marker (fill + soft edge).
 - 2026-11-06: A code comment that says "the same in both apps" is a claim to check against both apps' code.
+
+- 2026-11-06: Measure every new row at its **longest value**, not its current one: a label can fit with "+1 day" and wrap with "As calculated", so the row changes shape on each OK.
+- 2026-11-06: A setting that only works while another is on should sit directly under that one, in every app (Kids and Adhan did, home didn't).

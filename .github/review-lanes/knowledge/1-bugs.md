@@ -158,3 +158,5 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-06: Never treat an empty file list as "the file is gone". Shared storage can read as empty right after boot, so don't erase saved choices because of it.
 - 2026-11-06: An animation that reads `getScaleX()` as its return target captures mid-animation values, so store the resting target instead. A ViewPropertyAnimator that takes over a property cancels the earlier animation, and the earlier one's `withEndAction` does not run.
 - 2026-11-06: Gating UI updates on `resumed` also hides them while the activity is visible but paused (under a translucent activity). Use a `visible` flag based on onStart/onStop when "on screen" is what matters.
+
+- (a) Arabic count nouns follow the last two digits (n % 100); 100, 200 … take singular يوم. Check any counter that can pass 99. (b) A display offset applied by shifting millis must be undone when a shifted date is turned back into Gregorian, and must be part of every cache key. (c) index*k mod N visits every item only when gcd(k, N) = 1: re-check whenever a list length changes.

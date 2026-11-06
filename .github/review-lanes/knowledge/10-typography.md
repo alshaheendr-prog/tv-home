@@ -139,6 +139,12 @@ Added by the PR #23 review (2026-11-06):
 - Plex Arabic Medium is 3 to 7% wider than Noto Naskh Arabic 500 on the weather and event strings.
 - Inter SemiBold digits at 22 px: tnum "114" 42.7 px advance / 39.7 ink; pnum "114" 33.3 / 31.2, "100" 38.3 / 36.2.
 
+Added by the PR #25 review (2026-11-06):
+- `amiri_bold.ttf` (app and adhan) cmap: has `(`, ۝ (U+06DD), ﴾ ﴿; **no `)`, `:`, Latin or Western digits**. ۝ followed by 1 to 3 Arabic-Indic digits renders as the enclosed ayah ornament.
+- Band vertical budget: text from `LINE_Y` 494 to `STRIP_Y` 700 = 206 px. The strip's first ink is at about y 732. Block height ≈ 6 + 33 (kicker with Plex) + 6 + Amiri (2.732 em first line, +1.758 em each extra line) + 2 + Cormorant 1.211 em × (1 + 1.05 per extra line) + 10.
+- The Adhan card text column is 500 px (card 560, padding 30 + 30).
+- Kids `wordCard` text column is 714 px. `wordArabic` is Baloo Bold 42 px with a 1.37 em pitch.
+
 ## Past findings and sources
 
 Past findings (every PR and audit), open questions and the full annotated source library are in [archive/10-typography.md](archive/10-typography.md). Search it when a PR touches an area with history; don't read it in full.
@@ -165,3 +171,7 @@ Past findings (every PR and audit), open questions and the full annotated source
 - 2026-11-06: `tnum` is for numbers that change or line up in columns. In a fixed-size badge it makes 3-digit numbers wider (tabular 1).
 - 2026-11-06: Switching a big title to Amiri with font padding on adds about 1 em of empty air (head yMax 1.823). Turn padding off for display sizes and check the HarfBuzz ink.
 - 2026-11-06: There is no public letter-spacing span before API 34, so a mixed-case tail in a caps kicker needs uppercasing or its own view.
+
+- 2026-11-06: Check every bracket and punctuation mark in RTL text against the cmap *in pairs*: a font with only one of a mirrored pair draws the RTL pair wrong (HarfBuzz won't mirror to a missing glyph).
+- 2026-11-06: Never pick Arabic sizes by `String.length()` on vocalised or Uthmani text: the marks inflate the count by about 40%. Measure the width.
+- 2026-11-06: When content changes (not code), re-run the band height budget over *all* strings, and make the stress test the tallest real item.
