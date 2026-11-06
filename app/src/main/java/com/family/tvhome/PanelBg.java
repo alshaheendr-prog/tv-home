@@ -24,6 +24,8 @@ final class PanelBg extends Drawable {
 
     PanelBg(float radius) {
         r = radius;
+        fill.setDither(true); // a large dark ramp: dithered so it doesn't band
+        warm.setDither(true);
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(2);
         hair.setStyle(Paint.Style.STROKE);

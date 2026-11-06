@@ -82,13 +82,13 @@ public class SettingsActivity extends Activity {
         r.setFocusable(true);
         r.setClickable(true);
         r.addView(text(label, 32, fBold, 0xFFF6F3FF), new LinearLayout.LayoutParams(0, -2, 1));
-        TextView v = text(value, 30, fMedium, 0xFFFFC24A);
+        TextView v = text(value, 30, fMedium, 0xFFF1D58A);
         r.addView(v);
         r.setOnFocusChangeListener((view, has) -> {
             GradientDrawable d = new GradientDrawable();
             d.setCornerRadius(px(18));
             d.setColor(has ? 0x26FFFFFF : Color.TRANSPARENT);
-            if (has) d.setStroke(px(3), 0xFFFFC24A);
+            if (has) d.setStroke(px(3), 0xFFF1D58A);
             view.setBackground(d);
         });
         r.setOnClickListener(x -> { onClick.run(); render(); });
@@ -99,7 +99,7 @@ public class SettingsActivity extends Activity {
 
     private void header(String s) {
         TextView t = text(s, 26, fMedium, 0xB8F6F3FF);
-        t.setLetterSpacing(.1f);
+        t.setLetterSpacing(.12f);
         t.setPadding(px(28), px(34), 0, px(6));
         list.addView(t);
     }

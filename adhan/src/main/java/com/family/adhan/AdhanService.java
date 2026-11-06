@@ -56,7 +56,7 @@ import java.util.TimeZone;
 public class AdhanService extends Service {
     static final TimeZone KUWAIT = TimeZone.getTimeZone("Asia/Kuwait");
     static final String CHANNEL = "adhan";
-    static final int GOLD = 0xFFFFC24A, TEXT = 0xFFF6F3FF, MUTED = 0xB8F6F3FF, INK = 0xFF0B0D14;
+    static final int GOLD = 0xFFF1D58A, TEXT = 0xFFF6F3FF, MUTED = 0xB8F6F3FF, INK = 0xFF0B0D14;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private WindowManager wm;
@@ -372,22 +372,34 @@ public class AdhanService extends Service {
     /** How many minutes after its time an adhan (or reminder) may still start, if a tick came late. */
     static final int LATE_MIN = 3;
     private FrameLayout reminder;
-    private TextView reminderTitle, reminderSub;
+    private TextView reminderTitle, reminderSub, reminderTime;
     private boolean reminderShown;
 
     private void buildReminder() {
         reminder = new FrameLayout(this);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding((int) px(40), (int) px(24), (int) px(44), (int) px(26));
-        GradientDrawable bg = rounded(0xD90A0C16, px(30));
-        bg.setStroke((int) Math.max(1, px(2)), 0x99FFC24A);
+        box.setPadding((int) px(40), (int) px(20), (int) px(44), (int) px(24));
+        // the adhan band's own language (Inter, Plex Arabic, the home's gold, dark glass), not a Kids-style card
+        GradientDrawable bg = rounded(0xE6080B14, px(30));
+        bg.setStroke((int) Math.max(1, px(2)), 0x33FFFFFF);
         box.setBackground(bg);
-        reminderTitle = text("", 36, fBold, GOLD);
-        reminderSub = text("", 28, fMedium, TEXT);
-        reminderSub.setPadding(0, (int) px(6), 0, 0);
+        View hair = new View(this);
+        hair.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{0x00F1D58A, 0xFFF1D58A, 0x00F1D58A}));
+        LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams((int) px(140), (int) Math.max(2, px(2)));
+        hp.bottomMargin = (int) px(14);
+        box.addView(hair, hp);
+        reminderTitle = text("", 34, getResources().getFont(R.font.inter_medium), 0xF2FFFFFF);
+        reminderSub = text("", 30, getResources().getFont(R.font.plex_arabic_semibold), GOLD);
+        reminderSub.setIncludeFontPadding(true);
+        reminderSub.setPadding(0, (int) px(4), 0, 0);
+        reminderTime = text("", 26, getResources().getFont(R.font.inter_medium), 0xD9FFFFFF);
+        reminderTime.setFontFeatureSettings("tnum");
+        reminderTime.setPadding(0, (int) px(4), 0, 0);
         box.addView(reminderTitle);
         box.addView(reminderSub);
+        box.addView(reminderTime);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2);
         lp.setMargins((int) px(60), (int) px(50), (int) px(60), (int) px(50));
         reminder.addView(box, lp);
@@ -397,7 +409,8 @@ public class AdhanService extends Service {
         if (!canOverlay(this) || alertShown) return;
         if (reminder == null) buildReminder();
         reminderTitle.setText(PrayerTimes.EN[i] + " in " + REMIND_MIN + " minutes");
-        reminderSub.setText(PrayerTimes.AR[i] + " بعد " + REMIND_MIN + " دقائق  ·  " + PrayerTimes.clock(today[i]));
+        reminderSub.setText(PrayerTimes.AR[i] + " بعد " + REMIND_MIN + " دقائق");
+        reminderTime.setText(PrayerTimes.clock(today[i]));
         if (!reminderShown) {
             try { wm.addView(reminder, overlayParams(Gravity.TOP | Gravity.END)); reminderShown = true; } catch (Exception ignored) { return; }
         }
@@ -674,7 +687,7 @@ public class AdhanService extends Service {
         bg.setStroke(Math.max(1, (int) px(2)), 0x33FFFFFF);
         box.setBackground(bg);
         cardKicker = text("", 20, fBold, GOLD);
-        cardKicker.setLetterSpacing(.08f);
+        cardKicker.setLetterSpacing(.12f);
         box.addView(cardKicker);
         // Amiri has every Qur'anic mark (small high letters, ﷺ); the rounded Baloo face drops some.
         cardAr = text("", 34, getResources().getFont(R.font.amiri_bold), TEXT);

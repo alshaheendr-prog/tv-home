@@ -55,7 +55,7 @@ public class IntroView extends View {
         title.setShadowLayer(36, 0, 0, 0x80F1D58A);
         kicker.setTypeface(latin);
         kicker.setTextSize(22);
-        kicker.setLetterSpacing(0.22f);
+        kicker.setLetterSpacing(MainActivity.CAPS_TRACK);
         kicker.setTextAlign(Paint.Align.CENTER);
         kicker.setColor(0xB3FFFFFF);
         line.setStyle(Paint.Style.STROKE);

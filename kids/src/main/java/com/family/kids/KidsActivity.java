@@ -469,7 +469,7 @@ public class KidsActivity extends Activity {
         LinearLayout kick = new LinearLayout(this);
         kick.setGravity(Gravity.CENTER_VERTICAL);
         TextView welcome = text("WELCOME", 30, fBold, DIM);
-        welcome.setLetterSpacing(0.2f);
+        welcome.setLetterSpacing(0.12f);
         kick.addView(welcome);
         worldChip = text("", 30, fBold, WHITE);
         worldChip.setLetterSpacing(0.12f);
@@ -546,7 +546,7 @@ public class KidsActivity extends Activity {
         t.setOrientation(LinearLayout.VERTICAL);
         // the show's name is the heading ("SONIC THE HEDGEHOG"), the character's name is big below it
         charFrom = text("", 30, fBold, WHITE);
-        charFrom.setLetterSpacing(0.16f);
+        charFrom.setLetterSpacing(0.12f);
         t.addView(charFrom);
         charName = text("", 64, fHeavy, WHITE);
         LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-1, -2);
@@ -598,7 +598,7 @@ public class KidsActivity extends Activity {
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
         wordKick = text("", 30, fBold, DIM);
-        wordKick.setLetterSpacing(0.2f);
+        wordKick.setLetterSpacing(0.12f);
         t.addView(wordKick);
         wordArabic = text("", 42, fBold, 0xFFFFD45A);
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2);
@@ -2048,7 +2048,7 @@ public class KidsActivity extends Activity {
     /** A small coloured heading inside a panel: "SCREEN TIME". */
     private TextView section(String s) {
         TextView t = text(s.toUpperCase(Locale.ROOT), 30, fBold, world == null ? 0xFFFFD45A : world.accent);
-        t.setLetterSpacing(0.14f);
+        t.setLetterSpacing(0.12f);
         t.setPadding(28, 26, 28, 4);
         return t;
     }
