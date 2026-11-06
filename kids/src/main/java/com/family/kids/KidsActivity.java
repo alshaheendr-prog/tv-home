@@ -393,7 +393,7 @@ public class KidsActivity extends Activity {
      */
     private File clipFor(Worlds.World w) {
         List<File> home = wallpapers(), fits = new ArrayList<>();
-        int pick0 = Rules.prefs(this).getInt("wallpaper", -1);
+        int pick0 = wallpaperPick(home);
         if (pick0 >= 0 && pick0 < home.size()) return home.get(pick0); // the grown-up chose this one
         if (pick0 == -2 && !home.isEmpty()) return home.get(random.nextInt(home.size()));
         for (File f : home) {
@@ -402,6 +402,30 @@ public class KidsActivity extends Activity {
         }
         List<File> pick = !fits.isEmpty() ? fits : home;
         return pick.isEmpty() ? null : pick.get(random.nextInt(pick.size()));
+    }
+
+    /**
+     * The grown-up's wallpaper choice: -1 matches the world, -2 any, or the chosen clip's place in today's list, found by
+     * its file name. A clip that has gone falls back to matching the world. An older choice kept only by place is
+     * turned into a name once.
+     */
+    private int wallpaperPick(List<File> clips) {
+        android.content.SharedPreferences p = Rules.prefs(this);
+        int v = p.getInt("wallpaper", -1);
+        if (v < 0) return v;
+        String name = p.getString("wallpaper_name", null);
+        if (name == null) {
+            if (v >= clips.size()) return -1;
+            p.edit().putString("wallpaper_name", clips.get(v).getName()).apply();
+            return v;
+        }
+        for (int i = 0; i < clips.size(); i++)
+            if (clips.get(i).getName().equals(name)) {
+                if (i != v) p.edit().putInt("wallpaper", i).apply();
+                return i;
+            }
+        p.edit().putInt("wallpaper", -1).remove("wallpaper_name").apply();
+        return -1;
     }
 
     /** The family home's own video wallpapers, by name, so a chosen one keeps its place in the list. */
@@ -850,15 +874,16 @@ public class KidsActivity extends Activity {
                 tile.setBackgroundColor(0xFF20263A); // a plain card until the banner is read, off the main thread
                 tile.addView(img, new FrameLayout.LayoutParams(-1, -1));
                 Drawable cachedArt = iconCache.get("banner:" + pkg);
-                if (cachedArt != null) showBanner(tile, img, cachedArt, h);
+                if (cachedArt != null) showBanner(tile, img, cachedArt, pkg, h);
                 else bg.execute(() -> {
                     Drawable art = banner(pkg);
                     if (art == null) {
-                        try { art = getPackageManager().getApplicationIcon(pkg); } catch (Exception e) { return; }
-                        art = new android.graphics.drawable.InsetDrawable(art, 0); // marks the icon fallback
+                        // no banner: the app's own icon, made full-bleed like the icon tiles (marked by the inset)
+                        try { art = Icons.fullBleed(getResources(), getPackageManager().getApplicationIcon(pkg), 0.24f); } catch (Exception e) { return; }
+                        art = new android.graphics.drawable.InsetDrawable(art, 0);
                     }
                     Drawable d = art;
-                    ui.post(() -> { iconCache.put("banner:" + pkg, d); showBanner(tile, img, d, h); });
+                    ui.post(() -> { iconCache.put("banner:" + pkg, d); showBanner(tile, img, d, pkg, h); });
                 });
             }
             tile.setOutlineAmbientShadowColor(0);
@@ -1094,11 +1119,14 @@ public class KidsActivity extends Activity {
         return unique;
     }
 
-    /** A real banner fills the tile; an app with none shows its icon in the middle of the plain card. */
-    private static void showBanner(FrameLayout tile, ImageView img, Drawable d, int h) {
+    /** A real banner fills the tile; an app with none shows its rounded icon on its own colour, like the icon tiles. */
+    private void showBanner(FrameLayout tile, ImageView img, Drawable d, String pkg, int h) {
         if (d instanceof android.graphics.drawable.InsetDrawable) {
+            int c = appColor(pkg);
+            tile.setBackground(roundGrad(new int[]{c == 0xFFDDE6FF ? 0xFF3A4766 : c, 0xFF141A2A}, 26));
             img.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            img.setPadding(h / 5, h / 5, h / 5, h / 5);
+            int pad = Math.round(h * 0.19f); // the icon stands 62% of the tile's height
+            img.setPadding(pad, pad, pad, pad);
         } else {
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             tile.setBackground(null);
@@ -1716,6 +1744,7 @@ public class KidsActivity extends Activity {
         for (int i = 0; i < worlds.length; i++) worlds[i] = i - 1;
         choiceRow("World", worlds, "world", -1, v -> v < 0 ? "A new one every day" : Worlds.ALL[v].name);
         List<File> clips = wallpapers();
+        wallpaperPick(clips); // brings the remembered clip's place in the list up to date before the row shows it
         int[] wp = new int[clips.size() + 2];
         for (int i = 0; i < wp.length; i++) wp[i] = i - 2;
         choiceRow("Wallpaper", wp, "wallpaper", -1, v -> v == -2 ? "Any of the family's" : v < 0 || v >= clips.size() ? "Matches the world" : clipName(clips.get(v)));
@@ -1819,7 +1848,11 @@ public class KidsActivity extends Activity {
             if (key.equals("world")) { applyWorld(); refreshTiles(); }
             if (key.equals("fit")) fitStage();
             if (key.equals("style") || key.equals("icons") || key.equals("dim") || key.equals("char_card") || key.equals("word_card")) applyLook();
-            if (key.equals("wallpaper")) { stopClip(); playClip(); }
+            if (key.equals("wallpaper")) {
+                List<File> clips = wallpapers(); // remembered by name, so a new clip in the folder never swaps it
+                Rules.prefs(this).edit().putString("wallpaper_name", values[at] >= 0 && values[at] < clips.size() ? clips.get(values[at]).getName() : "").apply();
+                stopClip(); playClip();
+            }
             drawStars();
             if (restPanel.getVisibility() == View.VISIBLE) drawRestStars(Rules.resting(this).equals("bed"));
             tick();

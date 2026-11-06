@@ -3890,7 +3890,13 @@ public class MainActivity extends Activity {
         nightDim = true;
         float a = Math.max(DIM_LEVEL, baseDim());
         dimView.animate().alpha(a).setDuration(4000).start();
+        // the words dim with the picture: no bright white clock in a dark room, and kinder to the panel
+        centerGroup.animate().alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
+        lineFrame.animate().alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
+        for (View t : topParts) t.animate().alpha(NIGHT_TEXT).setDuration(4000).setInterpolator(EASE).start();
     }
+
+    static final float NIGHT_TEXT = 0.55f;
 
     private void leaveAmbient() {
         ambient = false;
@@ -3902,7 +3908,7 @@ public class MainActivity extends Activity {
         bottomGroup.animate().alpha(1).translationY(0).setStartDelay(0).setDuration(450).setInterpolator(EASE).start();
         lineFrame.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
         for (View t : topParts) t.animate().alpha(1).setDuration(450).start();
-        centerGroup.animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
+        centerGroup.animate().alpha(1).translationY(0).setDuration(450).setInterpolator(EASE).start();
         topParts[1].animate().translationY(0).setDuration(450).setInterpolator(EASE).start();
         lastDock = Math.max(0, Math.min(lastDock, dockTiles.size() - 1));
         View f = dockTiles.get(lastDock);

@@ -18,8 +18,8 @@
 
     <application
         android:label="Family TV Home"
-        android:icon="@drawable/icon"
-        android:banner="@drawable/banner"
+        android:icon="@mipmap/icon"
+        android:banner="@mipmap/banner"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
         android:hardwareAccelerated="true">
 

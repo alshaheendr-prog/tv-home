@@ -18,8 +18,8 @@
 
     <application
         android:label="Adhan"
-        android:icon="@drawable/icon"
-        android:banner="@drawable/banner"
+        android:icon="@mipmap/icon"
+        android:banner="@mipmap/banner"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
 
         <activity
