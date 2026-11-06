@@ -7,6 +7,9 @@
 - Research online only what the PR touches that this file and the archive don't already cover (a new API, permission, library, font, codec or behaviour). Open and cite what you use. Mark anything unverified as *(unverified)*.
 - After every review, send the PR's thread short, dated additions: a **Past findings** block and new **sources** and **open questions** go to the archive; **Lessons learned** and any new verified fact that every review needs go into this core file.
 - Keep this core lean: when you add a lesson, merge it with an older one on the same point instead of only appending. Aim to keep this file under about 25 KB.
+- Source tags like `[pt]` in this file point to entries in the archive's Source library. Never delete a source that is still cited.
+- When you verify an open question, move it from the archive into this core file with its source. Cite only pages you actually opened; if a page could not be fetched, say so instead of citing it.
+- Lane 11's knowledge file has contrast maths, lane 4's the Centre stage spec; lane 6's has Arabic glyph coverage and digit locale facts. Don't repeat them here; link to them.
 - Mark anything not verified in code, a font file or a screenshot with **(unverified)**. Font facts below were measured with fontTools 4.68 and HarfBuzz (uharfbuzz 0.57) on the repo's files on 2026-11-05.
 
 ## Core expertise

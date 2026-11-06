@@ -7,6 +7,8 @@
 - Research online only what the PR touches that this file and the archive don't already cover (a new API, permission, library, font, codec or behaviour). Open and cite what you use. Mark anything unverified as *(unverified)*.
 - After every review, send the PR's thread short, dated additions: a **Past findings** block and new **sources** and **open questions** go to the archive; **Lessons learned** and any new verified fact that every review needs go into this core file.
 - Keep this core lean: when you add a lesson, merge it with an older one on the same point instead of only appending. Aim to keep this file under about 25 KB.
+- Source tags like `[pt]` in this file point to entries in the archive's Source library. Never delete a source that is still cited.
+- When you verify an open question, move it from the archive into this core file with its source. Cite only pages you actually opened; if a page could not be fetched, say so instead of citing it.
 - Mark anything you could not verify with **(unverified)**. Move it to "verified" only when you have read the code, measured the file, or seen it on the TV or in a screenshot.
 - Neighbouring lanes: 15 (UI components and focus states), 5 (focus and D-pad), 3 (bitmap memory, decode cost), 4 (whole-screen look), 2 (anything published). Hand over findings that are really theirs.
 

@@ -7,6 +7,9 @@
 - Research online only what the PR touches that this file and the archive don't already cover (a new API, permission, library, font, codec or behaviour). Open and cite what you use. Mark anything unverified as *(unverified)*.
 - After every review, send the PR's thread short, dated additions: a **Past findings** block and new **sources** and **open questions** go to the archive; **Lessons learned** and any new verified fact that every review needs go into this core file.
 - Keep this core lean: when you add a lesson, merge it with an older one on the same point instead of only appending. Aim to keep this file under about 25 KB.
+- Source tags like `[pt]` in this file point to entries in the archive's Source library. Never delete a source that is still cited.
+- When you verify an open question, move it from the archive into this core file with its source. Cite only pages you actually opened; if a page could not be fetched, say so instead of citing it.
+- Lane 4's knowledge file holds the Centre stage spec and the colour, glass and motion facts; this file holds geometry.
 - Mark anything not verified on a screenshot or in code with **(unverified)**. Computed geometry is marked **(computed)**: it comes from font metrics and code constants, and the screenshot wins if they disagree.
 
 ## Core expertise

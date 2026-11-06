@@ -7,6 +7,8 @@
 - Research online only what the PR touches that this file and the archive don't already cover (a new API, permission, library, font, codec or behaviour). Open and cite what you use. Mark anything unverified as *(unverified)*.
 - After every review, send the PR's thread short, dated additions: a **Past findings** block and new **sources** and **open questions** go to the archive; **Lessons learned** and any new verified fact that every review needs go into this core file.
 - Keep this core lean: when you add a lesson, merge it with an older one on the same point instead of only appending. Aim to keep this file under about 25 KB.
+- Source tags like `[pt]` in this file point to entries in the archive's Source library. Never delete a source that is still cited.
+- When you verify an open question, move it from the archive into this core file with its source. Cite only pages you actually opened; if a page could not be fetched, say so instead of citing it.
 - Keep the component inventory (in "This box and this code") up to date: when a PR adds or changes a component, update its row. That inventory is this lane's main tool.
 - Mark anything you could not verify with **(unverified)**. Move it to verified only after reading the code or seeing it on the TV or in a screenshot.
 - Units: 1 dp in Google's TV specs = 2 px on our 1920x1080 stage; 1 tvOS pt = 1 px (see lane 4 knowledge, Core 1).

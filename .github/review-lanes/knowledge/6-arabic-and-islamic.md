@@ -7,7 +7,9 @@
 - Research online only what the PR touches that this file and the archive don't already cover (a new API, permission, library, font, codec or behaviour). Open and cite what you use. Mark anything unverified as *(unverified)*.
 - After every review, send the PR's thread short, dated additions: a **Past findings** block and new **sources** and **open questions** go to the archive; **Lessons learned** and any new verified fact that every review needs go into this core file.
 - Keep this core lean: when you add a lesson, merge it with an older one on the same point instead of only appending. Aim to keep this file under about 25 KB.
-- Religious facts (a verse, a hadith's wording, number or grade, a fasting rule, an official date or time) go in here **only** with a link to an authoritative page you opened: Kuwait Ministry of Awqaf or a dated Kuwaiti newspaper report of it, Tanzil or the King Fahd Complex for Quran text, sunnah.com or dorar.net for hadith. Never write one from memory. Anything not yet checked is marked **unverified** and listed under Open questions.
+- Source tags like `[pt]` in this file point to entries in the archive's Source library. Never delete a source that is still cited.
+- When you verify an open question, move it from the archive into this core file with its source. Cite only pages you actually opened; if a page could not be fetched, say so instead of citing it.
+- Religious facts (a verse, a hadith's wording, number or grade, a fasting rule, an official date or time) go in here **only** with a link to an authoritative page you opened: Kuwait Ministry of Awqaf or a dated Kuwaiti newspaper report of it, Tanzil or the King Fahd Complex for Quran text, sunnah.com or dorar.net for hadith. Never write one from memory. Anything not yet checked is marked **unverified** and listed under Open questions (in the archive).
 
 ## Core expertise
 
@@ -55,7 +57,7 @@
 - **Basmala rules applied by `withoutBismillah`:** 1:1 is the Basmala itself and stays; 9:1 has none; for other ayah-1 texts the first four words are dropped if the first word, stripped of marks, is بسم. Verified on 2:1, 9:1, 1:1, 95:1 (shadda variant) and 2:2 [first review].
 - **Encoding facts that matter when comparing or cleaning text** [nuqayah]: Quran texts differ in how they encode the same mark: open tanween U+08F0-08F2 vs ordinary U+064B-064D (ikhfa/idgham), U+06E1 (small high dotless head of khah) vs U+0652 sukun, U+06E4 small high madda vs U+0653 maddah, the dagger alif (U+0670) needs a tatweel after joining letters to sit right, and there is **no Unicode for the lam-hamza-alif ligature** of Quranic orthography. So never compare verses with plain string equality across sources, and never "normalise" displayed Quran text.
 - Text derived from Tanzil and tuned for Unicode exists (nuqayah/quran-text, using the King Fahd Complex QPC v13 text and khaledhosny/quran-data) [nuqayah]. khaledhosny/quran-data says itself that its text **has not been formally reviewed** [khaled]: don't use it as an authority.
-- Tanzil's terms of use (verbatim copies only, no changes) and its version history: **not yet re-read** this round (fetch budget ran out); see Open questions.
+- Tanzil's terms of use (verbatim copies only, no changes) and its version history: **not yet re-read** this round (fetch budget ran out); see Open questions in the archive.
 - Display rules the lane enforces (adab and accuracy): show the text exactly as the source gives it; never trim, ellipsize, cut with `maxLines`, or reword; label part of a verse as part ("from 2:286"); keep the reference `Surah n:ayah` with the text. (A written adab source, e.g. al-Nawawi's al-Tibyan on handling the mushaf, is still to be opened.)
 
 ### 6. Unicode facts (UnicodeData.txt and Blocks.txt from unicode-org/unicodetools, `dev`) [ucd], [blocks]
