@@ -215,6 +215,14 @@ Added by the PR #22 review (2026-11-05):
 - In the brief's "Known risks", drop the lines about tag-pinned actions and the missing concurrency group. Keep the delete-then-create risk.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, visual polish): CI #145 for 809f108 passed, with 3 × assembleRelease and lint vital. No Must or Should.
+  - The manifests changed only icon/banner (@drawable to @mipmap).
+  - Adaptive icons were added to app and adhan (mipmap-anydpi-v26 with drawable/icon_back and icon_fore vectors).
+  - Banners were added to mipmap-xhdpi (320×180) and mipmap-xxxhdpi (640×360) in all three apps. Kids got legacy icon PNGs in mipmap-x/xx/xxxhdpi.
+  - drawable/icon.png is kept in adhan and kids for notification small icons.
+  - Nice: the -v26 qualifier is redundant at minSdk 28. The javac deprecation notes in app and kids are likely from GradientDrawable.setDither. Banners ship only at xhdpi and xxxhdpi.
+
 ### PR #22 (2026-11-05, audit update 1)
 - **2026-11-05, PR #22** (audit update 1): CI #135 failed. javac reported `View cannot be converted to ViewGroup` at MainActivity.java:1940 (Must). Gradle stopped at :app, so adhan and kids were never built. Should: the failure comment showed only stack frames. Should: adhan lost MANAGE_EXTERNAL_STORAGE, so the takbir read now relies on READ_MEDIA_AUDIO (test on the TV). OK: the SHA pins were verified, a concurrency group was added, and the release step now refuses to publish a run number lower than the one in `latest`'s title.
 
@@ -253,6 +261,10 @@ Added by the PR #22 review (2026-11-05):
 - 2026-11-05: The CI failure comment (tail -60 with --stacktrace) can contain only stack frames. To find the first real error, read the job log (`gh api repos/<o>/<r>/actions/jobs/<id>/logs`, then grep for `error:`).
 - 2026-11-05: Check action SHA pins with `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> refs/tags/<tag>^{}`. For an annotated tag, the pin must be the `^{}` commit (gradle/actions v4.4.4 = 748248d).
 
+- 2026-11-06: PR artifacts (actions/artifacts/<id>/zip) can't be downloaded from the container, because the blob host productionresultssa14.blob.core.windows.net is refused by the proxy. Only `latest` release APKs (after merge) can be inspected. Use the job log (`gh api repos/<o>/<r>/actions/jobs/<id>/logs`, grep `Task :.*:(lintVital|assemble)Release`) to prove all 3 modules ran.
+- 2026-11-06: When launcher art moves to adaptive icons, grep for `(BitmapDrawable)` casts on getApplicationIcon/loadIcon. MainActivity.java:1963 guards with instanceof, so it is safe. An unguarded cast would crash the home screen on our own apps' AdaptiveIconDrawable icons.
+- 2026-11-06: When a resource folder changes (drawable to mipmap), check that every R.drawable.X and @drawable/X still resolves. Notification small icons (AdhanService.java:118, Guard.java:74) still use R.drawable.icon.
+
 ## Open questions to research next
 - `adb install -r -d`: commit f1d44db allows a downgrade only on a debuggable build or app (for system apps). Confirm the rule applies to normal release APKs; until then assume `-d` fails. [aosp-f1d44db]
 - Answered 2026-11-05: `MY_PACKAGE_REPLACED` is a listed bg-FGS exemption; the Android 15 block names only BOOT_COMPLETED; `specialUse` is OK. [fgs-bg-start]
@@ -269,6 +281,9 @@ Added by the PR #22 review (2026-11-05):
 - Does `appops set <pkg> MANAGE_EXTERNAL_STORAGE allow` error, or do nothing, when the app no longer requests the permission?
 - On Android 14, can READ_MEDIA_AUDIO read an adb-pushed Download/*.mp3 through java.io.File? In other words, is the file MediaStore-indexed when it is pushed?
 - Should the failure comment grep for the error lines before the tail? (Proposed in PR #22, not yet adopted.)
+
+- Does the ManifestResource lint check exempt density qualifiers (mipmap-xhdpi/xxxhdpi banners)? CI #145 passed, so it seems to in practice. Confirm in the lint docs.
+- Does Google TV's launcher refresh a sideloaded app's banner right after `adb install -r`, or only after a reboot?
 
 ## Source library
 All checked 2026-11-05 unless noted.
@@ -314,3 +329,11 @@ All checked 2026-11-05 unless noted.
 
 - [runs-on-concurrency] https://runs-on.com/github-actions/concurrency/: with `cancel-in-progress: false`, a newer pending run replaces the older pending one. Checked 2026-11-05.
 - [datalogic-a13] https://developer.datalogic.com/mobile-computers/news/a13_new_permissions_for_file_access: the scope of Android 13's READ_MEDIA_* permissions. The page does not say whether raw File paths work. Checked 2026-11-05.
+
+- [tv-icons] https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines: android:icon and android:banner are both mandatory.
+  - The banner is 16:9, in mipmap-* folders, from mdpi 160×90 to xxxhdpi 640×360 (xhdpi 320×180).
+  - Adaptive banners are supported.
+  - Themed (monochrome) icons are not supported on Android TV or Google TV.
+  - roundIcon is deprecated.
+  - Checked 2026-11-06.
+- [so-manifest-res] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/50832824/lint-error-when-using-adaptive-launcher-icon: the lint error "Resources referenced from the manifest cannot vary by configuration" (version qualifiers are exempt). Checked 2026-11-06.

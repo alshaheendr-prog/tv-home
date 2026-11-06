@@ -104,6 +104,11 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - Kuwait timetables (secondary site) print suhoor ~10 min before Fajr [khaleejcalc-imsak]; Awqaf's own column is unverified.
 - The verse seed `(seed+attempt)*7919 % 6236` with `seed = doy + year*400` overlaps day to day: day N attempt k = day N+1 attempt k−1.
 
+Added by the PR #23 review (2026-11-06):
+- Section 8 (Fonts): the bundled `amiri_bold.ttf` is a **subset** (1104 cmap entries). It has no U+0030-0039, U+002E, U+003A, U+00B0, U+00B7 and no Latin letters. It does have U+0660-0669, U+060C, parentheses, `!` and ZWNJ. Plex Arabic medium and semibold have the Latin digits and `. : °` (fontTools, 2026-11-06).
+- Section 7 (Digits): Android 14 (API 34) ships ICU 72.1 / CLDR 42 / Unicode 15.0; Android 15 ships ICU 75.1 / CLDR 45 [android-icu]. So a bare `Locale("ar")` gives Arabic-Indic digits on the box today, and the CLDR 46 change would only arrive with a later OS.
+- Section 9 (Rendering): UAX #9 rule W4 says a single common separator (`:` `,` `.`) between two Arabic-Indic numbers becomes AN, so "١١:٣٢" stays together in RTL text [uax9-w4]. `MixText` (app) puts IBM Plex Arabic on whole Arabic runs inside Latin TextViews and never splits a word; span boundaries are hard shaping breaks [devto].
+
 ## This box and this code
 - **The owner's own rules** (project skill `islamic-content-check`, read 2026-11-05), which reviews apply on top of the above:
   - Kids content uses only sahih hadith, short and simple; drop anything da'if or mawdu' from what the kids see.
@@ -132,6 +137,9 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - The Friday reminder runs from Thursday Maghrib to Friday Maghrib; Jumu'ah sunnahs show Friday before Dhuhr; the Jumu'ah line shows the Dhuhr time (`Widgets.java:31-39`).
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, visual polish): no Must. Should: `quranNow` (`MainActivity.java:2837`) switched to the subset Amiri (no Latin), so the English surah name and "Loading…" fall back to Roboto (`:3147`, `:3246`). Nice: three different Arabic-digit methods (`AdhanService:413` bare `Locale("ar")`, `Widgets:27` `ar()`, `Widgets:38` `arDigits`); the Amiri subset lacks `. : ° ·`; `MixText.isArabic` misses U+0870-089F and U+08A0-08FF. Fine: Quran text untouched; dark band behind the verse; surah names fully covered by Amiri; "بعد ١٠ دقائق" grammar; Jumu'ah "١١:٣٢" bidi; MixText spans whole runs only; Kids `wordArabic` top padding.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (audit update 1): Must: the `badge()` reorder put "Eid al-Adha tomorrow" ahead of today's "Day of Arafah" on 9 Dhul Hijjah (`Events.java:45`). Should: "Eid al-Fitr tomorrow" on 29 Ramadan states Umm al-Qura's prediction as fact, but Kuwait sights the moon that evening (`:44`). Nice: a trailing "…" after Arabic in LTR strings (`MainActivity.java:2824`, `:2977`). Fine: the Quran pauses only when the next prayer changes (`nextPrayer` skips sunrise); adhan banner LIFT 56 px in a 136 px band, Plex Arabic 50 px; the chime fallback; the new Arabic strings.
 
@@ -159,6 +167,9 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 - 2026-11-05: The end of Ramadan is known only after the sighting on the evening of the 29th, so any "tomorrow" text on the 29th must be tentative. Dhul Hijjah is fixed when the month starts, so Eid al-Adha lines can be definite.
 - 2026-11-05: A neutral character (… : ·) at the end of an Arabic run in an LTR line takes the line's direction (UBA rules N1/N2), so it is drawn where the Arabic begins.
 
+- 2026-11-06: When a view's typeface changes to Amiri, check every string that view can show for Latin text, because the bundled Amiri is a subset.
+- 2026-11-06: Look up the box's ICU/CLDR version in developer.android.com's internationalization table before rating a locale-data risk.
+
 ## Open questions to research next
 - Kuwait Awqaf: the official method statement and a summer-month timetable (June-August) to extend the OFFSETS check. Try awqaf.gov.kw again, or a dated Kuwaiti newspaper table.
 - Answered 2026-11-05: Eid al-Adha 1447 in Kuwait matched Umm al-Qura (holiday from Tue 26 May) [arabtimes-eid1447].
@@ -182,6 +193,9 @@ Checked set: U+0610-061A, 064B-065F, 0670, 0671, 06D6-06ED, 08F0-08F2, FDFA, FDF
 
 - Which committee announces Eid al-Fitr in Kuwait, and at what time that evening. Name the Kuwait Sharia Crescent Sighting Committee from a Kuwaiti source such as KUNA.
 - Umm al-Qura years where Ramadan has 29 days in 1448-1450, to test the day-29 wording. 1448 has 29 days: 1 Ramadan is 8 Feb 2027 and 1 Shawwal is 9 Mar 2027.
+
+- Answered 2026-11-06: ICU on this box is 72.1 / CLDR 42 (Android 14). Still open: whether a Google TV OS update for this box (Android 15/16) will bring CLDR 46+.
+- Should the Amiri subset gain `. : ° ·` (and Latin) for mixed lines, or should mixed lines never use `fQuran`?
 
 ## Source library
 Tags used above. Opened 2026-11-05 unless marked.
@@ -222,3 +236,7 @@ Tags used above. Opened 2026-11-05 unless marked.
 
 - [mwn-eid1447] https://www.moroccoworldnews.com/2026/03/283198/kuwait-confirms-eid-al-fitr-2026-for-march-20/ : the Shawwal moon was not seen on 29 Ramadan 1447, Ramadan ran 30 days, Eid was Fri 20 Mar 2026 in Kuwait. Checked 2026-11-05.
 - [tohed-t3604] re-checked 2026-11-05: حين يمسي ثلاث مرات, hasan per Tirmidhi.
+
+- [android-icu] https://developer.android.com/guide/topics/resources/internationalization : ICU/CLDR/Unicode per API level (API 34 = 72.1/42/15.0). Checked 2026-11-06.
+- [uax9-w4] https://www.w3.org/2004/Talks/IUC26bidi/slide14-1.html : wording of rule W4. Checked 2026-11-06.
+- [devto] re-read 2026-11-06: span boundaries inside a word break Arabic shaping on Android.

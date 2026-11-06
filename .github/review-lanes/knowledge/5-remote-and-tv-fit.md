@@ -109,6 +109,15 @@ These are standard ADB commands; the first four are from [mustafa], the others a
 - Drawing order with elevation: children are sorted by Z, and equal Z keeps add order (android14 `ViewGroup.buildOrderedChildList` `:4468-4475`). Two panels at the same elevation stack by build order, not by which opened last, unless `bringToFront()` is called. [vg14]
 - Volume keys on Android TV never reach the foreground app: `interceptKeyBeforeDispatching` consumes `VOLUME_UP/DOWN/MUTE` when `mUseTvRouting` (platform type TELEVISION = has `FEATURE_LEANBACK`) or `config_handleVolumeKeysInWindowManager` (android14 `PhoneWindowManager.java:3138-3145`, `AudioSystem.java:2464-2473`). An app that "eats every key" doesn't break volume. [pwm14], [audiosys14]
 
+Added by the PR #23 review (2026-11-06):
+- 2026-11-06: How clipping works (android14). A child is clipped to its own bounds when its parent has clipChildren (`View.setDisplayListProperties` `:23483`, `renderNode.setClipToBounds`). That clip is applied before the child's scale, so it doesn't cut a scaled child. Two things do cut a scaled child:
+  - (a) the parent's **clipToPadding**. It is on by default and only takes effect when the padding is non-zero (`ViewGroup.dispatchDraw` `:4277` clips to the padded area).
+  - (b) the parent's own bounds clip, which comes from the **grandparent's** clipChildren.
+
+  So room for a focus grow must be padding on a parent that has `setClipToPadding(false)`, or space inside a parent whose own parent has `clipChildren(false)`. Padding on a ScrollView does nothing for a grid inside it unless that ScrollView has `clipChildren(false)` (an outline clip on the ScrollView still clips the scrolled content). [vg14], [view14], [cliptopad]
+
+- 2026-11-06: A ViewPropertyAnimator that starts on a property that is already animating takes that property away from the running animator. If the running animator has no properties left, it is cancelled (`:943-960`). A cancelled animator's `withEndAction` is dropped (`:1088-1093`). `setStartDelay` and the interpolator stay set on that view for later `animate()` calls. [vpa14]
+
 ## This box and this code
 - **Box:** Xiaomi TV Box S (3rd Gen), Google TV, 2 GB RAM, 32 GB storage, quad-core up to 2.5 GHz, Mali-G310 V2 GPU, 4K output, one HDMI 2.1 port. The spec page doesn't describe the remote buttons. [mi]
 - **SDK:** all three modules `compileSdk 35`, `targetSdk 35`; `minSdk 28` (app, adhan), `33` (kids). No `enableOnBackInvokedCallback`. (`*/build.gradle.kts`)
@@ -133,7 +142,21 @@ Added by the whole-app audit (2026-11-05):
 Added by the PR #22 review (2026-11-05):
 - Known risks updated by PR #22: the home player media-key risk is closed. The adhan words now sit at least 56 px above the bottom (BAND 136, LIFT 56); the corner card is still at 56/44 px.
 
+Added by the PR #23 review (2026-11-06):
+- 2026-11-06 (PR #23):
+  - `pressDip` (`MainActivity` ~`:3421`, Kids ~`:1677`) dips any clickable focused view on OK DOWN (repeat 0). It never consumes the key, so long-press still works. Views tagged "dip" (the PIN keys) are skipped.
+  - All apps reuses its tiles when `gridKey` matches, and focuses tile 0.
+  - `closeAppMenu` refocuses the tile first, then blocks and fades the menu for 180 ms.
+  - Kids `refreshTiles(true)` keeps the row on resume.
+  - Calendar rows are focusable but not clickable (a reading guide).
+  - The adhan Settings rows now scale 1.03.
+
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, visual polish): no Must.
+  - Should: the new focus room is undone by clipToPadding or clipChildren in Parent settings, the hold-OK menu, the reciter list, the All apps and surah glow, Adhan settings, and Kids settings and the app picker. `pressDip` springs back to a scale read mid-animation, so a dock tile can stay at about 1.1 instead of 1.2.
+  - Nice: the adhan test row renders twice (focus flash and a double bounce); the Kids dip has no `startDelay(0)`; the adhan reminder sits 60/50 px from the corner (known); `pressDip` dips disabled views.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (audit update 1): no Must or Should. TrapFrame plus focusLayer stop focus leaking out of panels. Back goes back one layer per press. MEDIA_PLAY, PAUSE and PLAY_PAUSE are handled on the Quran page and in the player, which closes that known risk. A missing Stremio or Kodi shows a message. The adhan words are lifted 56 px. Nice: closing the reciters focused a hidden button (fixed, it falls back to the surah cell); the tileFor fallback; "Show first" refocuses the first app; media keys on the home with soft Quran playing; the adhan's 80 px box.
 
@@ -160,6 +183,9 @@ Added by the PR #22 review (2026-11-05):
 - 2026-11-05: A focusSearch override that returns the focused view makes ViewRootImpl treat the arrow as having nowhere to go.
 - 2026-11-05: With no MediaSession, unhandled media keys go to the last media-button receiver.
 
+- 2026-11-06: When a PR says "added padding so focus isn't clipped", check clipToPadding on that same group and clipChildren on its parent. Padding on its own usually does nothing.
+- 2026-11-06: A press effect must return to the target value for the view's state (focused or resting), never to a value read part-way through an animation. TV Material defines `pressedScale` as a fixed state value.
+
 ## Open questions to research next
 - Which key code does each button on this box's remote send (Home, Apps, Netflix, Prime Video, YouTube, Google TV/Live, the input/settings button)? Do any of them map to `VIDEO_APP_*`/`FEATURED_APP_*` and so can't be learned? (On the box: Parent settings → learn, or `adb shell getevent -l` / logcat.)
 - Does this box's Home button send `KEYCODE_HOME` or `KEYCODE_ALL_APPS`? If `ALL_APPS`, the default `rk_apps` mapping would turn Home into "open Kodi". Highest-priority check: `adb logcat | grep -i keycode` while pressing Home and Apps (lane 8 has the same step).
@@ -173,6 +199,8 @@ Added by the PR #22 review (2026-11-05):
 - Does `View.requestFocus()` on a dock tile from `onNewIntent` (Home pressed while a panel is fading) ever race with the 180 ms fade? Watch on the box (checklist item 6).
 
 - Should the home get a MediaSession so the TV remote's Pause works on the soft Quran? (That may count as a feature; ask first.)
+
+- Is the elevation shadow (`goldLift` translationZ) of an outer-column tile clipped at the grid's bounds on this box's HWUI? This is inferred from the source; confirm it with lane 8's photo.
 
 ## Source library
 Tags used above. All were opened on 2026-11-05 unless marked otherwise.
@@ -224,3 +252,8 @@ Tags used above. All were opened on 2026-11-05 unless marked otherwise.
 - Not useful: the `device/google/atv` overlay config URL returned 404 (moved). `config_handleVolumeKeysInWindowManager` defaults to false in core `config.xml:4612`; TV routing comes from `mUseTvRouting` instead.
 
 - android14-release ViewGroup.java (lines 826-838, descendant focusability), ViewRootImpl.java performFocusNavigation, MediaSessionService.java dispatchMediaKeyEventLocked, and TextView.java onDraw clipRect. Read 2026-11-05.
+
+- [cliptopad] https://learn.microsoft.com/dotnet/api/android.views.viewgroup.setcliptopadding : by default, children are clipped to the parent's padding, only when the padding is non-zero.
+- [tvm-scale] https://composables.com/jetpack-compose/androidx.tv/tv-material/objects/ClickableSurfaceDefaults/api.md : `scale()` defaults are `scale` 1f, `focusedScale` 1.1f and `pressedScale = scale`. The developer.android.com page was too long to fetch, so this mirror was used.
+- [vpa14] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/view/ViewPropertyAnimator.java : how a new animation takes over a property and cancels the old one; the end action is dropped on cancel.
+- [vg14] and [view14] (already listed) are now also cited for `dispatchDraw` `:4277`, `setClipChildren` `:4603` and `setDisplayListProperties` `:23483`.

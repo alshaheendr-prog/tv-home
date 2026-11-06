@@ -140,7 +140,34 @@ Added by the PR #22 review (2026-11-05):
 - Wallpaper: pressing Home on the home keeps the same clip. Coming back from another app plays a new one.
 - Messages over a panel show at the bottom centre, 64 px up. On the home screen they show top left.
 
+Added by the PR #23 review (2026-11-06):
+- Replace "The 10-minute reminder shows over any app except the family home, for 15 s" with "... for 8 s (`showReminder`, `hideReminder`). Since PR #23 it has a short gold hairline, the English, the Arabic in gold with Arabic-Indic digits, and the time."
+- Added by the PR #23 review (2026-11-06):
+  - Special-days line: a boxless gold line under the dates (right column), no longer a chip on the left (`drawEventChip`). It shows only on special days (Events.badge).
+  - Drive line: "● Drive unplugged" is white with a gold dot. "● USB … free" is soft white with a grey dot. It is no longer red or green (`updateDrive`, `dotLine`).
+  - Prayer strip: the next prayer is shown by colour only (name white, time gold), with no box.
+  - Tomorrow's weather is a word (`skyWord`), not an emoji.
+  - The All apps dock tile shows "•••". The PIN pad's cancel key is "×" (bottom left). Focus starts on 1, so Down three times reaches it.
+  - The Quran page (star field) pauses the wallpaper and hides the layers under it (`starsOver`, 300 ms after it opens). Closing it, or pressing Home, starts the wallpaper again. A Quran background video brings the layers back.
+  - The reciter button always reads "Choose reciter". The list still opens on the saved reciter.
+  - Night dim (15 min idle) now also fades the clock, the verse and the top parts to 0.55 (`NIGHT_TEXT`). One press brings everything back.
+  - The All apps grid is reused when nothing changed (`gridKey`), so the second opening is instant. Icons are cached by the app's lastUpdateTime (`cachedIcon`), so an updated app shows its new icon.
+  - Press dip (`pressDip`): on the home and Kids Corner, for clickable views only. Kids settings rows (not clickable) and the Adhan settings app have none.
+  - Adhan settings: the test row says "Playing ✓" for about 1.2 s, then "▶". Rows grow to 1.03 with a gold edge.
+  - Kids: settings rows get a white edge and grow to 1.03 (`focusRow`). The "Apps along the bottom" row switches between "App icons" and "Big banners". In Big banners, an app with no banner shows its icon on its own colour. The Kids wallpaper choice is kept by file name (`wallpaperPick`, pref `wallpaper_name`). The PIN shake is a damped 420 ms animation.
+  - Kids player: OK pauses and resumes. The pause sign sits on a dark 220 px disc.
+  - Launcher art: Home and Adhan use adaptive vector icons (`mipmap-anydpi-v26/icon.xml`). Banners are in mipmap-xhdpi/xxxhdpi. Kids uses PNG icons in mipmap folders. `drawable/icon.png` stays in kids and adhan for the notification small icon.
+
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- **2026-11-06, PR #23** (update 2: visual and UI polish):
+  - No Must.
+  - Should: the reminder is now 8 s, not 15 s (brief and knowledge), and the code facts above.
+  - Nice:
+    - "Every control dips" doesn't cover Kids settings rows or the Adhan settings app.
+    - `pressDip` restores the scale it read at key-down, so an OK pressed during a focus zoom settles slightly small.
+  - Checklist (13 new steps, 4 can't-test-now items, plus the smoke test): link above.
+
 ### PR #22 (2026-11-05, audit update 1)
 - **2026-11-05, PR #22** (audit update 1: focus trap, Back one layer at a time, idle close, PIN notes, wallpaper, Quran, kids player and adhan fixes):
   - No Must.
@@ -188,6 +215,11 @@ Added by the PR #22 review (2026-11-05):
 - 2026-11-05: For toggle or hold-OK steps, use a harmless row (Clock, Bedtime wind-down, add then remove a home-row app) and add the put-back step.
 - 2026-11-05: Date-bound fixes (Eid or Arafah badges, midnight) go in a "Can't be tested now" line. Don't ask for a clock change.
 
+- 2026-11-06: Check where focus starts before writing directions on a grid. The first draft said "Down three times, then Left" for the PIN ×, but focus starts on 1, so it's just Down three times. Grep for the first focused view (`firstPinKey`) before writing a path.
+- 2026-11-06: For a polish PR, write "just look" steps with one visible detail each (colour, a word, a box or no box), plus a "Broken:" line. Then add interruption steps wherever the PR changed what pauses or plays: the Quran page pausing the wallpaper, then Home or Netflix.
+- 2026-11-06: Date-bound looks (special days line, Friday Jumu'ah line, the prayer reminder) go in "Can't be tested now" with the next real date worked out (White Days around 22 to 25 Nov 2026).
+- 2026-11-06: A PR claim like "every control" needs a grep of where it's wired (`pressDip` callers, `isClickable`). Don't promise it on screens it doesn't reach.
+
 ## Open questions to research next
 (The web-fetch budget ran out on 2026-11-05 before these could be opened.)
 - Answered 2026-11-05: the publishing checklist lists requirements only, no test procedures.
@@ -206,6 +238,9 @@ Added by the PR #22 review (2026-11-05):
 - Does the TV's own remote send Play/Pause to the box over HDMI-CEC? Ask the owner whether the TV remote has those keys.
 - Does the Xiaomi Bluetooth remote send its own key repeats, or the framework's 50 ms? It changes the cartoon seek pace.
 - Replace the remaining line numbers in the brief and knowledge file with method names.
+
+- Does Google TV's own launcher ("Your apps", Settings > Apps) refresh a sideloaded app's icon or banner straight after `install -r`, or only after a reboot? No source found on 2026-11-06. Ask the owner what they see after this update.
+- Adaptive Icon Playground ([adaptive-icons]) could preview masks on the box. It's for the developer only, if lane 13 wants it.
 
 ## Source library
 All checked 2026-11-05 unless noted.
@@ -245,3 +280,8 @@ All checked 2026-11-05 unless noted.
 - [remote-manual] https://manuals.plus/asin/B0F3JWFL56.pdf: the 3rd-gen box remote has Power, Assistant, D-pad, Home, Back and app buttons, and no Play/Pause. Checked 2026-11-05.
 - [key-repeat] https://gerrit.omnirom.org/plugins/gitiles/android_frameworks_base/+/5128949634c682b630a9a94517f4a6df0b5dfc21%5E%21: `DEFAULT_KEY_REPEAT_DELAY_MS = 50`, so a held key repeats every 50 ms. Checked 2026-11-05.
 - [aosp-cec] https://source.android.com/devices/tv/hdmi-cec?hl=en: names Remote Control Passthrough, but doesn't say how keys reach apps. Checked 2026-11-05.
+
+- [tv-icons] https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines: the banner is mandatory at 16:9 (320x180 xhdpi, 640x360 xxxhdpi, in mipmap folders) and is used in the TV launcher. The launcher icon shows in Settings, the Now Playing card and the Google TV "Your apps" row. Themed icons aren't supported on TV. It gives no test procedure. Checked 2026-11-06.
+- [adaptive-icons] https://medium.com/google-design/515af294c783: 108 dp layers, masked to at most 72 dp, a 66 dp safe circle in the centre. Launchers may add parallax or scale. Checked 2026-11-06.
+- [adaptive-clip] https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/49661571/adaptive-icon-not-displaying-properly: art outside the safe zone gets clipped. The fix is scaling it into the centre. Checked 2026-11-06.
+- [tv-update-fix] https://www.guidingtech.com/best-ways-to-fix-apps-not-updating-on-android-tv/: Play Store update fixes only. It says nothing about launcher icon caches. Checked 2026-11-06.

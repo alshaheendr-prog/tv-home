@@ -125,7 +125,19 @@ Corrections from the whole-app audit (2026-11-05):
 - Western digits inside Amiri lines: `Content.java` character facts (years), `Widgets.java:27` heat alert, `:38` Jumu'ah time.
 - Surah names: Amiri in the grid and strip, Plex in `quranNow` and `playerSurah`.
 
+Added by the PR #23 review (2026-11-06):
+- `MixText` (`app/.../MixText.java`): `text()` makes every non-Arabic-face view a MixText; whole Arabic runs (incl. spaces, digits, ، ؟) get `TypefaceSpan(Plex Medium or SemiBold)`. Arabic-face views (fAr, fArSemi, fQuran) stay plain TextViews, so Latin inside them still falls back.
+- `CAPS_TRACK = 0.12` used everywhere except AM/PM 0.08, dock label 0.02, clocks.
+- `kicker()` forces 22 px whatever size the call site passes.
+- Amiri Bold surah titles ("سورة " + 114 names): ink +1.019 / −0.664 em, max width 5.34 em.
+- Plex Arabic SemiBold vs Inter SemiBold: Plex hhea 1.085/−0.415 vs Inter 0.969/−0.241, so a kicker with an Arabic span is about 6 px taller at 22 px. Plex teeth 0.34 em, alef/lam about 0.88 em; Inter caps 0.728, x 0.546.
+- Plex Arabic Medium is 3 to 7% wider than Noto Naskh Arabic 500 on the weather and event strings.
+- Inter SemiBold digits at 22 px: tnum "114" 42.7 px advance / 39.7 ink; pnum "114" 33.3 / 31.2, "100" 38.3 / 36.2.
+
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23: no Must. Audit S1 to S10 done (MixText Plex spans, tnum on Kids/adhan clocks, 22 px floor, CAPS_TRACK 0.12, Arabic-Indic digits in Amiri lines, ••• and ×, Amiri surah names). Should: `quranNow`/`nowSurah` in Amiri draw their English half in system Roboto (Amiri has no Latin, `-`, `'`, `·`); two splash lines (`IntroView.java:476, 557`) bypass `drawWelcome()`; surah medallion "100" to "114" at 22 px tnum is 39.5 px of ink in a 46 px ring (use pnum, 52 px); `playerSurah` 168 px Amiri with font padding is 459 px tall for 283 px of ink (padding off); verse reference "Al-Baqarah" letterspaced (uppercase it); Cormorant clock still `tnum` without `lnum`. Nice: Arabic 1.1× in splash vs 1.0× in kickers, kicker call sites say 20, Kids `wordArabic` top has 0.4 px spare (shadow cut), `fitPair` ignores spans.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22: no Must. S1: on the reciter loading line, the "…" sat on the wrong side of the Arabic, and the Arabic is in an Inter view. Fixed by moving the "…" to the English side; the separate fAr view waits for the visual batch. Nice: the home PIN message orphaned "again." (fixed with a line break), ⭐ comes from the emoji font (use ★), and the adhan row is 80 px for an 84.8 px Plex line (the ink fits).
 
@@ -151,6 +163,12 @@ Corrections from the whole-app audit (2026-11-05):
 - 2026-11-05: A temporary message must keep the line count of the text it replaces, at the real column width (PIN 472 px on the home, 440 px in Kids, parent rows 728 px).
 - 2026-11-05: When a row shrinks (adhan LIFT 56 and BAND 136 leave 80 px), check the shaped ink of every string against it. Plex Arabic at 50 px has ink from +39.1 to −13.5 px.
 
+- 2026-11-06: When a fix moves a view to another face, check every string that view shows, including the Latin half of a `fitPair` / `oneLine` pair. Amiri has no Latin.
+- 2026-11-06: After a "use the helper" fix, grep for every literal copy of the string (`IntroView` had three WELCOME draws, and only one was converted).
+- 2026-11-06: `tnum` is for numbers that change or line up in columns. In a fixed-size badge it makes 3-digit numbers wider (tabular 1).
+- 2026-11-06: Switching a big title to Amiri with font padding on adds about 1 em of empty air (head yMax 1.823). Turn padding off for display sizes and check the HarfBuzz ink.
+- 2026-11-06: There is no public letter-spacing span before API 34, so a mixed-case tail in a caps kicker needs uppercasing or its own view.
+
 ## Open questions to research next
 - Which system Arabic font draws the kicker Arabic on this Android TV 14 box (Noto Naskh Arabic or the UI cut), and does it clash with Plex? Screenshot a kicker.
 - On the box (Android 14), screenshot a Quran line and a Plex Hijri line to confirm metrics-based line height (no elegant metrics). Repeat if the box ever gets Android 15.
@@ -170,6 +188,9 @@ Corrections from the whole-app audit (2026-11-05):
 
 - Screenshot the reciter loading line on the box after the fix.
 - unicode.org (UAX #9) is blocked by the proxy here, so cite rules N1/N2 from a mirror.
+
+- Does the box's StaticLayout use head yMax (1.057) or hhea ascent (1.08) for Baloo's first-line top with font padding on? It decides whether Kids marks have 0.4 or 1.4 px spare. Screenshot the hadith card.
+- Kicker Arabic at 1.0× vs 1.1×: mock both on the TV and pick one for MixText and the splash.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -214,3 +235,7 @@ All checked 2026-11-05. Tags are used in Core expertise.
 
 - [w3c-h34] https://www.w3.org/WAI/WCAG21/Techniques/html/H34 : an RLM after punctuation that ends an RTL phrase in LTR text.
 - [w3c-inline-bidi] https://w3c.github.io/i18n-drafts/articles/inline-bidi-markup/index.en : neutrals at the edge of a phrase.
+
+- [minikin-ls] https://android.googlesource.com/platform/frameworks/minikin/+/e8721b2%5E%21/ : `isScriptOkForLetterspacing` skips Arabic, N'Ko, Mongolian, Devanagari etc.; spacing applied per script run. Checked 2026-11-06.
+- [textappearancespan] https://developer.android.com/reference/android/text/style/TextAppearanceSpan : `getLetterSpacing()` added in API 34. Checked 2026-11-06.
+- [noto-naskh-vf] google/fonts `ofl/notonaskharabic/NotoNaskhArabic[wght].ttf` (raw.githubusercontent.com): stand-in for the box's fallback Arabic, for width comparisons.

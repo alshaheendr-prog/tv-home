@@ -124,6 +124,14 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - Adhan (`AdhanService.java:337-430`): band translationY in 750 ms, line scaleX from 180 ms over 900 ms, row from 420 ms over 700 ms with `withLayer()`, all `Decelerate(2.2f)`; exit row 0 ms/350, line 150/500, whole 300/550 with `Accelerate(1.5f)`, `setStartDelay(0)` set explicitly. Reminder in/out 500 ms default curve. Small cards 250 in / 150 out.
 
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2):
+  - Fixed: All apps focus delay, goldLift delay, the verse cross-fade (opacity only, 250 ms EXIT out, 400 ms EASE in), one exit curve `EXIT = PathInterpolator(0.3, 0, 1, 1)`, the Kids shake now uses home's keyframes, and IntroView and the splash now time themselves with uptimeMillis.
+  - Should:
+    - `pressDip` saves a mid-animation scale, so a quick double OK (or OK right after a focus move) leaves the item stuck at the wrong size.
+    - Intro start delays still apply in ambient, night dim and wake until the first panel opens.
+  - Nice: the calendar's exit curve, the Kids dip and `focusRow` curves, the `dimView` curve on wake, StarField still on the wall clock, the stale `magnify()` Javadoc.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (audit update 1):
   - Fixed: the audit Should on delayed focus restore. `closePanels`, `closeReciters`, `closePlayer` and `drawQuranState` now move focus at once.
@@ -158,6 +166,10 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 - 2026-11-05: Among panels that share one elevation, `bringToFront()` decides which fade the family sees. Animate the panel in front, or the other panel's fade plays hidden.
 - 2026-11-05: A loading state should wait about 500 ms before showing and then stay up at least about 200 ms, or it flashes.
 
+- 2026-11-06: A relative effect (a dip or a nudge) layered on a property that another animation owns must return to the state's target, not to a saved value. The ViewPropertyAnimator drops the cancelled animation's end action.
+- 2026-11-06: A delay reset in `show()` or `closePanels()` only helps after the first panel opens. Check the paths that can run before any panel (ambient, night dim, wake).
+- 2026-11-06: The ViewPropertyAnimator merges every `animate()` call made on a view in the same frame into one batch, using the last delay, duration and curve set (`startAnimation()` reads them when the batch starts).
+
 ## Open questions to research next
 - Record the panel open/close and ambient wake on the TV to confirm the inherited delays (expected: dock lingers 600 ms).
 - What does the Xiaomi remote send when a key is held: Android-generated repeats (400 ms, then 50 ms) or its own? (`adb shell getevent -lt`)
@@ -176,6 +188,9 @@ Verified by reading the code on 2026-11-05 (line numbers drift; re-grep).
 
 - After the Must 1 fix, record Back from All apps at 60 fps and confirm the dock and its label arrive together.
 - Should the toast pill's position follow panel open/close (lane 9), or should it stay fixed at the bottom centre?
+
+- Record a double OK on a Kids Corner toggle cell, and Right then OK on the dock, to confirm S1.
+- Is the 70/140 ms dip visible at 60 Hz (4 frames down)? Compare it with tv-material's 120/300 ms on the TV.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -218,3 +233,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [aosp-animhandler] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android14-release/core/java/android/animation/AnimationHandler.java: when no window is visible, Android 14 pauses only infinite-duration animators, after `Animator.getBackgroundPauseDelay()`. Finite fades started in `onStop` still finish and run their end actions. Checked 2026-11-05.
 - [spin-delay] https://docsearch.algolia.com/mcp/docs/repo/smeijer/spin-delay: defaults are a 500 ms delay and a 200 ms minimum duration, so a spinner doesn't flash. Checked 2026-11-05.
 - [adobe-progress] https://developer.adobe.com/commerce/admin-developer/pattern-library/feedback-to-user/progress-indicator: delay a spinner 500 ms to avoid flicker; skip it for tasks under 500 ms. Checked 2026-11-05.
+
+- [mdc-fade] https://raw.githubusercontent.com/material-components/material-components-android/master/lib/java/com/google/android/material/transition/platform/MaterialFade.java: fades in over Medium4 with emphasized decelerate, out over Short3 (150 ms) with emphasized accelerate. Checked 2026-11-06.
+- [tv-surface-defaults] https://raw.githubusercontent.com/androidx/androidx/androidx-main/tv/tv-material/src/main/java/androidx/tv/material3/SurfaceDefaults.kt: focusedScale 1.1; pressedScale is a target set by the pressed state (press 120 ms, release 300 ms in SurfaceTokens.kt). Checked 2026-11-06.

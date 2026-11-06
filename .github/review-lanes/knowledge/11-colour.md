@@ -137,7 +137,32 @@ Added by the PR #22 review (2026-11-05):
 - Home PIN keys: off `0x1FFFFFFF` with a `0x2EFFFFFF` ring (1.78:1, so focus is the gold ring plus the 1.12 scale). On: `0x59`->`0x26` white with a 3 px `0xE6F1D58A` ring (9.3:1).
 - `WHITE` on the top of `focusGlass` is 5.9:1 / Lc 81; `DIM` there is 3.8:1 / Lc 52.
 
+Added by the PR #23 review (2026-11-06):
+- One gold: `AdhanService.GOLD` is now `0xFFF1D58A`; adhan settings value and focus edge `F1D58A`/`E6F1D58A`. `FFC24A` and `E8CB86` are gone from home and adhan. Kids keep `FFC233`/`FFD45A` (deliberately playful).
+- `kicker()` now forces `GOLD` at 22 px with `CAPS_TRACK 0.12` (Lc 83 / 14.6:1 on black; was Lc 59).
+- `DIM` is `0xB8FFFFFF` (72%): Lc 64 / 10.6:1 on black. `SOFT` vs `DIM` step is only 1.41:1 on black.
+- Verse band: `lineFade` `{0,0x66,0x66,0}` dithered, on `lineHolder` (`lineFrame`), `LINE_FADE 44` px top and bottom. `lineKicker` is `SOFT` 22 px.
+- Event line: boxless `GOLD` 24 px under the dates in the clock column (about stage y 330-360), shadow 4/2/`0x99`. It sits just below the 380 px top scrim.
+- Next prayer: no pill. Name `WHITE` (others `SOFT`), time `GOLD` (others `WHITE`), passed cells alpha 0.55.
+- Night dim: `NIGHT_TEXT 0.55` alpha on `centerGroup`, `lineFrame` (which also fades the verse's own fade) and `topParts`.
+- Dithered now: `topScrim`, `bottomScrim`, `lineFade`, Quran `playerShade` (`{0x80,0x59,0x59,0xA6}`), `PanelBg` fill and warm glow, StarField backdrop (64 px wide ARGB_8888 bitmap painted once with dither, tiled), StarField glow, Kids player bar `{0xE6,0x8C,0}`. Still not: `Glass.java`, Kids `panel()` (`KidsActivity.java:2024`).
+- Quran player: `playerReciter` `0xE6` white, shadow 5/2/`0xB3`.
+- Kids `focusRow()`: `0x26` white fill, 3 px `0xE6` white stroke, 1.03-1.05 scale. Kids player pause: `0x8C` black disc and a 16 px shadow.
+- Calendar rows: focus is a `0x14` white fill only (1.26:1 against the panel).
+- `drive` line: `dotLine()` colours only the leading dot (`DIM` found, `GOLD` unplugged), and the words are `SOFT`/`WHITE`.
+
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- Must: the event line went boxless gold into an unprotected zone. Over sky it is 1.44:1 / Lc 19, over snow 1.04:1 / Lc 0 (the old chip gave Lc 41 over sky). Fix: `WHITE` words with a gold `dotLine` dot.
+- Should:
+  - The verse fade's 4 even stops give only about 25% black under the kicker and the last line (Lc 57 sky / 48 snow). Use 6 stops.
+  - Extend the top scrim to 480 px `{0x80,0x4D,0}`.
+  - `NIGHT_TEXT 0.55` gives the verse Lc 31-38. Use 0.7.
+  - The next prayer is marked by colour only (1.04-1.32:1), and its gold time is weaker than white (Lc 42 vs 61 over sky). Keep it `WHITE` with a 3x36 px gold underline.
+  - Calendar focus fill 1.26:1: add a gold start tick and a `SOFT` date line.
+- Nice: reciter Lc 55 over snow (shade mid stops `0x66`); `SOFT`/`DIM` step 1.41:1; `Glass` and Kids panel are still undithered.
+- Fine: one gold, kickers, `DIM` raise, drive dot, Kids focus and pause disc, Kids player text, adhan reminder card.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05 PR #22: no new palette colours or gradients. The new disabled/resting states use view alpha and `DIM`:
   - Should: the focused PIN key at 0.4 alpha while the pad rests has a gold ring of 2.6:1 / Lc 19 (it is 9.3:1 / Lc 69 normally).
@@ -171,6 +196,12 @@ Added by the PR #22 review (2026-11-05):
 - 2026-11-05: A lightness-only state cue between `WHITE` and `SOFT`/`DIM` is under 3:1 (`WHITE` vs `SOFT` 1.24:1, vs Kids `DIM` 1.87:1). An "off" glyph needs about 35% white (`0x59FFFFFF`: 5.0:1 step, still 3.2:1 on a `0x1A` chip).
 - 2026-11-05: Error or status text that temporarily replaces a `DIM` line should switch to `SOFT` while it shows.
 
+- 2026-11-06: Gold is the first colour to vanish on a bright clip (L 0.68, close to sky and snow). When a label loses its box, move the gold to a dot or mark and make the words white.
+- 2026-11-06: A `GradientDrawable` with N evenly spaced colours is at full strength only between 1/(N-1) and 1-1/(N-1). Check where the text actually sits in the ramp, not just the peak alpha. `setColors(int[], float[])` needs API 29, and our minSdk is 28.
+- 2026-11-06: View alpha on a holder also fades its background. Night-dimming `lineFrame` thins the verse's own protection.
+- 2026-11-06: Making the "important" item gold can make it the least readable on bright video. Mark importance with shape (an underline or dot) and keep the key number white.
+- 2026-11-06: Measure every "boxless" move: when a chip or pill goes, compute the text against the zone it lands in (scrims end at 380 px top and 600 px bottom).
+
 ## Open questions to research next
 - Measure real contrast behind the verse band and strip on the brightest clip in `Movies/TVWallpapers` (shared with lane 4). Does `screencap` include the SurfaceView video on this box?
 - Does the Xiaomi box output full or limited RGB range, and does the TV match? (Settings > Display; check for grey blacks.)
@@ -187,6 +218,10 @@ Added by the PR #22 review (2026-11-05):
 - Should Kids `PlayerActivity` reuse `ink()` (move it to a shared helper) so every Kids text gets the same shadow rule?
 
 - Which single alpha should every "disabled" state use across the three apps (home keys 0.4, passed prayers 0.55, Kids `DIM` arrows)? Pick one documented value and find Material's figure in the MDC-Android source.
+
+- Does the extended top scrim (480 px, `0x4D` middle) read as a grey band on dark clips? Mock it with lane 4.
+- Is `NIGHT_TEXT 0.7` calm enough in a dark room? Check on the TV at night, at 3 m.
+- Does a 3 px gold underline under the next prayer time fit lane 4's boxless strip?
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -230,3 +265,7 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [wcag-143-inactive] https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html: inactive components ("visible but not currently operable") have no contrast requirement. Keys that still take focus and answer a press are not inactive.
 - [tv-focus-system] https://developer.android.com/design/ui/tv/guides/styles/focus-system: default focus scales 1.025, 1.05 and 1.1x; mix scale and colour cues; disabled shows "lower prominence". It gives no focus-contrast ratio.
 - Couldn't read: m3.material.io and m2.material.io need JavaScript. Next time, get Material's disabled opacity (38%?) from the material-components-android source.
+
+- [wcag-2413] https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance: AAA. Focus area at least a 2 CSS px perimeter, and 3:1 between the same pixels focused and unfocused; a background change from black to dark grey fails. Checked 2026-11-06.
+- [gd-setcolors] https://learn.microsoft.com/pl-pl/dotnet/api/android.graphics.drawables.gradientdrawable.setcolors?view=net-android-35.0: `setColors(int[], float[])` with offsets is API 29; null offsets space the colours evenly. Checked 2026-11-06.
+- Material disabled alpha 0.38: the androidx ContentAlpha page did not show the values when fetched. Still **(unverified)**.

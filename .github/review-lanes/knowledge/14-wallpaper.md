@@ -122,7 +122,15 @@ Corrections from the whole-app audit (2026-11-05):
 - `enterNightDim()` (`:3483`) animates only `dimView`; `centerGroup`, `lineFrame`, and the dates/weather stay at alpha 1 / 0.7.
 - `onResume()` (`:282`) runs `playRandomClip()` after every `onPause`, including Home presses while on the home (manifest `singleTask`).
 
+Added by the PR #23 review (2026-11-06):
+- `starsOver(on)` (`MainActivity.java:~752`): while the opaque star field shows, `dimView`, both scrims and `skyTint` are INVISIBLE and the wallpaper is paused, but not stopped, so the decoder stays held. `show(quranPanel)` posts `starsUp` after 300 ms. `closePanels` calls `starsOver(false)`. `onResume` skips the wallpaper while `starsOn`. `playRandomClip`'s end action bails out if `starsOn`.
+- The scrims, `playerShade` (now `0x80/0x59/0x59/0xA6`) and the verse fade `lineFade` (`0x00/0x66/0x66/0x00`, 1920 wide, `LINE_FADE 44` padding) are dithered GradientDrawables. The StarField backdrop is a 64 x 1480 bitmap dithered once on the CPU and tiled.
+- Kids: `wallpaper` int pref plus `wallpaper_name` string. `wallpaperPick()` (`KidsActivity.java:~412`) migrates an old index to a name once, and re-finds the index by name.
+
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23: no Must. Fixed audit Shoulds: night dim now dims the words (NIGHT_TEXT 0.55), and the Kids pick is stored by file name. Should: (S1) `closePlayer` calls `starsOver(true)` at once, so scrims, dim and tint vanish and the Quran clip freezes during the 250-300 ms cross-fade; post `starsUp` after the fade instead. (S2) Kids `wallpaperPick` forgets the name when the list is empty for a moment (at boot or during Update TV); keep it when the list is empty. (S3) The verse fade is a full-width 40% stripe (y about 450-700) with evenly spaced stops; fade it sideways and place the stops. Nice: dithering cost (lane 3), StarField glow about 1.7x at the top edge, accent re-sampled on every loop (still open), Kids row list read twice.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22: no Must. The decoder is released in onStop, and a Home press keeps the clip, which fixes the audit's hard-cut Should. Should: the Quran background was lost on return, and the return blinked black (both fixed in the PR). Nice: the Kids retry window is 30 s against the home's 120 s, and Kids retries the same bad pick.
 
@@ -144,6 +152,11 @@ Corrections from the whole-app audit (2026-11-05):
 
 - 2026-11-05: After onStop calls player.stop(), the return always starts on an empty SurfaceView, so raise the cover in onStop. When changing resume logic, check the Quran background, which borrows the wallpaper player.
 
+- 2026-11-06: When a PR hides layers to save GPU work, check both edges of every transition that shows or hides them. Hide only after the covering view is fully opaque, and show before it starts to fade.
+- 2026-11-06: "Forget the setting if the file is gone" must not run while the storage or the list might be empty for a moment. Treat an empty list as "unknown", not "gone".
+- 2026-11-06: A legibility scrim added for text is also a change to the wallpaper. Look at its width and stops over a bright clip, not only at the text's contrast.
+- 2026-11-06: In HWUI/Skia, gradients are not dithered by default (Paint has no DITHER_FLAG), so `setDither(true)` on a GradientDrawable does work. Dithering a gradient once into a bitmap on the CPU avoids the GPU cost.
+
 ## Open questions to research next
 - Probe every clip in `/sdcard/Movies/TVWallpapers` and `QuranBackgrounds` on the box (fps, codec, bit depth, colour tags, audio). How many are 24/25 fps?
 - What refresh rate and resolution does the box output? Does `preferSixtyHz()` land on 59.94 or 60.00 Hz (`adb shell dumpsys display | grep -i mode`)?
@@ -161,6 +174,10 @@ Corrections from the whole-app audit (2026-11-05):
 
 - How long does it take from onResume to the first wallpaper frame now that the codec is re-created? (Measure with screenrecord.)
 - Was the return blink visible on the TV before the fix?
+
+- What does dithering the scrims, `playerShade` and the verse fade cost on the Mali-G310? Check `dumpsys gfxinfo` during focus moves, with and without dithering.
+- Does the box run HWUI in a non-default colour mode, which forces dithering of the whole surface anyway?
+- Does the 40% verse stripe read as a bar on the family's brightest clip? Take a photo on the TV.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -196,3 +213,7 @@ All checked 2026-11-05. Tags are used in Core expertise.
 - [media3-player-141] https://raw.githubusercontent.com/androidx/media/1.4.1/libraries/common/src/main/java/androidx/media3/common/Player.java : stop() goes to IDLE and releases resources, but keeps the playlist and position. Checked 2026-11-05.
 - [aosp-surfaceview] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/main/core/java/android/view/SurfaceView.java : the surface is created and destroyed as the window is shown and hidden. Checked 2026-11-05.
 - [exo-hello] https://developer.android.com/media/media3/exoplayer/hello-world : release frees video decoders for other apps. Checked 2026-11-05.
+
+- [aosp-nodither] https://gitlab.e.foundation/e/os/android_frameworks_base/-/commit/eb5a3553dcae07481b15b93dd7223e29611a36b4 : "Do not turn on dithering by default". Old HWUI always dithered gradients, but Skia's dither also dithers bitmaps and is slow on some GPUs, so Paint() sets only ANTI_ALIAS_FLAG; apps opt in with setDither. Checked 2026-11-06.
+- [hwui-forcedither] https://gerrit.omnirom.org/plugins/gitiles/android_frameworks_base/+/b026f353bafc592e8d380edeb6c2da3de3374a51%5E%21 : HWUI forces dithering for the whole surface (SkSurfaceProps kAlwaysDither) only in non-default colour modes. Checked 2026-11-06.
+- [flutter-dither] https://docs.flutter.dev/release/breaking-changes/paint-enableDithering.html : Flutter dithers gradients only, by default, with "negligible" measured cost. Checked 2026-11-06.

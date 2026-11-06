@@ -175,6 +175,17 @@ Added by the whole-app audit (2026-11-05):
 
 ## Past findings
 
+### PR #23 (2026-11-06, update 2: visual polish)
+- Nothing found. The manifests changed only icon and banner to @mipmap. No new component, permission, extra, host or CI change.
+- Checked and fine:
+  - The PIN "✕" to "×" change is in both the key labels and pinPress.
+  - pressDip consumes no keys.
+  - The cached All apps grid filters HIDDEN_FROM_LIST before building its key.
+  - Kids refreshTiles(true) is keyed on the allowed list, and launch() checks resting.
+  - Wallpaper names from Movies/ are only compared, never used as paths.
+  - Guard and AdhanService kept drawable/icon.png at review time; after lane 13 S1 they use white-on-clear drawable/ic_notify.xml.
+  - The new PNGs have no text or EXIF chunks.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (ecdab40): no Must. Should S1: Parent settings could come back without the PIN. closePanels() hid parentPanel only in withEndAction; an openPin() within the 180 ms fade cancelled that fade (dropping the end action), set pinOverParent from visibility, and Back or ✕ then called backToParent(). Fixed with a parentOpen flag. Nice: accept only known names in the `missing` extra. Audit S1-S4 are all fixed. The CI SHAs were verified against their tags, and `run:` uses env vars.
 
@@ -217,6 +228,11 @@ Added by the whole-app audit (2026-11-05):
 - 2026-11-05: Never use view visibility as the "unlocked" signal. ViewPropertyAnimator cancels a running animation on the same property and drops its withEndAction, so a faded panel can stay VISIBLE at alpha 0. Keep an explicit open flag.
 - 2026-11-05: Verify action SHAs with `git ls-remote` on refs/tags/vX and vX^{} (gradle/actions uses annotated tags).
 
+- Cached views or tiles: every filter (HIDDEN_FROM_LIST, NEVER, the allowed list) must run before the cache key is built, and clicks must re-check the rule.
+- When a label or glyph changes, grep for string compares on it (for example pinPress).
+- When art moves to mipmap, the FGS notifications (Guard, AdhanService) still need a valid setSmallIcon drawable, or the kids lock can fail to start.
+- New binary assets: scan the PNG chunks (only IHDR, IDAT and IEND should be there). This catches file paths and GPS data.
+
 ## Open questions to research next
 - The 2025 tj-actions/changed-files tag-rewrite incident: a primary write-up was not opened this round (it is the classic example for SHA pinning).
 - APK Signature Scheme v3 key rotation (source.android.com): exact steps and the minimum API, for when the owner revisits the key.
@@ -234,6 +250,9 @@ Added by the whole-app audit (2026-11-05):
 - Does Android TV Settings use launch modes that ignore `CLEAR_TASK`? Check on the box when S2 is fixed.
 
 - On TV 14, does READ_MEDIA_AUDIO alone play an adb-pushed Download/takbir.mp3? The chime fallback covers safety, and lane 8 should check that the takbir plays.
+
+- Read the build-notification page to check whether a mipmap or adaptive icon works as a small icon.
+- The Kids icon cache never invalidates. This is cosmetic and belongs to lane 13 or 3.
 
 ## Source library
 
@@ -284,3 +303,6 @@ All checked 2026-11-05 unless noted. The [tags] are used above.
 - [Netflix lock] https://help.netflix.com/en/node/114277: 4-digit Profile Lock, set from the phone app or the web.
 
 - [VPA] https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/main/core/java/android/view/ViewPropertyAnimator.java : a running animation on the same property is cancelled, and onAnimationCancel removes its end action. Checked 2026-11-05.
+
+- https://www.w3.org/TR/png-3/ : text and eXIf chunks (section 13.4 not loaded). Checked 2026-11-06.
+- https://developer.android.com/develop/ui/views/notifications/badges : setSmallIcon takes a drawable. Checked 2026-11-06.

@@ -128,7 +128,24 @@ Add under "This box and this code". All values are (computed, ecdab40).
 - **Quran player controls:** bottom margin 74. The buttons are 84 px, at y 906..990. The bar is 720x3, at y 853.
 - **Adhan alert:** the window is 206 px tall (`BAND 136` plus a 70 px fade). The row's content runs from y 70 to `206 - LIFT`. Plex Arabic SemiBold 50 with font padding is 84.75 px tall, with ink +39/-12 px around the baseline. Inter Medium 46 ink is +35/-10 px.
 
+Added by the PR #23 review (2026-11-06):
+- **Special-day line** (`eventText`): it is now a gold 24 px line inside the right column, under the dates (`buildCenter()`). Its line is 36 px tall, because the Plex Arabic run sets the height at 1.5 em. With its 6 px padding it brings the column's end from about y 478 to about y 520, past `LINE_Y 494`.
+- **Verse fade:** `lineHolder` is now 1920 wide at x 0, from y 450 (`LINE_Y - LINE_FADE 44`). Its background is a clear → 40% → 40% → clear fade over y 450..729. It is drawn above the column and doesn't bleed.
+- **Verse band:** the kicker is now 22 px and its line is 33 px (Plex run). The band is about 494..694, 6 px above the strip.
+- **Grids after PR #23:** All apps at (69, 230), 1782 wide with 30 px padding, 1722 content (7 × 246). Surah grid at (70, 250), 1780 wide with 30 padding (6 × 286 = 1716). Reciter tiles 674, 2 × 694 = 1388 content. Home Parent rows 96 tall + 8 gap, list padding 30 with -30 margins. Kids cartoons: column padding 86, scroller padding 24, cards 395 + 40, 4 across = 1700. Kids apps cells 316 with 10/10 margins = 1344.
+- **Adhan reminder card:** 60/50 px from the top-right corner (not 56/44). It now has 4 lines: hair, title, Arabic, time.
+- **Kids settings rows** now scale 1.03 (`focusRow`), inside a scroller with no side room (`buildParent()`).
+
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, visual polish): 2 Must, 2 Should, 2 Nice. All (computed).
+  - Must: the special-day line overlaps the verse kicker on special days. The column ends at about y 520, the band starts at y 494, and the ink overlaps by 7 to 10 px.
+  - Must: Kids settings rows clip their 1.03 focus edge, about 15 px each side.
+  - Should: the verse fade is painted over the column's text.
+  - Should: the verse fade doesn't bleed, so its ends show at Screen size under 100%.
+  - Nice: use 56/44 for the reminder card. Nice: the verse band has only 6 px of slack above the strip.
+  - Confirmed fixed: the audit's Quran button overlap, the grid centring, and the focus room in All apps, Surah, Reciter, Parent and Kids cartoons.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (audit update 1): 2 Must, 1 Should, 5 Nice.
   - The message pill is placed once in `toast()` and goes stale when layers change, so it can cover the dock or a panel header.
@@ -154,6 +171,12 @@ Add under "This box and this code". All values are (computed, ecdab40).
 - 2026-11-05: Anything placed by the state at the moment it appears (toasts, hints) must be placed again when that state changes during its lifetime. Walk the flows: show it, then open or close a layer.
 - 2026-11-05: Padding a fixed-height row (`alertRow`, `BAND - LIFT`) can leave a child taller than the room that's left. TextView then clips the bottom of its font padding. Check the padded line height against the space left.
 
+- 2026-11-06: An element moved into the right column eats the column's 16 px of slack above `LINE_Y`. Re-add the column's height every time something joins it.
+- 2026-11-06: A Latin label holding an Arabic run in Plex (`MixText` spans) takes Plex's 1.5 em line height, not Inter's 1.21 em. Every MixText label with Arabic is taller than the Inter-only maths says.
+- 2026-11-06: Views added later in the same parent draw on top. A background fade on a later sibling darkens the text of earlier siblings it overlaps. Put fades in their own view, added before the text.
+- 2026-11-06: Any background added to the stage (fades, bands) must use `bleed()` widths, or its ends show at Screen size under 100%.
+- 2026-11-06: When a PR adds a focus scale to rows, check every scroller those rows sit in for side room, in all three apps.
+
 ## Open questions to research next
 - Real screenshots at 100% and 88% with the stress test: do the computed y values above match (column end about 477, verse end about 685, focused tile top about 838)?
 - Does `adb exec-out screencap` capture the SurfaceView video on this box (needed to judge balance)?
@@ -167,6 +190,9 @@ Add under "This box and this code". All values are (computed, ecdab40).
 - Material 3 spacing tokens: m3.material.io and the pub.dev M3 Expressive spacing page both failed to load on 2026-11-05.
 
 - On a box screenshot: does the adhan Arabic line clip at `LIFT 56` (a padded view of 80 of 84.75 px)? Does the pill over the player cover Play?
+
+- On a box screenshot of a special day (for example the stress test, which forces the event line): confirm the overlap and the fix's gap (target about 20 px of ink gap).
+- Should the verse fade also fade horizontally, so the left half of the video stays clear? (Lane 4's call.)
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -202,3 +228,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 
 - [m-snackbar] https://zyun.gitbook.io/temporary-views/official/material-design/original/snackbars (a mirror of Material's snackbar page): don't place one in front of frequently used targets or navigation, show it above persistent bottom navigation, and keep it in the same spot. Checked 2026-11-05.
 - [webos-notif] https://webostv.developer.lge.com/develop/guides/notifications: TV toasts are a non-modal overlay at the bottom of the screen. Checked 2026-11-05.
+
+- [fallback-ls] https://learn.microsoft.com/fr-fr/dotnet/api/android.widget.textview.fallbacklinespacing?view=net-android-36.0: fallback line spacing is on by default (API 28 and up); fallback fonts can raise a line's ascent and descent. Checked 2026-11-06.
+- [apl-background] https://www.developer.amazon.com/en-US/alexa/alexa-haus/visual-design/apl-components/apl-background: gradient overlays as a safe area for text, especially near screen edges; 4.5:1 contrast. Checked 2026-11-06.

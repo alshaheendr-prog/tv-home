@@ -116,7 +116,18 @@ Added by the whole-app audit (2026-11-05):
 Added by the PR #22 review (2026-11-05):
 - Baloo ExtraBold has ◀ U+25C0 and ▶ U+25B6. Inter and Baloo lack ❚ U+275A and ⭐ (checked with fontTools, 2026-11-05).
 
+Added by the PR #23 review (2026-11-06):
+- 2026-11-06, PR #23: Home and Adhan use adaptive icons (`mipmap-anydpi-v26/icon.xml` with `drawable/icon_back.xml` vertical gradient and `icon_fore.xml` vector). Home: `FE8B28`→`B0334F`, face r 22.5 at (54,54), `FFBE28`. Adhan: `1E2A50`→`0B1022` (the `lockFace` palette), a 180-point crescent polygon in `F1D58A`, box 24–83 x 24.7–84, ink centroid (43.8, 64.2). Kids: PNG icons at 160/240/320 px (mipmap-xhdpi/xxhdpi/xxxhdpi), no adaptive icon. Banners: 320x180 xhdpi plus 640x360 xxxhdpi in all three apps. The banner generator script is not in the repo.
+- `drawable/icon.png` survives only in kids (512 RGB) and adhan (192 RGB, 2 colours), used by `setSmallIcon` (`Guard.java:74`, `AdhanService.java:118`).
+- The home caches finished `fullBleed` icons in `ICONS`, keyed by "p:"/"a:" + package and refreshed on `lastUpdateTime`. All apps tiles no longer clip: the outline radius is `30*w/TILE` (28.2 at 124), matching the bitmap's baked corner.
+- The All apps mark is `•••` (Inter Bold 44, caps tracking); the PIN key is `×`. The home's Tomorrow weather is a word (`skyWord`), not an emoji.
+- Kids no-banner fallback: `Icons.fullBleed(…, 0.24f)` wrapped in an `InsetDrawable` (used as a marker), drawn at 62% of the tile height on `roundGrad(appColor, 0xFF141A2A)` with radius 26.
+- Kids pause `❚❚` now sits in a 220 px `0x8C000000` oval with a shadow, still drawn from a fallback font.
+
 ## Past findings
+### PR #23 (2026-11-06, update 2: visual polish)
+- 2026-11-06, PR #23 (update 2, new launcher art): no Must. Audit S1–S8 confirmed fixed. S1: notification small icons are opaque PNGs and will show as white squares; use white vector `ic_notify.xml`. S2: the Adhan crescent is 82% of the tile and its visual centre is 10 dp low-left; scale it to 0.85 around (54,54) and move it +5 right, -5 up. Nice: draw `❚❚` with a Path inside its new disc; a Kids adaptive icon; one banner left inset (~28 px xhdpi) and mark height; `⭐`→`★` in All apps.
+
 ### PR #22 (2026-11-05, audit update 1)
 - 2026-11-05, PR #22 (no asset changes): no Must. S1: the Kids settings end arrows dim to the hint colour 0xB3, so use 0x66FFFFFF. N1: ⭐ now means "shown first in All apps", but the stats panel still uses ⭐ for Kids stars. N2: ❚❚ now also shows on onPause. N3: OK wraps past a dimmed ▶.
 
@@ -137,6 +148,10 @@ Added by the PR #22 review (2026-11-05):
 
 - 2026-11-05: An end-of-list or disabled mark must be clearly dimmer (about 38 to 40%) than the secondary text around it, or it reads as ordinary grey text.
 
+- 2026-11-06: When launcher art moves to mipmap, check every other user of the old drawable (`setSmallIcon`). A notification icon is drawn from alpha only, so an opaque PNG becomes a white square.
+- 2026-11-06: Check a crescent (or any lopsided mark) by its ink centroid, not its bounding box. The box was centred, but the visual centre sat 10 dp off.
+- 2026-11-06: Put a fallback-font glyph inside a circle and any off-centre placement becomes obvious. Draw it as a vector whenever it gets a container.
+
 ## Open questions to research next
 - Is the box UI composed at 1080p or 4K (`adb shell wm size`, `dumpsys SurfaceFlinger`)? If 4K, raise `fullBleed` to about 320 px (lane 3 to weigh the memory).
 - What density does the box report (`adb shell wm density`: 320 xhdpi or 213 tvdpi)? It decides whether our bare-`drawable/` art is upscaled ×2 or ×1.33.
@@ -152,6 +167,10 @@ Added by the PR #22 review (2026-11-05):
 - Unicode's `emoji-data.txt` was blocked by the proxy (unicode.org 403) on 2026-11-05. The text-default status of ☀ ☁ ⛈ 🌫 🌧 is from memory of the Unicode data, so it is **(unverified)**.
 
 - Does the box's fallback font have U+275A? android.googlesource.com is blocked by the proxy, so check on the box, or draw it with a Path.
+
+- Does Google TV on this box show foreground-service notifications (Adhan) anywhere a family member will see them? It decides how visible S1 is.
+- What is the exact order of VectorDrawable `<group>` transforms? Check the attribute docs, or render one on the box.
+- Does `getApplicationIcon` for Kids return the 160 px (xhdpi) or the 320 px PNG on this box? Check with `adb shell wm density`.
 
 ## Source library
 All checked 2026-11-05. Tags are used in Core expertise.
@@ -182,3 +201,6 @@ All checked 2026-11-05. Tags are used in Core expertise.
 
 - [disabled-38] https://api.flutter.dev/flutter/material/ButtonThemeData/getDisabledTextColor.html : Material disabled text is at 0.38 opacity. Opened 2026-11-05.
 - [cp-275a] https://codepoints.net/U+275A : not an emoji; the glyph comes from Noto Sans Symbols 2. Opened 2026-11-05.
+
+- [notif-icon] https://documentation.onesignal.com/docs/en/./notification-icons (opened 2026-11-06): small notification icons use only the alpha channel; opaque art shows as a filled square; 24 dp, 24/36/48/72/96 px densities; tinted from Android 12.
+- Tried: the VectorDrawable reference (developer.android.com, ?hl=it) for the order of group transforms. The fetched part had no attribute text, so the "scale and rotate around the pivot, then translate" order is **(unverified)**.

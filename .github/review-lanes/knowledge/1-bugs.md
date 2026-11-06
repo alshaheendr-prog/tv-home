@@ -136,6 +136,17 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 
 ## Past findings
 
+### PR #23 (2026-11-06, update 2: visual polish)
+- Must: none.
+- Should:
+  - `KidsActivity.wallpaperPick` erases the saved wallpaper (`wallpaper` -1, removes `wallpaper_name`) when `wallpapers()` comes back empty, which happens when storage isn't ready right after boot. Fix: if the list is empty, return -1 without writing.
+  - `onResume` → `refreshTiles(true)` skips the rebuild, so the red `setupDot` on the Kids lock tile no longer updates when usage access or overlay permission changes. Fix: set its visibility in `onResume`, or put `setupComplete()` in `tilesKey`.
+- Nice:
+  - `pressDip` (home and Kids) returns to the scale it read mid-animation, so a tile can be left half-grown when OK is pressed during the focus grow.
+  - `fadeTileIn`'s `animate().cancel()` can leave a half-finished `goldLift` on a fast close and reopen.
+  - The countdown and adhan bar are gated on `resumed`, so they freeze while a translucent system panel covers the home.
+- Checked and fine: `starsOn`/wallpaper hand-off (`onStop` `stop()` leaves IDLE, so `starsOver(false)` restarts), the `eventChip` move into the centre column, `nextLine` setting `lastLineSwitch`, `MixText` (API 28 `TypefaceSpan(Typeface)`, minSdk 28), the `ICONS` cache (keyed by `lastUpdateTime`, copies through `ConstantState`), adaptive icons in `mipmap-anydpi-v26`, splash and IntroView on `uptimeMillis`.
+
 ### PR #22 (2026-11-05, audit update 1)
 - Must: none.
 - Should:
@@ -187,6 +198,11 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 - 2026-11-05: When a fix reorders "today wins / tomorrow wins" logic, walk through every day just before a tomorrow event, not only the day the fix targets.
 - 2026-11-05: When an early return skips work in an animation end-action, also leave a flag (for example `wallStopped = true`) so the next onResume redoes it. Otherwise the UI stays half-done.
 
+- 2026-11-06: A "skip if unchanged" cache key must cover every piece of state the skipped code sets, not only what it builds. The Kids `setupDot` was set inside `refreshTiles`.
+- 2026-11-06: Never treat an empty file list as "the file is gone". Shared storage can read as empty right after boot, so don't erase saved choices because of it.
+- 2026-11-06: An animation that reads `getScaleX()` as its return target captures mid-animation values, so store the resting target instead. A ViewPropertyAnimator that takes over a property cancels the earlier animation, and the earlier one's `withEndAction` does not run.
+- 2026-11-06: Gating UI updates on `resumed` also hides them while the activity is visible but paused (under a translucent activity). Use a `visible` flag based on onStart/onStop when "on screen" is what matters.
+
 ## Open questions to research next
 - Does the Xiaomi TV Box S 3rd Gen suspend the CPU in standby (screen off by the remote)? If it does, `Handler` ticks stop and an adhan due while the box is in standby is missed, as the 3-minute window shows. Check with the owner (lane 8) and `dumpsys deviceidle` and `dumpsys power`.
 - Does Android TV 14 on this box send BOOT_COMPLETED to a force-stopped app? Answered 2026-11-05: no. Force-stop puts the app back in the stopped state, which lasts across reboots until the user launches it (Hackborn via CommonsWare). Android 15 also cancels its PendingIntents and sends BOOT_COMPLETED when it is un-stopped. Update TV's `am start -S` un-stops adhan by launching it. [CommonsWare stopped] [B15-all]
@@ -200,6 +216,9 @@ Verified on 2026-11-05 at commit 47e8c57, unless marked otherwise.
 
 - Does `File.canRead()` on an adb-pushed `Download/takbir.mp3` work with only READ_MEDIA_AUDIO, before MediaStore has scanned the file? It needs a test on the TV.
 - How long after a bringBack does ACTIVITY_RESUMED for KidsActivity show up in queryEvents on this box? That decides how many repeat urgent pulls happen.
+
+- Does the Google TV quick-settings side panel pause the home (as a translucent activity) on this box?
+- After boot, how long until `Movies/TVWallpapers` lists as non-empty on this box? That decides how often the wallpaper erase would hit.
 
 ## Source library
 
@@ -242,3 +261,6 @@ All checked 2026-11-05 unless noted. The short tags in [brackets] are used above
 
 - [onNewIntent] https://learn.microsoft.com/dotnet/api/android.app.activity.onnewintent: a mirror of the Android reference text. It says "If the activity was resumed, it will be paused and new intent will be delivered, followed by onResume()", and that getIntent() still returns the original intent.
 - [MediaPlayer state] https://developer.android.com/media/platform/mediaplayer/state-resources: release the player in onStop, create it again on resume, and stop() needs prepare() before start().
+
+- [VPA withEndAction] https://learn.microsoft.com/en-us/dotnet/api/android.views.viewpropertyanimator.withendaction: a mirror of the Android reference. "if the ViewPropertyAnimator is canceled during that animation, the runnable will not run." Checked 2026-11-06.
+- [TypefaceSpan API 28] https://developer.android.com/sdk/api_diff/28/changes/android.text.style.TypefaceSpan: the `TypefaceSpan(Typeface)` constructor was added in API 28. Checked 2026-11-06.
