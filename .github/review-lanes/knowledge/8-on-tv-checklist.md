@@ -144,11 +144,11 @@ Added by the PR #22 review (2026-11-05):
 - Wallpaper: pressing Home on the home keeps the same clip. Coming back from another app plays a new one.
 - Messages over a panel show at the bottom centre, 64 px up. On the home screen they show top left.
 
-- Replace "The 10-minute reminder shows over any app except the family home, for 15 s" with "... for 8 s (`showReminder`, `hideReminder`). Since PR #23 it has a short gold hairline, the English, the Arabic in gold with Arabic-Indic digits, and the time."
-- Added by the PR #23 review (2026-11-06):
-  - Special-days line: a boxless gold line under the dates (right column), no longer a chip on the left (`drawEventChip`). It shows only on special days (Events.badge).
+Added by the PR #23 review (2026-11-06):
+- The 10-minute reminder card has a short gold hairline, the English, the Arabic in gold with Arabic-Indic digits, and the time (`showReminder`, `hideReminder`).
+  - Special-days line: a boxless white line with a gold dot under the dates (right column; changed from gold text in the PR #23 fixes), no longer a chip on the left (`drawEventChip`). It shows only on special days (Events.badge).
   - Drive line: "● Drive unplugged" is white with a gold dot. "● USB … free" is soft white with a grey dot. It is no longer red or green (`updateDrive`, `dotLine`).
-  - Prayer strip: the next prayer is shown by colour only (name white, time gold), with no box.
+  - Prayer strip: the next prayer has a short gold underline under its time (name and time white), with no box.
   - Tomorrow's weather is a word (`skyWord`), not an emoji.
   - The All apps dock tile shows "•••". The PIN pad's cancel key is "×" (bottom left). Focus starts on 1, so Down three times reaches it.
   - The Quran page (star field) pauses the wallpaper and hides the layers under it (`starsOver`, 300 ms after it opens). Closing it, or pressing Home, starts the wallpaper again. A Quran background video brings the layers back.
