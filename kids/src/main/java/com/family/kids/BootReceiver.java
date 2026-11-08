@@ -9,5 +9,6 @@ public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {
         if (Rules.on(c)) Guard.start(c);
+        com.family.update.Updater.schedule(c);
     }
 }

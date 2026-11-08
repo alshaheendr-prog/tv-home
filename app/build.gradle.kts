@@ -31,6 +31,9 @@ android {
         }
     }
 
+    // The updater (shared/java) is one copy used by all three apps.
+    sourceSets { getByName("main") { java.srcDir("../shared/java") } }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
