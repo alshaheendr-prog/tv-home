@@ -187,6 +187,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
         prefs = getSharedPreferences("home", MODE_PRIVATE);
+        com.family.update.Updater.schedule(this);
         Events.offset = prefs.getInt("hijri_offset", 0);
         preferSixtyHz();
         fullLengthAnimations();
@@ -3617,6 +3618,14 @@ public class MainActivity extends Activity {
             if (!RemoteKeys.running) ((TextView) ((ViewGroup) parentList.getChildAt(row)).getChildAt(0)).setTextColor(DIM);
         }
         remoteNote = null;
+        parentRow("App updates (automatic)", com.family.update.Updater.statusLine(this), () -> {
+            // all three apps check now; each one updates itself, so this screen may restart in a moment
+            com.family.update.Updater.checkNow(this);
+            com.family.update.Updater.checkFamilyNow(this);
+            toast("Checking for updates. If there's a new build, the screen restarts by itself.");
+            drawParent(parentClicked);
+            ui.postDelayed(() -> { if (parentOpen && !statsShown) drawParent(parentClicked); }, 6000);
+        });
         parentRow("Android settings", "›", () -> { closePanels(); openSettings(); });
         View f = parentList.getChildAt(Math.min(focus, parentList.getChildCount() - 1));
         f.post(f::requestFocus);

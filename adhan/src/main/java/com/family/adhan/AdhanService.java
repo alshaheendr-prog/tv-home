@@ -101,6 +101,7 @@ public class AdhanService extends Service {
     public void onCreate() {
         super.onCreate();
         prefs = getSharedPreferences("adhan", MODE_PRIVATE);
+        com.family.update.Updater.schedule(this);
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         DisplayMetrics dm = getResources().getDisplayMetrics();
         k = Math.max(dm.widthPixels, dm.heightPixels) / 1920f;

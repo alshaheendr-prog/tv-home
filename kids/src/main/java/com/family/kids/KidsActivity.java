@@ -111,6 +111,7 @@ public class KidsActivity extends Activity {
     @Override
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
+        com.family.update.Updater.schedule(this);
         fMed = getResources().getFont(R.font.baloo_medium);
         fBold = getResources().getFont(R.font.baloo_bold);
         fHeavy = getResources().getFont(R.font.baloo_extrabold);
